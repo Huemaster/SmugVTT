@@ -1,6 +1,6 @@
 # Security Policy
 
-CozyVTT is a self-hosted virtual tabletop platform. We take security seriously and appreciate responsible disclosure from the community.
+SmugVTT is an independently maintained, self-hosted virtual tabletop platform. We take security seriously and appreciate responsible disclosure from the community.
 
 ## Supported Versions
 
@@ -14,24 +14,24 @@ Self-hosters are responsible for keeping their instances up to date.
 
 ### Preferred — GitHub Private Vulnerability Reporting
 
-Use the **"Report a vulnerability"** button on the [Security tab](https://github.com/CheekyChinchilla/CozyVTT/security) of this repository. This creates a private advisory that only repository maintainers can see.
+Use the **"Report a vulnerability"** button on the [Security tab](https://github.com/Huemaster/SmugVTT/security) of this repository, if private vulnerability reporting is enabled. This creates a private advisory for maintainers.
 
 ### If you cannot use GitHub
 
-If you have no GitHub account, or the button is not there, use the contact form linked under [Become a Collaborator](docs/CONTRIBUTING.md#-become-a-collaborator) in CONTRIBUTING.md to ask for another private way to send the details. Say only that you have a security report; put the details in nothing public and nothing you cannot take back.
+If the private reporting option is not available, do not publish exploit details in a public issue. Check for a private contact method provided by the repository maintainer; share sensitive details only through a private channel.
 
 ### What to include
 
-The version (`git describe --tags --always` in your CozyVTT folder), how it is installed, what you did, what happened and what you expected. Do not send your `.env`, a backup or a session cookie: describe the problem with a throwaway instance instead.
+The version (`git describe --tags --always` in your SmugVTT folder), how it is installed, what you did, what happened and what you expected. Do not send your `.env`, a backup or a session cookie: describe the problem with a throwaway instance instead.
 
 ## What is in scope
 
 - **In scope:** the code in this repository (the backend, the frontend and the live table) and the configuration it ships with (`docker-compose.yml`, `nginx/`, `.env.example`), run as the [deployment guide](docs/DEPLOYMENT.md) describes.
-- **Out of scope:** a weakness that needs a change the guides tell you not to make; the security of your own server, firewall, proxy or tunnel; the software CozyVTT is built on, which belongs to its authors (but do tell us if CozyVTT's configuration makes a weakness in it worse); an action that needs an administrator's own account, since an administrator is trusted; and the output of a scanner with no demonstration that it matters.
+- **Out of scope:** a weakness that needs a change the guides tell you not to make; the security of your own server, firewall, proxy or tunnel; third-party software outside this repository (except where its configuration here creates a vulnerability); an action that needs an administrator's own account, since an administrator is trusted; and the output of a scanner with no demonstration that it matters.
 
 ## What to expect
 
-CozyVTT is a one-person project run in spare time. A report is read and answered as soon as the maintainer can; there is no fixed response time. Please keep the details private until a fixed version is released and the reply says it is safe to share.
+SmugVTT is independently maintained. A report is read and answered as soon as the maintainer can; there is no fixed response time. Please keep the details private until a fixed version is released and the reply says it is safe to share.
 
 ## Notes on the security design
 

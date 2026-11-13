@@ -1,6 +1,6 @@
-# CozyVTT — Deployment Guide
+# SmugVTT — Deployment Guide
 
-This guide covers deploying CozyVTT to a **production server** using Docker Compose (recommended) or manually. The default `docker compose up -d --build` command in this guide runs the **hardened production stack**: compiled binaries, Nginx reverse proxy, no exposed database/backend ports.
+This guide covers deploying SmugVTT to a **production server** using Docker Compose (recommended) or manually. The default `docker compose up -d --build` command in this guide runs the **hardened production stack**: compiled binaries, Nginx reverse proxy, no exposed database/backend ports.
 
 > 🛠️ **Just want to hack on the code locally?** You're in the wrong file. See **[DEVELOPMENT.md](./DEVELOPMENT.md)** for the dev setup (hot reload, exposed ports, source-mounted volumes).
 
@@ -20,7 +20,7 @@ This guide covers deploying CozyVTT to a **production server** using Docker Comp
 10. [Database Backups](#database-backups)
 11. [Monitoring and Logs](#monitoring-and-logs)
 12. [Troubleshooting](#troubleshooting)
-13. [Updating CozyVTT](#updating-cozyvtt)
+13. [Updating the application](#updating-cozyvtt)
 14. [Hardening Checklist](#hardening-checklist)
 15. [Cloudflare Tunnel (Recommended for Public Instances)](#cloudflare-tunnel-recommended-for-public-instances)
 16. [The API Documentation](#the-api-documentation)
@@ -45,8 +45,8 @@ This is the recommended path. `docker-compose.yml` is the production stack: Post
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/CheekyChinchilla/CozyVTT.git
-cd CozyVTT
+git clone https://github.com/Huemaster/SmugVTT.git
+cd SmugVTT
 ```
 
 ### 2. Configure environment
