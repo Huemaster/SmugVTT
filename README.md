@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/default-logo.png" alt="SmugVTT golden apple" width="128">
+  <img src="assets/smugvtt-golden-apple.png" alt="SmugVTT golden apple" width="128">
 </p>
 <h1 align="center">SmugVTT</h1>
 <p align="center"><strong>Three Pillars. One Tabletop.</strong><br><em>A VTT should adapt to the way people play.</em></p>
