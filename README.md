@@ -81,7 +81,7 @@ These items describe work developed in the local fork. Individual features may s
 
 #### Optional combat and unit-management tools
 
-Developed for a **private, optional rules module**; they are **not advertised as universal combat mechanics** or required by other game systems.
+These local tools are being generalized as **Squad Command**, an **optional** combat/unit-management module, not a required ruleset. The public repository currently contains [privacy-safe example templates and the integration checklist](Examples/SquadCommand/README.md), **not the working module**.
 
 - **Unified combat HUD:** quick access to health, defense, shields, suppression, and relevant active conditions.
 - **Token targeting and feedback:** target selection, range assistance, readable hover information, and condition markers.
