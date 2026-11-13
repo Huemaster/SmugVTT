@@ -242,8 +242,8 @@ info:
 
   version: 1.6.0
   contact:
-    name: CozyVTT
-    url: https://cozyvtt.com
+    name: SmugVTT
+    url: https://github.com/Huemaster/SmugVTT
   license:
     name: AGPL-3.0
     url: https://www.gnu.org/licenses/agpl-3.0.html
