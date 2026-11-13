@@ -16,6 +16,7 @@ const DnD5eSheet = lazy(() => import('./dnd5e/DnD5eCharacterSheet'));
 const Pathfinder2eSheet = lazy(() => import('./pathfinder2e/Pathfinder2eCharacterSheet'));
 const Shadowrun6eSheet = lazy(() => import('./shadowrun6e/Shadowrun6eCharacterSheet'));
 const CallOfCthulhu7eSheet = lazy(() => import('./call-of-cthulhu-7e/CallOfCthulhu7eCharacterSheet'));
+const SquadCommandSheet = lazy(() => import('./squadCommand/SquadCommandCharacterSheet'));
 
 export type CharacterSheetRouterProps = CharacterSheetProps;
 
@@ -51,6 +52,9 @@ export const CharacterSheetRouter: React.FC<CharacterSheetRouterProps> = (
 
       case GameSystem.CALL_OF_CTHULHU_7E:
         return <CallOfCthulhu7eSheet {...props} />;
+
+      case GameSystem.SQUAD_COMMAND:
+        return <SquadCommandSheet {...props} />;
 
       case null:
       case undefined:

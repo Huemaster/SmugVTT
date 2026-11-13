@@ -13,7 +13,6 @@ import { z } from 'zod';
 // when the two differ. `custom` is a sentinel meaning the colours come from
 // customThemeColors.
 export const THEME_IDS = [
-  'smug-gold',
   'cozy-default',
   'autumn-hearth',
   'desert-sand',

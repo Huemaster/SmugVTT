@@ -33,10 +33,12 @@ export default function CharacterTemplatesPage() {
   const queryClient = useQueryClient();
 
   const [search, setSearch] = useState('');
-  const [systemFilter, setSystemFilter] = useState('');
-  const [mineOnly, setMineOnly] = useState(false);
+  const templateQuery = new URLSearchParams(window.location.search);
+  const fodderMode = templateQuery.get('fodder') === '1';
+  const [systemFilter, setSystemFilter] = useState(templateQuery.get('gameSystem') ?? '');
+  const [mineOnly, setMineOnly] = useState(templateQuery.get('mine') === '1');
 
-  const [showCreate, setShowCreate] = useState(false);
+  const [showCreate, setShowCreate] = useState(templateQuery.get('create') === '1');
   const [showImport, setShowImport] = useState(false);
   const [editing, setEditing] = useState<CharacterTemplate | null>(null);
   const [deleting, setDeleting] = useState<CharacterTemplateSummary | null>(null);
@@ -308,6 +310,7 @@ export default function CharacterTemplatesPage() {
 
       {showCreate && (
         <NewCharacterTemplateModal
+        initial={fodderMode ? { gameSystem: templateQuery.get('gameSystem') ?? 'SQUAD_COMMAND' } : undefined}
           onClose={() => setShowCreate(false)}
           onCreated={() => {
             setShowCreate(false);

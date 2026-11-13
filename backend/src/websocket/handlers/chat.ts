@@ -13,6 +13,8 @@ import { campaignSockets } from '../utils';
 import { ackFrom, refuseRequest } from '../ack';
 import { ChatMessageSchema, CHAT_CONTENT_REFUSAL, WHISPER_RECIPIENT_REFUSAL, WHISPER_SELF_REFUSAL } from '../../validators/chat';
 import { whisperRecipient } from '../../services/permissions';
+import { toJson } from '../../utils/prisma-json';
+import { ChatIdentityError, resolveChatIdentity } from '../../fork/chatIdentity';
 
 /**
  * The `chat.message` the server sends each member who may read the message.
@@ -28,8 +30,35 @@ export interface ChatMessageBroadcast {
   /** On a whisper: the one member it is for, beside its sender, and their name. */
   recipientId?: string;
   recipientName?: string;
+  metadata?: Record<string, unknown>;
   /** On the sender's own copy only: the `clientId` it was sent with. */
   clientId?: string;
+}
+
+export interface SpeakerPresenceBroadcast {
+  userId: string;
+  userName: string;
+  speaker: {
+    type: 'self' | 'character' | 'npc' | 'narrator';
+    id?: string;
+    name: string;
+    imageUrl?: string | null;
+    themeColor?: string;
+    frame?: { zoom: number; x: number; y: number };
+  };
+}
+
+const speakerPresenceByCampaign = new Map<string, Map<string, SpeakerPresenceBroadcast>>();
+
+function readPresenceFrame(value: unknown): { zoom: number; x: number; y: number } | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const frame = value as Record<string, unknown>;
+  const zoom = typeof frame.zoom === 'number' ? frame.zoom : NaN;
+  const x = typeof frame.x === 'number' ? frame.x : NaN;
+  const y = typeof frame.y === 'number' ? frame.y : NaN;
+  if (!Number.isFinite(zoom) || !Number.isFinite(x) || !Number.isFinite(y)) return undefined;
+  if (zoom < 0.6 || zoom > 2 || x < 0 || x > 100 || y < 0 || y > 100) return undefined;
+  return { zoom, x, y };
 }
 
 /** How long a resent `clientId` is recognised. */
@@ -86,7 +115,7 @@ export function registerChatHandlers(io: Server, socket: AuthenticatedSocket): v
         refuse(parsed.error.issues[0]?.message ?? CHAT_CONTENT_REFUSAL);
         return;
       }
-      const { content, type: askedType, clientId, recipientId } = parsed.data;
+      const { content, type: askedType, clientId, recipientId, speakerType, speakerId, mode, portraitFrame } = parsed.data;
 
       // A message already sent under this clientId is answered, not sent again.
       if (clientId !== undefined) {
@@ -145,8 +174,31 @@ export function registerChatHandlers(io: Server, socket: AuthenticatedSocket): v
           select: { displayName: true },
         });
         if (!user) throw new UserGoneError();
+        const identity = await resolveChatIdentity({
+          campaignId,
+          userId: socket.userId!,
+          userName: user.displayName,
+          role: socket.role,
+          speakerType,
+          speakerId,
+          mode,
+        });
+        const metadata = toJson({
+          speaker: {
+            ...identity.speaker,
+            ...(portraitFrame ? { frame: portraitFrame } : {}),
+          },
+          chatMode: identity.chatMode,
+        });
         const message = await prisma.message.create({
-          data: { campaignId, userId: socket.userId!, type, content, recipientId: whisperTo?.id ?? null },
+          data: {
+            campaignId,
+            userId: socket.userId!,
+            type,
+            content,
+            recipientId: whisperTo?.id ?? null,
+            metadata,
+          },
         });
         return { user, message };
       })();
@@ -161,6 +213,11 @@ export function registerChatHandlers(io: Server, socket: AuthenticatedSocket): v
         written = await write;
       } catch (error) {
         if (rememberedKey) sentByClientId.delete(rememberedKey);
+        if (error instanceof ChatIdentityError) {
+          refuse(error.message);
+          return;
+        }
+
         if (error instanceof UserGoneError) {
           refuse('User not found');
           return;
@@ -182,6 +239,7 @@ export function registerChatHandlers(io: Server, socket: AuthenticatedSocket): v
         userName: user.displayName,
         content: message.content,
         type,
+        metadata: (message.metadata ?? undefined) as Record<string, unknown> | undefined,
         timestamp: message.createdAt.toISOString(),
         ...(whisperTo ? { recipientId: whisperTo.id, recipientName: whisperTo.displayName } : {}),
       };
@@ -207,6 +265,122 @@ export function registerChatHandlers(io: Server, socket: AuthenticatedSocket): v
       refuse('Failed to send chat message');
     }
   });
+
+  socket.on('chat.typing', async (data: unknown) => {
+    try {
+      if (!socket.campaignId || !socket.userId) return;
+      if (!data || typeof data !== 'object' || Array.isArray(data)) return;
+
+      const raw = data as Record<string, unknown>;
+      const typing = raw.typing === true;
+      const speakerType =
+        raw.speakerType === 'character' ||
+        raw.speakerType === 'npc' ||
+        raw.speakerType === 'narrator'
+          ? raw.speakerType
+          : 'self';
+      const speakerId = typeof raw.speakerId === 'string' ? raw.speakerId : undefined;
+
+      const user = await prisma.user.findUnique({
+        where: { id: socket.userId },
+        select: { displayName: true },
+      });
+      if (!user) return;
+
+      let speakerName = user.displayName;
+      if (typing) {
+        const identity = await resolveChatIdentity({
+          campaignId: socket.campaignId,
+          userId: socket.userId,
+          userName: user.displayName,
+          role: socket.role,
+          speakerType,
+          speakerId,
+          mode: 'ic',
+        });
+        speakerName = identity.speaker.name;
+      }
+
+      const payload = {
+        userId: socket.userId,
+        userName: user.displayName,
+        speakerName,
+        typing,
+      };
+
+      for (const target of await campaignSockets(io, socket.campaignId)) {
+        target.emit('chat.typing', payload);
+      }
+    } catch (error) {
+      if (error instanceof ChatIdentityError) return;
+      logger.error('chat.typing failed', { err: error });
+    }
+  });
+
+  socket.on('speaker.presence', async (data: unknown) => {
+    try {
+      if (!socket.campaignId || !socket.userId) return;
+      if (!data || typeof data !== 'object' || Array.isArray(data)) return;
+
+      const raw = data as Record<string, unknown>;
+      const speakerType =
+        raw.speakerType === 'character' ||
+        raw.speakerType === 'npc' ||
+        raw.speakerType === 'narrator'
+          ? raw.speakerType
+          : 'self';
+      const speakerId = typeof raw.speakerId === 'string' ? raw.speakerId : undefined;
+      const frame = readPresenceFrame(raw.portraitFrame);
+
+      const user = await prisma.user.findUnique({
+        where: { id: socket.userId },
+        select: { displayName: true },
+      });
+      if (!user) return;
+
+      const identity = await resolveChatIdentity({
+        campaignId: socket.campaignId,
+        userId: socket.userId,
+        userName: user.displayName,
+        role: socket.role,
+        speakerType,
+        speakerId,
+        mode: 'ic',
+      });
+
+      const payload: SpeakerPresenceBroadcast = {
+        userId: socket.userId,
+        userName: user.displayName,
+        speaker: {
+          ...identity.speaker,
+          ...(frame ? { frame } : {}),
+        },
+      };
+
+      let campaignState = speakerPresenceByCampaign.get(socket.campaignId);
+      if (!campaignState) {
+        campaignState = new Map();
+        speakerPresenceByCampaign.set(socket.campaignId, campaignState);
+      }
+      campaignState.set(socket.userId, payload);
+
+      for (const target of await campaignSockets(io, socket.campaignId)) {
+        target.emit('speaker.presence', payload);
+      }
+    } catch (error) {
+      if (error instanceof ChatIdentityError) return;
+      logger.error('speaker.presence failed', { err: error });
+    }
+  });
+
+  socket.on('speaker.presence.request', () => {
+    if (!socket.campaignId) return;
+    socket.emit('speaker.presence.state', {
+      campaignId: socket.campaignId,
+      speakers: [...(speakerPresenceByCampaign.get(socket.campaignId)?.values() ?? [])],
+    });
+  });
+
 }
 
 /** The sender's account was deleted between authenticating and sending. */

@@ -21,6 +21,8 @@ export interface Drawing {
   kind: string;
   color: string;
   fillColor: string | null;
+  zoneType?: string | null;
+  fillOpacity?: number | null;
   width: number;
   rotation: number;
   sortKey: number;
@@ -40,6 +42,8 @@ export interface NewDrawing {
   color: string;
   /** Only a rectangle, an ellipse or a polygon is filled. */
   fillColor?: string | null;
+  zoneType?: string | null;
+  fillOpacity?: number | null;
   width: number;
   rotation?: number;
   sortKey?: number;
@@ -77,6 +81,14 @@ export interface DrawingAddEvent {
 
 /** The answer to `drawing:add`: the stored drawing's id, or why it was refused. */
 export type DrawingAddAck = { ok: true; id: string; opId?: string } | { ok: false; error: string };
+
+/** Replace an existing battlefield zone without changing its identity. */
+export interface DrawingUpdateEvent {
+  mapId: string;
+  drawingId: string;
+  drawing: NewDrawing;
+  opId?: string;
+}
 
 /** `drawing:remove`: one drawing, by its id. */
 export interface DrawingRemoveEvent {
@@ -117,6 +129,13 @@ export interface DrawingAddedBroadcast {
   drawing: Drawing;
   opId?: string;
   previewId?: string;
+}
+
+/** Updated zone with the same ID; the backend has checked edit permissions. */
+export interface DrawingUpdatedBroadcast {
+  mapId: string;
+  drawing: Drawing;
+  opId?: string;
 }
 
 /** `drawing:removed`, to the readers who had the drawing. */

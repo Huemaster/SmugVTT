@@ -47,7 +47,7 @@ export const TOOL_GROUPS: ToolDef[][] = [
   ],
   [
     { key: 'spirit', label: 'Spirit Layer', icon: Ghost },
-    { key: 'atmosphere', label: 'Atmosphere', icon: Cloud },
+    { key: 'atmosphere', label: 'Jukebox & Atmosphere', icon: Cloud },
   ],
   [{ key: 'settings', label: 'Campaign Settings', icon: Settings }],
 ];

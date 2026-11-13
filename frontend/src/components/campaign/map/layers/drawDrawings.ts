@@ -65,6 +65,52 @@ interface Traced {
   measure: number;
 }
 
+/** Reusable tiny hatch/dot tiles to make obscuration/cover visible on art.
+ * Restrained, deterministic texture, clipped within the saved zone shape.
+ * The original map and ordinary annotations remain untouched. */
+const zoneTextures = new Map<string, CanvasPattern>();
+function zoneTexture(ctx: CanvasRenderingContext2D, kind: string): CanvasPattern | null {
+  const saved = zoneTextures.get(kind);
+  if (saved) return saved;
+  const doc = ctx.canvas?.ownerDocument;
+  if (!doc || typeof ctx.createPattern !== 'function') return null;
+  const tile = doc.createElement('canvas');
+  tile.width = tile.height = 18;
+  const tileCtx = tile.getContext('2d');
+  if (!tileCtx) return null;
+  // Higher contrast than 0.8.4c: smoke dots use bright highlights, while
+  // cover/elevation use dark cross-hatching over the colored zone fill.
+  const cloud = kind === 'smoke' || kind === 'obscured';
+  tileCtx.strokeStyle = cloud ? 'rgba(255,255,255,0.96)' : 'rgba(18,24,34,0.88)';
+  tileCtx.fillStyle = cloud ? 'rgba(255,255,255,0.96)' : 'rgba(18,24,34,0.88)';
+  tileCtx.lineWidth = 1.65;
+  if (cloud) {
+    for (const [x,y] of [[3,3],[11,7],[16,14],[5,16],[14,3]] as const) {
+      tileCtx.beginPath();tileCtx.arc(x,y,1.35,0,Math.PI*2);tileCtx.fill();
+    }
+  } else {
+    tileCtx.beginPath();tileCtx.moveTo(-3,14);tileCtx.lineTo(14,-3);
+    tileCtx.moveTo(4,21);tileCtx.lineTo(21,4);tileCtx.stroke();
+  }
+  const pattern=ctx.createPattern(tile,'repeat');
+  if (pattern) zoneTextures.set(kind,pattern);
+  return pattern;
+}
+
+function drawZoneTexture(ctx: CanvasRenderingContext2D, d: Drawing, traced: Traced): void {
+  if (!d.zoneType || !CLOSED_KINDS.has(d.kind)) return;
+  const pattern = zoneTexture(ctx,d.zoneType);
+  if (!pattern) return;
+  ctx.save();
+  ctx.globalAlpha = (d.audience === 'DM' ? DM_ONLY_ALPHA : 1) * 0.58;
+  if (traced.stroke) ctx.clip(traced.stroke);
+  else {ctx.beginPath();traceOutline(ctx,d);ctx.clip();}
+  ctx.fillStyle=pattern;
+  ctx.fillRect(traced.bounds.minX,traced.bounds.minY,
+    traced.bounds.maxX-traced.bounds.minX,traced.bounds.maxY-traced.bounds.minY);
+  ctx.restore();
+}
+
 /** The markup layer's pixels (drawMarkupLayer), and what they were drawn for. */
 interface KeptMarkup {
   canvas: HTMLCanvasElement;
@@ -196,14 +242,14 @@ function strokeStyleFor(ctx: CanvasRenderingContext2D, look: Look): void {
 }
 
 /** Draw one shape (not a label) in its look: stroked, an arrow's head and a closed shape's fill filled. */
-function drawShape(ctx: CanvasRenderingContext2D, shape: DrawingShape, fillColor: string | null, look: Look, traced: Traced | null): void {
+function drawShape(ctx: CanvasRenderingContext2D, shape: DrawingShape, fillColor: string | null, look: Look, traced: Traced | null, fillAlpha = FILL_ALPHA): void {
   strokeStyleFor(ctx, look);
   const closed = CLOSED_KINDS.has(shape.kind);
   if (traced?.stroke) {
     if (closed && fillColor) {
       const alpha = ctx.globalAlpha;
       ctx.fillStyle = fillColor;
-      ctx.globalAlpha = alpha * FILL_ALPHA;
+      ctx.globalAlpha = alpha * fillAlpha;
       ctx.fill(traced.stroke);
       ctx.globalAlpha = alpha;
     }
@@ -219,7 +265,7 @@ function drawShape(ctx: CanvasRenderingContext2D, shape: DrawingShape, fillColor
   if (closed && fillColor) {
     const alpha = ctx.globalAlpha;
     ctx.fillStyle = fillColor;
-    ctx.globalAlpha = alpha * FILL_ALPHA;
+    ctx.globalAlpha = alpha * fillAlpha;
     ctx.fill();
     ctx.globalAlpha = alpha;
   }
@@ -297,7 +343,11 @@ export function drawDrawings(ctx: CanvasRenderingContext2D, state: DrawingsDrawS
       ctx.translate(-centre.x, -centre.y);
     }
     if (d.kind === 'text') drawLabel(ctx, d, dmOnly);
-    else drawShape(ctx, d, d.fillColor, { color: d.color, width: d.width, dmOnly, alpha: 1 }, traced);
+    else {
+      drawShape(ctx, d, d.fillColor, { color: d.color, width: d.width, dmOnly, alpha: 1 }, traced,
+        d.zoneType && typeof d.fillOpacity === 'number' ? d.fillOpacity / 100 : FILL_ALPHA);
+      drawZoneTexture(ctx, d, traced);
+    }
     ctx.restore();
   }
 }

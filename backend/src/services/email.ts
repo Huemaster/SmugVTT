@@ -38,7 +38,7 @@ function getAppUrl(): string {
   return (process.env.APP_URL || process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
 }
 
-const DEFAULT_INSTANCE_NAME = 'SmugVTT';
+const DEFAULT_INSTANCE_NAME = 'CozyVTT';
 
 /**
  * The instance's name, as emails show it: the name set in the setup wizard
@@ -54,7 +54,7 @@ async function getInstanceName(): Promise<string> {
   } catch (err) {
     logger.warn('Could not read the instance name for an email; using the default', { err });
   }
-  if (stored && stored !== DEFAULT_INSTANCE_NAME && stored !== 'CozyVTT') return stored;
+  if (stored && stored !== DEFAULT_INSTANCE_NAME) return stored;
   return process.env.INSTANCE_NAME?.trim() || stored || DEFAULT_INSTANCE_NAME;
 }
 
@@ -63,7 +63,7 @@ async function getInstanceName(): Promise<string> {
 // ============================================
 
 /**
- * Wrap content in a styled SmugVTT email shell.
+ * Wrap content in a styled CozyVTT email shell.
  * All styles are inlined for broad email client compatibility.
  */
 function emailLayout(name: string, content: string, previewText?: string): string {
@@ -80,18 +80,18 @@ function emailLayout(name: string, content: string, previewText?: string): strin
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <title>${instanceName}</title>
 </head>
-<body style="margin:0;padding:0;background-color:#F1E9DA;font-family:Georgia,'Times New Roman',serif;-webkit-font-smoothing:antialiased;">
+<body style="margin:0;padding:0;background-color:#F5EDD8;font-family:Georgia,'Times New Roman',serif;-webkit-font-smoothing:antialiased;">
 ${preview}
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F1E9DA;padding:40px 16px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F5EDD8;padding:40px 16px;">
   <tr>
     <td align="center">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
 
         <!-- Header -->
         <tr>
-          <td style="background-color:#19191F;border-radius:12px 12px 0 0;padding:28px 40px;text-align:center;">
-            <div style="font-size:26px;font-weight:bold;color:#D8A83E;letter-spacing:1px;">SmugVTT</div>
-            ${name !== DEFAULT_INSTANCE_NAME ? `<div style="font-size:11px;color:#F1E9DA;margin-top:6px;letter-spacing:2px;text-transform:uppercase;">${instanceName}</div>` : ''}
+          <td style="background-color:#3D6B4F;border-radius:12px 12px 0 0;padding:28px 40px;text-align:center;">
+            <div style="font-size:26px;font-weight:bold;color:#FDFAF4;letter-spacing:1px;">&#x2665; CozyVTT</div>
+            ${name !== DEFAULT_INSTANCE_NAME ? `<div style="font-size:11px;color:#A8C8B0;margin-top:6px;letter-spacing:2px;text-transform:uppercase;">${instanceName}</div>` : ''}
           </td>
         </tr>
 

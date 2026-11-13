@@ -605,7 +605,7 @@ describe('a drawing as the page holds it, and the drawing events the page sends'
 describe('a drawing as a campaign archive carries it', () => {
   const row: MapDrawing = {
     id: 'drawing', mapId: 'map', authorId: null, audience: 'ALL', layer: 'MARKUP', kind: 'line', color: '#1a1a1a',
-    fillColor: null, pattern: null, stamp: null, width: 2, rotation: 0, sortKey: 0, points: [[0, 0], [1, 1]], text: null,
+    fillColor: null, zoneType: null, fillOpacity: null, pattern: null, stamp: null, width: 2, rotation: 0, sortKey: 0, points: [[0, 0], [1, 1]], text: null,
     createdAt: new Date(0),
   };
 
@@ -1085,6 +1085,8 @@ describe('the character sheets, as the schemas take them and the frontend types 
       typeModule: `${types}/game-systems/callOfCthulhu7e`, typeExport: 'CoC7eCharacterData' },
     { label: 'Shadowrun 6e', schemaModule: `${schemas}/shadowrun6e.schema`, schemaExport: 'shadowrun6eCharacterDataSchema',
       typeModule: `${types}/game-systems/shadowrun6e`, typeExport: 'SR6CharacterData' },
+    { label: 'Squad Command', schemaModule: `${schemas}/squadCommand.schema`, schemaExport: 'squadCommandCharacterDataSchema',
+      typeModule: `${types}/game-systems/squadCommand`, typeExport: 'SquadCommandCharacterData' },
     { label: 'Flexible', schemaModule: `${schemas}/flexible.schema`, schemaExport: 'flexibleCharacterDataSchema',
       typeModule: `${types}/flexible-character-sheet`, typeExport: 'FlexibleCharacterData' },
   ]);

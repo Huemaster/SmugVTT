@@ -61,8 +61,9 @@ import {
   type Viewport,
 } from './map/layers';
 import { createVisionCache } from './map/vision';
-import { pickTokenAt, pickMovableTokenAt, blockingTokensAt, visibleTokenHp, isTokenVisibleTo, tokenCoversCell } from './map/tokenHitTest';
+import { pickTokenAt, pickMovableTokenAt, blockingTokensAt, visibleTokenHp, isTokenVisibleTo } from './map/tokenHitTest';
 import { cachedTokenImage } from './map/layers/drawTokens';
+import { subscribeLiveSceneDialogue, type SceneUtterance } from './sceneDialogue';
 import { revealedSetFromFogState } from './map/fogSelection';
 import { exploredCellsFromCoverage, diffNew } from './map/exploration';
 import { explorationReports } from './map/fogSends';
@@ -72,6 +73,12 @@ import { useMeasureTools } from './map/tools/useMeasureTools';
 import { useDoorTool } from './map/tools/useDoorTool';
 import { useWallTool } from './map/tools/useWallTool';
 import { useDrawTool, DEFAULT_DRAW_SETTINGS, type DrawSettings, type DrawToolKind } from './map/tools/useDrawTool';
+import { drawZoneSelection } from './map/layers/drawZoneSelection';
+import { zoneContains, zoneName, zoneExplanation, effectsForToken, tokensWithinZone, tokenCentreOnMap } from './map/zoneMechanics';
+import { readSheetlessSquadFodder, snapshotForToken, tokenHpFor } from './squadSheetlessFodder';
+import { normalizeSquadCommandData } from '@/components/character-sheets/squadCommand/battleState';
+import type { SquadCommandCharacterData } from '@/types/game-systems/squadCommand';
+import type { Drawing } from '@/types/drawings';
 import type { MapTool, PointerAt } from './map/tools/types';
 import { usePaintSurface } from './map/paint/usePaintSurface';
 import { usePaintGuards } from './map/paint/usePaintGuards';
@@ -147,7 +154,10 @@ import { preparingHoldsBack } from '@/components/campaign/PreparingBanner';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import { canDraw, canEraseDrawing, drawingSentTo } from '@/utils/drawingRules';
 import HeldTokenBar from '@/components/campaign/HeldTokenBar';
-import TokenDetailsCard from '@/components/campaign/TokenDetailsCard';
+import SmugTokenDetailsCard from '@/components/campaign/SmugTokenDetailsCard';
+import { visibleCombatIndicators } from '@/components/campaign/visibleCombatIndicators';
+import { twGridDistance } from '@/components/campaign/twMapDistance';
+import { playTwRailgunSound } from '@/components/campaign/twRailgunSound';
 import MapMenuRows from '@/components/campaign/MapMenuRows';
 import { flipOntoScreen } from '@/components/ui/menu';
 import { useWallHistory } from '@/hooks/useWallHistory';
@@ -215,6 +225,42 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
   // socket handlers write there directly (outside React), and this
   // subscription is what re-renders the canvas per token change.
   const tokens = useTokenList();
+  const isDM = userRole === 'DM';
+  const [showTokenNames, setShowTokenNames] = useState(() => {
+    try { return window.localStorage.getItem('smugvtt:show-token-names') === 'true'; } catch { return false; }
+  });
+  useEffect(() => {
+    try { window.localStorage.setItem('smugvtt:show-token-names', String(showTokenNames)); } catch { /* private browsing */ }
+  }, [showTokenNames]);
+  const [showSpeechBubbles, setShowSpeechBubbles] = useState(() => {
+    try { return window.localStorage.getItem('smugvtt:show-map-dialogue') !== 'false'; } catch { return true; }
+  });
+  const [showSpeakerHighlights, setShowSpeakerHighlights] = useState(() => {
+    try { return window.localStorage.getItem('smugvtt:show-map-speaker-highlights') !== 'false'; } catch { return true; }
+  });
+  useEffect(() => {
+    try { window.localStorage.setItem('smugvtt:show-map-speaker-highlights', String(showSpeakerHighlights)); } catch { /* optional preference */ }
+  }, [showSpeakerHighlights]);
+  const [mapSpeech, setMapSpeech] = useState<Record<string, { utterance: SceneUtterance; arrived: number }>>({});
+  const [speechClock, setSpeechClock] = useState(0);
+  useEffect(() => {
+    try { window.localStorage.setItem('smugvtt:show-map-dialogue', String(showSpeechBubbles)); } catch { /* private browsing */ }
+  }, [showSpeechBubbles]);
+  useEffect(() => subscribeLiveSceneDialogue(campaign?.id ?? '', (utterance) => {
+    setMapSpeech((current) => ({ ...current, [utterance.speakerKey]: { utterance, arrived: Date.now() } }));
+  }), [campaign?.id]);
+  useEffect(() => {
+    if ((!showSpeechBubbles && !showSpeakerHighlights) || !Object.keys(mapSpeech).length) return;
+    const interval = window.setInterval(() => {
+      const now = Date.now();
+      setMapSpeech((current) => {
+        const next = Object.fromEntries(Object.entries(current).filter(([, entry]) => now - entry.arrived < entry.utterance.quotes.length * 3200 + 3000));
+        return Object.keys(next).length === Object.keys(current).length ? current : next;
+      });
+      setSpeechClock(now);
+    }, 130);
+    return () => window.clearInterval(interval);
+  }, [showSpeechBubbles, showSpeakerHighlights, mapSpeech]);
   const heldAt = useGameStore((s) => s.heldAt);
   // Whose turn it is, for the active-combatant ring. Narrow selector: this
   // changes on turn advance only, not when a combatant's HP ticks.
@@ -224,6 +270,80 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
   const peekTokenId = useMapPeekTokenId();
   // The token this page has selected, which the keyboard acts on.
   const selectedTokenId = useSelectedTokenId();
+  const twLastDirectSelectionRef = useRef<{ id: string; at: number } | null>(null);
+  const sendTwDirectSelection = (token: Token) => {
+    // Sheetless units have no characterId, but are still real combat targets.
+    if (!token.characterId && !readSheetlessSquadFodder(token)) return;
+    twLastDirectSelectionRef.current = { id: token.id, at: Date.now() };
+    window.dispatchEvent(new CustomEvent('smugvtt:map-character-selected', {
+      detail: { characterId: token.characterId ?? undefined, tokenId: token.id, name: token.name },
+    }));
+  };
+  const [twTargetPickingOnMap, setTwTargetPickingOnMap] = useState(false);
+  const [orbitalAimSourceId, setOrbitalAimSourceId] = useState<string | null>(null);
+  const [orbitalShot, setOrbitalShot] = useState<{ targetCharacterId?: string; targetTokenId?: string; at: number } | null>(null);
+  useEffect(() => {
+    const onMeasure = (event: Event) => {
+      const detail = (event as CustomEvent<{ sourceCharacterId?: string; targetCharacterId?: string; targetTokenId?: string }>).detail;
+      if (!detail?.sourceCharacterId || (!detail?.targetCharacterId && !detail?.targetTokenId)) return;
+      const source = tokens.find((token) => token.characterId === detail.sourceCharacterId);
+      const target = tokens.find((token) => token.id === detail.targetTokenId)
+        ?? tokens.find((token) => token.characterId === detail.targetCharacterId);
+      if (!source || !target) return;
+      window.dispatchEvent(new CustomEvent('smugvtt:tw-distance-resolved', {
+        detail: {
+          sourceCharacterId: detail.sourceCharacterId,
+          targetCharacterId: detail.targetCharacterId,
+          distance: twGridDistance(source, target),
+          mapId: currentMap?.id,
+        },
+      }));
+    };
+    const onTargeting = (event: Event) => setTwTargetPickingOnMap((event as CustomEvent<{ active?: boolean }>).detail?.active === true);
+    const onOrbitalAim = (event: Event) => {
+      const detail = (event as CustomEvent<{ active?: boolean; sourceCharacterId?: string }>).detail;
+      setOrbitalAimSourceId(detail?.active ? detail?.sourceCharacterId ?? null : null);
+    };
+    const onOrbitalFire = (event: Event) => {
+      const detail = (event as CustomEvent<{ targetCharacterId?: string; targetTokenId?: string }>).detail;
+      if (!detail?.targetCharacterId && !detail?.targetTokenId) return;
+      setOrbitalShot({ targetCharacterId: detail.targetCharacterId, targetTokenId: detail.targetTokenId, at: Date.now() });
+      setOrbitalAimSourceId(null);
+      playTwRailgunSound();
+    };
+    const onWithdraw = (event: Event) => {
+      const detail = (event as CustomEvent<{ targetCharacterId?: string; targetTokenId?: string }>).detail;
+      if (!isDM || (!detail?.targetCharacterId && !detail?.targetTokenId) || !currentMap?.id || !campaign?.id) return;
+      const token = tokens.find((entry) => entry.id === detail.targetTokenId)
+        ?? tokens.find((entry) => entry.characterId === detail.targetCharacterId);
+      if (!token) return;
+      void api.deleteToken(campaign.id, currentMap.id, token.id)
+        .then(() => useGameStore.getState().removeToken(token.id, currentMap.id))
+        .catch(() => undefined); // Sheet state remains Withdrawn even if map token deletion fails.
+    };
+    window.addEventListener('smugvtt:tw-distance-request', onMeasure);
+    window.addEventListener('smugvtt:tw-targeting', onTargeting);
+    window.addEventListener('smugvtt:tw-orbital-aim', onOrbitalAim);
+    window.addEventListener('smugvtt:tw-orbital-fire', onOrbitalFire);
+    window.addEventListener('smugvtt:tw-medic-withdraw', onWithdraw);
+    return () => {
+      window.removeEventListener('smugvtt:tw-distance-request', onMeasure);
+      window.removeEventListener('smugvtt:tw-targeting', onTargeting);
+      window.removeEventListener('smugvtt:tw-orbital-aim', onOrbitalAim);
+      window.removeEventListener('smugvtt:tw-orbital-fire', onOrbitalFire);
+      window.removeEventListener('smugvtt:tw-medic-withdraw', onWithdraw);
+    };
+  }, [tokens, currentMap?.id, campaign?.id, isDM]);
+
+  useEffect(() => {
+    if (!selectedTokenId) return;
+    const selected = tokens.find((token) => token.id === selectedTokenId);
+    if (!selected?.characterId) return;
+    if (twLastDirectSelectionRef.current?.id === selected.id && Date.now() - twLastDirectSelectionRef.current.at < 120) return;
+    window.dispatchEvent(new CustomEvent('smugvtt:map-character-selected', {
+      detail: { characterId: selected.characterId, tokenId: selected.id, name: selected.name },
+    }));
+  }, [selectedTokenId, tokens]);
   const prefersReducedMotion = useReducedMotion();
   // joinedEpoch is 0 until this connection has authenticated into the campaign,
   // and a new number after each rejoin. Anything that asks the server for map
@@ -232,7 +352,6 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
   const { socket, joinedEpoch } = useWebSocket();
   const tableRoll = useTableRoll(socket);
   const { user } = useAuth();
-  const isDM = userRole === 'DM';
   // On the compact layout the token and door menus are action sheets.
   const compact = useCompactLayout();
   // Three stacked canvases. `canvasRef` is the TOP canvas — it
@@ -269,6 +388,33 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
   const [showGrid, setShowGrid] = useState(true);
   const [gridColor, setGridColor] = useState<'black' | 'white'>('black');
   const [hoverCoords, setHoverCoords] = useState<{ x: number; y: number } | null>(null);
+  // SmugVTT v0.6.6: Squad Command Units click-to-place bridge.
+  const squadFodderPlacementArmedRef = useRef(false);
+  useEffect(() => {
+    const arm = () => { squadFodderPlacementArmedRef.current = true; };
+    const cancel = () => { squadFodderPlacementArmedRef.current = false; };
+    window.addEventListener('smugvtt:tw-fodder-placement-arm', arm);
+    window.addEventListener('smugvtt:tw-fodder-placement-cancel', cancel);
+    return () => {
+      window.removeEventListener('smugvtt:tw-fodder-placement-arm', arm);
+      window.removeEventListener('smugvtt:tw-fodder-placement-cancel', cancel);
+    };
+  }, []);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const placeFodder = (event: PointerEvent) => {
+      if (!squadFodderPlacementArmedRef.current || event.button !== 0 || !hoverCoords || !currentMap?.id) return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      window.dispatchEvent(new CustomEvent('smugvtt:tw-fodder-map-position', {
+        detail: { mapId: currentMap.id, position: { x: hoverCoords.x, y: hoverCoords.y } },
+      }));
+    };
+    canvas.addEventListener('pointerdown', placeFodder, true);
+    return () => canvas.removeEventListener('pointerdown', placeFodder, true);
+  }, [hoverCoords, currentMap?.id]);
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
   // The screen's pixel ratio, as the browser reports it. It changes with the
   // browser's zoom and when the window moves to a screen of another density.
@@ -498,6 +644,14 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
   // The draw tool, null while Draw is put away, and how the next drawing looks.
   const [drawKind, setDrawKind] = useState<DrawToolKind | null>(null);
   const [drawSettings, setDrawSettings] = useState<DrawSettings>(DEFAULT_DRAW_SETTINGS);
+  // Local view toggle: doesn't delete, modify, or leak GM-only map records.
+  const [zonesVisible, setZonesVisible] = useState(true);
+  const [hoveredZoneId, setHoveredZoneId] = useState<string | null>(null);
+  const [zoneActivationId, setZoneActivationId] = useState<string | null>(null);
+  const [zoneHealAmount, setZoneHealAmount] = useState(3);
+  const [zoneApplying, setZoneApplying] = useState(false);
+  const [zoneActivationError, setZoneActivationError] = useState('');
+  const [zoneActivationAttempted, setZoneActivationAttempted] = useState(false);
 
   // Right-mouse button panning while a DM tool is active (left-click is reserved for tools)
   const rightPanActiveRef = useRef(false);
@@ -685,15 +839,102 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
   }, [drawOffered, eraseOnly]);
   // The drawings the screen draws, and the eraser may find: in Player
   // Preview, those a player is sent.
-  const drawingsShown = useCallback(
-    () => mapDrawings.drawings.filter((d) => drawingSentTo(isDM && !previewing ? 'DM' : 'PLAYER', d)),
+  const drawingsShownList = useMemo(
+    () => mapDrawings.drawings.filter((d) => drawingSentTo(isDM && !previewing ? 'DM' : 'PLAYER', d)
+      && (zonesVisible || !d.zoneType)),
+    [mapDrawings.drawings, isDM, previewing, zonesVisible],
+  );
+  // Hide zones only visually. Battlefield effects and hover plate always use
+  // the permitted saved zone list, independently of the local artwork toggle.
+  const permittedEffectZones = useMemo(
+    () => mapDrawings.drawings.filter((d) => !!d.zoneType && drawingSentTo(isDM && !previewing ? 'DM' : 'PLAYER', d)),
     [mapDrawings.drawings, isDM, previewing],
   );
+  const visibleZoneCount = drawingsShownList.filter(d => !!d.zoneType).length;
+  const hoveredZone = drawingsShownList.find(d => d.zoneType && d.id === hoveredZoneId) ?? null;
+  const drawingsShown = useCallback(() => drawingsShownList, [drawingsShownList]);
   const drawTool = useDrawTool({
     kind: drawKind, setKind: setDrawKind, settings: drawSettings, mapId: currentMap?.id, gridSize: currentMap?.gridSize ?? 50,
+    canEditZones: isDM && !previewing,
     role: userRole, userId: user?.id, drawnDrawings: drawingsShown, mapControls, markDirty, drawings: mapDrawings,
     hoverAt: () => hoverMapPxRef.current, hint: (message) => showToast(message, 'info'),
   });
+
+  const activeAoE = zoneActivationId && isDM && !previewing && currentMap
+    ? mapDrawings.drawings.find(d => d.id === zoneActivationId && (d.zoneType === 'healing' || d.zoneType === 'hazard')) ?? null
+    : null;
+  const inAoE = activeAoE && currentMap
+    ? tokensWithinZone(activeAoE, tokens, currentMap.gridSize, currentMap.height)
+    : [];
+  const focusZone = (zone: Drawing) => {
+    if (!isDM || !currentMap || !zone.zoneType) return;
+    setZoneActivationId(zone.id);
+    setZoneActivationError('');
+    setZoneActivationAttempted(false);
+    const xs = zone.points.map(pt => pt[0]), ys = zone.points.map(pt => pt[1]);
+    const centre = { x: (Math.min(...xs)+Math.max(...xs))/2, y: (Math.min(...ys)+Math.max(...ys))/2 };
+    // Camera focus is local to the GM. Never broadcast a private-area ping.
+    const onScreen = { x: centre.x * mapControls.zoom + mapControls.panOffset.x, y: centre.y * mapControls.zoom + mapControls.panOffset.y };
+    mapControls.panBy(canvasSize.width/2-onScreen.x,canvasSize.height/2-onScreen.y);
+    const id = `zone-activation-${Date.now()}`;
+    const inside = tokensWithinZone(zone, tokens, currentMap.gridSize, currentMap.height);
+    const now = Date.now();
+    const localPings = [
+      { id, ...centre, name:'AoE', color:'#48bb78', startedAt:now },
+      ...inside.slice(0,10).map((t,i) => ({id:`${id}-target-${i}`, ...tokenCentreOnMap(t,currentMap.gridSize,currentMap.height),name:t.name,color:'#48bb78',startedAt:now})),
+    ];
+    setPings(prev => [...prev.slice(-20), ...localPings]);
+    window.setTimeout(() => setPings(prev => prev.filter(p => !localPings.some(local => local.id === p.id))), PING_DURATION_MS);
+  };
+  const confirmZoneHealing = async () => {
+    if (!isDM || !activeAoE || activeAoE.zoneType !== 'healing' || !currentMap || !campaign || zoneApplying || zoneActivationAttempted) return;
+    setZoneApplying(true); setZoneActivationError('');setZoneActivationAttempted(true);
+    const amount = Math.max(1,Math.min(100,Math.trunc(zoneHealAmount)));
+    let healed=0, skipped=0;
+    const failures:string[]=[];
+    try {
+      // Re-evaluate the actual occupied area at confirmation, not at prompt open.
+      const currentTargets = tokensWithinZone(activeAoE, tokens, currentMap.gridSize, currentMap.height);
+      for (const target of currentTargets) {
+        try {
+          const sheetless = readSheetlessSquadFodder(target);
+          if (sheetless) {
+            if (!sheetless.stats || sheetless.battle?.downed || sheetless.profile==='vehicle' || sheetless.stats.hpCurrent<=0 || sheetless.stats.hpCurrent>=sheetless.stats.hpMax) { skipped++; continue; }
+            const updated = normalizeSquadCommandData({ ...sheetless, stats:{...sheetless.stats,hpCurrent:Math.min(sheetless.stats.hpMax,sheetless.stats.hpCurrent+amount)} });
+            const response = await api.updateToken(campaign.id,currentMap.id,target.id,{ metadata:snapshotForToken(updated,target.metadata ?? {}),hp:tokenHpFor(updated) });
+            if (!response.token) throw new Error('Token server rejected update');
+            useGameStore.getState().patchToken(target.id,response.token,currentMap.id);
+            healed++;
+          } else if (target.characterId) {
+            const response=await api.getCharacter(target.characterId);
+            if (response.character.gameSystem!=='SQUAD_COMMAND') {skipped++;continue;}
+            const data=normalizeSquadCommandData(response.character.data as SquadCommandCharacterData);
+            if (!data.stats || data.battle?.downed || data.profile==='vehicle' || data.stats.hpCurrent<=0 || data.stats.hpCurrent>=data.stats.hpMax) {skipped++;continue;}
+            await api.updateCharacter(response.character.id,{ data: {...data, stats:{...data.stats,hpCurrent:Math.min(data.stats.hpMax,data.stats.hpCurrent+amount)}},updatedAt:response.character.updatedAt });
+            healed++;
+          } else skipped++;
+        } catch (error) {failures.push(`${target.name}: ${apiErrorMessage(error) || 'save failed'}`);}
+      }
+      if (failures.length) setZoneActivationError(`${healed} healed, ${skipped} skipped. Failed: ${failures.join('; ')}. Do not repeat without checking saved HP.`);
+      else { showToast(`Healing AoE applied ONCE: ${healed} healed, ${skipped} ineligible/unchanged.`, 'success');setZoneActivationId(null); }
+    } finally {setZoneApplying(false);}
+  };
+
+  const selectedZone = drawKind === 'zone-edit' && isDM && !previewing && zonesVisible
+    ? mapDrawings.drawings.find(d => d.id === drawTool.selectedZoneId && !!d.zoneType) ?? null
+    : null;
+  const duplicateZone = (zone: Drawing) => {
+    if (!isDM || !currentMap || !zone.zoneType) return;
+    const offset=20;
+    mapDrawings.add(currentMap.id, {
+      kind: zone.kind as import('@/constants/drawingLimits').DrawingKind,
+      color: zone.color, fillColor: zone.fillColor, zoneType: zone.zoneType,
+      fillOpacity: zone.fillOpacity, width: zone.width, rotation: zone.rotation,
+      sortKey: zone.sortKey, audience: zone.audience,
+      points: zone.points.map(([x,y]) => [x+offset,y+offset] as [number,number]),
+      text: zone.text,
+    });
+  };
 
   // Paint (map/paint/usePaintSurface.ts): the DM painting the picture of a
   // map drawn in CozyVTT, or of a map with no picture, which it gives one.
@@ -1902,6 +2143,71 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
     });
   }, [currentMap, terrainSource, paint.on, mapControls.panOffset, mapControls.zoom, dpr, userRole, campaign?.spiritLayerEnabled, playerSpiritVisible, dmViewBothPlanes, showGrid, gridColor, effectiveFogState, previewing, previewedPlane, spiritLayerImage, spiritLayerOpacity, isDM, revealOpacityRef, canvasSize.width, canvasSize.height, mapDrawings.drawings, drawingCache]);
 
+  // Derived visible-token membership must be initialized before drawOverlay's
+  // useCallback dependency array reads it. Keep its visibility/fog logic intact.
+  // ============================================
+  // Token Hit Testing
+  // ============================================
+
+  /**
+   * Whether this user owns or controls a token.
+   *
+   * Used for the fog exemption (you always see your own token), as a lighting
+   * vision source, and by the visibility context below. It was written out
+   * twice, identically, in two draw callbacks; one definition now.
+   */
+  /**
+   * What this viewer can see — the same rule the token layer draws by.
+   *
+   * Hit testing used to ignore fog entirely, so hovering unrevealed dark named
+   * whatever was standing there. The panel and the canvas now agree.
+   */
+  const tokenView = useMemo(
+    () => ({
+      isDM: userRole === 'DM',
+      revealedCells: effectiveRevealedCells,
+      isOwnToken,
+      dmShowSpiritTokens,
+      mapWidth: currentMap?.width ?? 0,
+      mapHeight: currentMap?.height ?? 0,
+    }),
+    [userRole, effectiveRevealedCells, isOwnToken, dmShowSpiritTokens, currentMap?.width, currentMap?.height]
+  );
+
+  /**
+   * The tokens the map draws for this viewer, as the token layer decides it:
+   * in Player Preview what the preview shows, else every token this viewer
+   * can see. A selection is made, said and acted on only among these, so it
+   * never lands on a token the screen does not show.
+   */
+  const drawnTokens = useMemo((): Token[] => {
+    if (!currentMap) return [];
+    if (!previewing) return tokens.filter((t) => isTokenVisibleTo(t, tokenView));
+    const viewport: Viewport = {
+      zoom: mapControls.zoom,
+      panOffset: mapControls.panOffset,
+      gridSize: currentMap.gridSize,
+      mapWidth: currentMap.width,
+      mapHeight: currentMap.height,
+    };
+    const rule = (currentMap.lightingEnabled ?? false) ? ruleFor(tokens.filter(viewerOwn), viewport) : null;
+    const shown = previewTokens(tokens, viewerOwn, previewControls, rule?.canSee ?? null, viewport, previewedPlane);
+    return shown.filter((t) => isTokenVisibleTo(t, {
+      isDM: false,
+      revealedCells: viewerRevealed,
+      isOwnToken: viewerOwn,
+      dmShowSpiritTokens,
+      mapWidth: currentMap.width,
+      mapHeight: currentMap.height,
+    }));
+  }, [currentMap, previewing, tokens, tokenView, mapControls.zoom, mapControls.panOffset, ruleFor, viewerOwn, previewControls, previewedPlane, viewerRevealed, dmShowSpiritTokens]);
+  const zoneIndicators = useMemo(() => currentMap && campaign?.gameSystem === 'SQUAD_COMMAND'
+    ? drawnTokens.map(token => ({ token, state: effectsForToken(permittedEffectZones, token, currentMap.gridSize, currentMap.height) }))
+      .filter(entry => entry.state.zoneIds.length > 0)
+    : [], [currentMap, campaign?.gameSystem, drawnTokens, permittedEffectZones]);
+  const drawnIds = useMemo(() => new Set(drawnTokens.map((t) => t.id)), [drawnTokens]);
+
+
   /**
    * Draw the TOKENS layer (middle canvas): every token + the drag ghost.
    * The hot path — repaints each frame of a token drag. No raycasting here.
@@ -1968,14 +2274,114 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
         peekTokenId,
         selectedTokenId,
       }, viewport);
+
+      // Optional map labels. Only use tokens that the existing visibility rule
+      // already allowed to be drawn; never reveal a hidden token by its label.
+      if (showTokenNames) {
+        ctx.save();
+        const fontPx = Math.max(8, 12 / Math.max(0.35, mapControls.zoom));
+        ctx.font = `600 ${fontPx}px system-ui, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        for (const token of drawnTokens) {
+          if (draggedToken?.id === token.id && !heldAt[token.id]) continue;
+          const name = tokenDisplayName(token);
+          if (!name) continue;
+          const trimmed = name.length > 24 ? `${name.slice(0, 23)}…` : name;
+          const cx = (token.position.x + token.size.width / 2) * currentMap.gridSize;
+          const bottomY = (currentMap.height - token.position.y) * currentMap.gridSize;
+          const cy = bottomY + (fontPx * 0.8);
+          const textWidth = ctx.measureText(trimmed).width;
+          const w = textWidth + fontPx * 0.9;
+          const h = fontPx * 1.55;
+          ctx.fillStyle = 'rgba(15, 20, 30, .82)';
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(cx - w/2, cy - h/2, w, h, fontPx * .25);
+          else ctx.rect(cx - w/2, cy - h/2, w, h);
+          ctx.fill();
+          ctx.fillStyle = '#fff';
+          ctx.fillText(trimmed, cx, cy);
+        }
+        ctx.restore();
+      }
+
+      // Stage -> Map: IC quoted dialogue only. Render on permission-filtered
+      // drawnTokens, not the unfiltered token roster, so hidden NPCs cannot leak.
+      if (showSpeechBubbles || showSpeakerHighlights) {
+        ctx.save();
+        for (const token of drawnTokens) {
+          const npcId = typeof token.metadata?.npcId === 'string' ? token.metadata.npcId : null;
+          const key = token.characterId ? `character:${token.characterId}` : npcId ? `npc:${npcId}` : null;
+          if (!key) continue;
+          const info = mapSpeech[key];
+          if (!info || !info.utterance.quotes.length) continue;
+          const age = speechClock - info.arrived;
+          if (age < 0) continue;
+          const lineIdx = Math.min(info.utterance.quotes.length - 1, Math.floor(age / 3200));
+          const line = info.utterance.quotes[lineIdx];
+          if (!line) continue;
+          if (showSpeakerHighlights && age < 3000) {
+            const size = currentMap.gridSize;
+            const x = token.position.x * size;
+            const y = (currentMap.height - token.position.y - token.size.height) * size;
+            ctx.save();
+            ctx.strokeStyle = '#facc15';
+            ctx.lineWidth = Math.max(2, 2.5 / Math.max(0.35, mapControls.zoom));
+            ctx.shadowColor = '#facc15'; ctx.shadowBlur = 6;
+            ctx.strokeRect(x - 2, y - 2, token.size.width * size + 4, token.size.height * size + 4);
+            ctx.restore();
+          }
+          if (!showSpeechBubbles) continue;
+          const elapsedAfterLine = age - lineIdx * 3200;
+          const last = lineIdx === info.utterance.quotes.length - 1;
+          const alpha = last && elapsedAfterLine > 3200 ? Math.max(0, 1 - (elapsedAfterLine - 3200) / 3000) : 1;
+          if (alpha <= 0) continue;
+          const f = Math.max(10, 12 / Math.max(0.35, mapControls.zoom));
+          const text = line.length > 115 ? `${line.slice(0, 112)}…` : line;
+          const split = text.length > 58 ? [text.slice(0, 58), text.slice(58)] : [text];
+          ctx.font = `500 ${f}px system-ui, sans-serif`;
+          const width = Math.max(...split.map((t) => ctx.measureText(t).width)) + f * 1.3;
+          const h = (split.length + 0.7) * f;
+          const cx = (token.position.x + token.size.width / 2) * currentMap.gridSize;
+          const top = (currentMap.height - token.position.y - token.size.height) * currentMap.gridSize;
+          const bx = cx - width / 2;
+          const by = top - h - Math.max(f * 1.75, currentMap.gridSize * 0.30);
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = 'rgba(255,255,255,0.94)';
+          ctx.strokeStyle = 'rgba(28,35,48,0.9)';
+          ctx.lineWidth = Math.max(1, 1.5 / Math.max(0.35, mapControls.zoom));
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(bx, by, width, h, f * 0.4);
+          else ctx.rect(bx, by, width, h);
+          ctx.fill(); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(cx - f * .4, by + h);
+          ctx.lineTo(cx, by + h + f * .48); ctx.lineTo(cx + f * .4, by + h);
+          ctx.fill(); ctx.stroke();
+          ctx.fillStyle = '#101827';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          split.forEach((t, i) => ctx.fillText(t, cx, by + f * (1 + i)));
+        }
+        ctx.restore();
+      }
     });
-  }, [currentMap, mapShown, mapControls.panOffset, mapControls.zoom, dpr, campaign?.spiritLayerStyle, tokens, tokenImages, animatingTokens, heldAt, draggedToken, dragOffset, carrierSquare, hoverToken, viewerRevealed, viewerOwn, previewing, previewedPlane, ruleFor, dmShowSpiritTokens, dmViewBothPlanes, characterHpCache, currentTurnTokenId, prefersReducedMotion, peekTokenId, selectedTokenId, isDM, previewControls]);
+  }, [currentMap, mapShown, mapControls.panOffset, mapControls.zoom, dpr, campaign?.spiritLayerStyle, tokens, tokenImages, animatingTokens, heldAt, draggedToken, dragOffset, carrierSquare, hoverToken, viewerRevealed, viewerOwn, previewing, previewedPlane, ruleFor, dmShowSpiritTokens, dmViewBothPlanes, characterHpCache, currentTurnTokenId, prefersReducedMotion, peekTokenId, selectedTokenId, isDM, previewControls, showTokenNames, drawnTokens, showSpeechBubbles, showSpeakerHighlights, mapSpeech, speechClock]);
 
   /**
    * Draw the OVERLAY layer (top canvas): dynamic-lighting darkness, DM light
    * icons, walls, DM tool previews, ruler/AoE, fog brush cursor. This is also
    * the pointer-input surface. Memoized vision raycasting lives here.
    */
+  useEffect(() => {
+    markDirty('overlay');
+  }, [markDirty, orbitalAimSourceId, orbitalShot, twTargetPickingOnMap, hoverToken]);
+
+  useEffect(() => {
+    if (!orbitalShot) return;
+    const timer = window.setInterval(() => markDirty('overlay'), 45);
+    const end = window.setTimeout(() => setOrbitalShot(null), 2800);
+    return () => { window.clearInterval(timer); window.clearTimeout(end); };
+  }, [orbitalShot, markDirty]);
+
   const drawOverlay = useCallback(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
@@ -2221,7 +2627,68 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
         : null;
       // Paint's strokes on their way, until the lift paints them into the picture.
       for (const preview of paintStrokes()) drawPaintPreview(ctx, preview);
-      drawMarkupLayer(ctx, { drawings: mapDrawings.drawings, showDmOnly: renderIsDM, visible, cache: drawingCache }, viewport);
+      drawMarkupLayer(ctx, { drawings: drawingsShownList, showDmOnly: renderIsDM, visible, cache: drawingCache }, viewport);
+      // Draw badges last so translucent terrain annotations cannot wash them
+      // out. Only already-visible tokens are eligible; hidden map tokens never
+      // get inferred badges. Put badges INSIDE each token's footprint so they
+      // do not clip at the map's upper edge.
+      ctx.save();
+      for (const token of drawnTokens) {
+        const hp = visibleTokenHp(token, characterHpCache, renderIsDM);
+        const statuses = visibleCombatIndicators(token, hp?.current ?? null);
+        const state = zoneIndicators.find(entry => entry.token.id === token.id)?.state;
+        const effectBadge = state?.cover === 2
+          ? { key: 'heavy-cover', glyph: 'H', color: '#a65328', title: 'Heavy Cover — +2 AV', priority: 13 }
+          : state?.cover === 1
+            ? { key: 'light-cover', glyph: 'L', color: '#b68126', title: 'Light Cover — +1 AV', priority: 13 }
+            : state?.obscured ? { key: 'zone-obscured', glyph: '?', color: '#606979', title: 'Obscured by zone', priority: 19 } : null;
+        // Critical conditions and cover precede passive traits. The hover
+        // plate contains EVERY visible status; small tokens show +N if space
+        // cannot accommodate each distinct icon legibly.
+        const allBadges = [...statuses, ...(effectBadge ? [effectBadge] : [])]
+          .sort((a, b) => a.priority - b.priority);
+        if (!allBadges.length) continue;
+        const tileWidth = token.size.width * currentMap.gridSize;
+        const tileHeight = token.size.height * currentMap.gridSize;
+        const cols = Math.max(1, Math.min(5, Math.floor(tileWidth / 12)));
+        const rows = tileHeight >= 30 ? 2 : 1;
+        const capacity = cols * rows;
+        const extra = Math.max(0, allBadges.length - capacity);
+        const badges = extra > 0
+          ? [...allBadges.slice(0, capacity - 1), { key: 'more-statuses', glyph: `+${extra + 1}`, color: '#334155', title: `${extra + 1} more statuses shown in token details`, priority: 99 }]
+          : allBadges;
+        const gap = 1.5;
+        const badgePx = Math.min((tileWidth - (cols - 1) * gap) / cols, (tileHeight - (rows - 1) * gap) / rows, Math.max(12 / Math.max(0.45,mapControls.zoom), currentMap.gridSize * 0.27));
+        if (badgePx < 5) continue;
+        const left = token.position.x * currentMap.gridSize;
+        const top = (currentMap.height - token.position.y - token.size.height) * currentMap.gridSize;
+        const right = left + tileWidth;
+        for (let i = 0; i < badges.length; i++) {
+          const effect = badges[i];
+          const col = i % cols;
+          const row = Math.floor(i / cols);
+          const x = right - (cols - col - 0.5) * badgePx - (cols - col - 1) * gap;
+          const y = top + (row + 0.55) * badgePx + row * gap;
+          ctx.beginPath();
+          ctx.arc(x, y, badgePx * 0.52, 0, Math.PI * 2);
+          ctx.fillStyle = '#12151e';
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(x, y, badgePx * 0.44, 0, Math.PI * 2);
+          ctx.fillStyle = effect.color;
+          ctx.fill();
+          ctx.lineWidth = Math.max(1 / Math.max(0.45, mapControls.zoom), badgePx * 0.08);
+          ctx.strokeStyle = '#ffffff';
+          ctx.stroke();
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = `bold ${badgePx * 0.67}px system-ui, sans-serif`;
+          ctx.fillText(effect.glyph, x, y + badgePx * 0.025);
+        }
+      }
+      ctx.restore();
+      if (renderIsDM && drawKind === 'zone-edit' && zonesVisible) drawZoneSelection(ctx, selectedZone, viewport);
       const previewNow = Date.now();
       const ownStroke = drawTool.inProgress();
       const shownPreviews = [...mapDrawings.previews.current.values(), ...(ownStroke ? [ownStroke] : [])];
@@ -2238,8 +2705,38 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
       if (pings.length > 0) {
         drawPings(ctx, { pings, now: Date.now(), reducedMotion: prefersReducedMotion }, viewport);
       }
+      // Squad Command target preview and ephemeral orbital designator. Rendered in map world
+      // coordinates; it follows pan/zoom and disappears after the strike.
+      const ringToken = (orbitalAimSourceId || twTargetPickingOnMap) && hoverToken && drawnIds.has(hoverToken.id)
+        ? hoverToken : null;
+      const struckToken = orbitalShot
+        ? drawnTokens.find((entry) => entry.id === orbitalShot.targetTokenId)
+          ?? drawnTokens.find((entry) => entry.characterId === orbitalShot.targetCharacterId)
+        : null;
+      const circle = (token: Token, color: string, radiusFactor: number, alpha = 1) => {
+        const size = currentMap.gridSize;
+        const cx = (token.position.x + token.size.width / 2) * size;
+        const cy = (currentMap.height - token.position.y - token.size.height / 2) * size;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = Math.max(2, 3 / Math.max(0.25, mapControls.zoom));
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 12;
+        ctx.beginPath(); ctx.arc(cx, cy, Math.max(size * 0.4, size * radiusFactor), 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(cx - size * 0.18, cy); ctx.lineTo(cx + size * 0.18, cy);
+        ctx.moveTo(cx, cy - size * 0.18); ctx.lineTo(cx, cy + size * 0.18);
+        ctx.stroke();
+        ctx.restore();
+      };
+      if (ringToken) circle(ringToken, orbitalAimSourceId ? '#fa5656' : '#ffd566', 0.55);
+      if (struckToken && orbitalShot) {
+        const progress = Math.min(1, (Date.now() - orbitalShot.at) / 2800);
+        circle(struckToken, '#f35b4b', 0.5 + Math.sin(progress * Math.PI * 5) * 0.06, progress < 0.6 ? 1 : (1 - progress) / 0.4);
+      }
     });
-  }, [currentMap, mapShown, mapControls.zoom, mapControls.panOffset, dpr, campaign?.gameSystem, tokens, lightSources, selectedLightId, lightMode, wallSegments, wallColor, hoveredWallId, selectedWallIds, hoveredDoorId, wallMode, selectedEndpoint, wallInProgress, wallType, brushSize, splitHoverPoint, polygonPoints, showRuler, rulerColor, effectiveRulerOrigin, rulerEnd, rulerStartByTouch, showAoE, aoeConfig, aoeAnchor, aoeSnap, hoverCoords, fogMode, isDM, fogState, viewerRevealed, viewerOwn, previewing, ruleFor, ownTokenCells, explorationEnabled, exploringAs, exploredCells, exploredRaster, socket, fogDragCurrent, wallMarquee, pings, prefersReducedMotion, POLYGON_CLOSE_RADIUS, WALL_ERASE_RADIUS, addExplored, aoeAimRef, aoeAltHeldRef, findWallAtPoint, fogDragAnchorRef, revealOpacityRef, snapPoint, wallBrushPointsRef, wallDragEndpointRef, wallErasedIdsRef, mapDrawings.previews, mapDrawings.drawings, drawingCache, canvasSize.width, canvasSize.height, drawTool, paintStrokes]);
+  }, [currentMap, mapShown, mapControls.zoom, mapControls.panOffset, dpr, campaign?.gameSystem, tokens, lightSources, selectedLightId, lightMode, wallSegments, wallColor, hoveredWallId, selectedWallIds, hoveredDoorId, wallMode, selectedEndpoint, wallInProgress, wallType, brushSize, splitHoverPoint, polygonPoints, showRuler, rulerColor, effectiveRulerOrigin, rulerEnd, rulerStartByTouch, showAoE, aoeConfig, aoeAnchor, aoeSnap, hoverCoords, fogMode, isDM, fogState, viewerRevealed, viewerOwn, previewing, ruleFor, ownTokenCells, explorationEnabled, exploringAs, exploredCells, exploredRaster, socket, fogDragCurrent, wallMarquee, pings, prefersReducedMotion, POLYGON_CLOSE_RADIUS, WALL_ERASE_RADIUS, addExplored, aoeAimRef, aoeAltHeldRef, findWallAtPoint, fogDragAnchorRef, revealOpacityRef, snapPoint, wallBrushPointsRef, wallDragEndpointRef, wallErasedIdsRef, mapDrawings.previews, mapDrawings.drawings, drawingsShownList, drawingCache, drawKind, zonesVisible, selectedZone, canvasSize.width, canvasSize.height, drawTool, paintStrokes, orbitalAimSourceId, orbitalShot, twTargetPickingOnMap, hoverToken, drawnIds, drawnTokens, zoneIndicators, characterHpCache]);
 
   // ── Layer draw dispatch + dirty-flag scheduling ──────────
   // A single rAF coalesces every repaint request; only the dirty layers
@@ -2272,8 +2769,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
   // Token visuals — the hot path. Under dynamic lighting a token move also
   // shifts the viewer's vision, so repaint the overlay (darkness) too.
   useEffect(() => {
-    markDirty('tokens');
-    if (currentMap?.lightingEnabled) markDirty('overlay');
+    markDirty('tokens', 'overlay');
   }, [markDirty, tokens, tokenImages, animatingTokens, hoverToken, characterHpCache, dmShowSpiritTokens, currentMap?.lightingEnabled, currentTurnTokenId, peekTokenId, selectedTokenId, previewing, previewViewer]);
 
   // Publish this map's own token hover so the initiative tracker can tint the
@@ -2294,64 +2790,6 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
   useEffect(() => {
     markDirty('overlay');
   }, [markDirty, wallSegments, wallMode, wallInProgress, hoveredWallId, selectedWallIds, hoveredDoorId, splitHoverPoint, selectedEndpoint, wallType, snapToGrid, brushSize, lightSources, selectedLightId, lightMode, dmPreviewPlayerView, showRuler, rulerOrigin, rulerEnd, rulerStartByTouch, rulerColor, effectiveRulerOrigin, showAoE, aoeConfig, aoeAnchor, aoeSnap, fogMode, fogDragCurrent, fogState, viewerRevealed, previewing, ownTokenCells, exploredRaster, pings, mapDrawings.drawings]);
-
-  // ============================================
-  // Token Hit Testing
-  // ============================================
-
-  /**
-   * Whether this user owns or controls a token.
-   *
-   * Used for the fog exemption (you always see your own token), as a lighting
-   * vision source, and by the visibility context below. It was written out
-   * twice, identically, in two draw callbacks; one definition now.
-   */
-  /**
-   * What this viewer can see — the same rule the token layer draws by.
-   *
-   * Hit testing used to ignore fog entirely, so hovering unrevealed dark named
-   * whatever was standing there. The panel and the canvas now agree.
-   */
-  const tokenView = useMemo(
-    () => ({
-      isDM: userRole === 'DM',
-      revealedCells: effectiveRevealedCells,
-      isOwnToken,
-      dmShowSpiritTokens,
-      mapWidth: currentMap?.width ?? 0,
-      mapHeight: currentMap?.height ?? 0,
-    }),
-    [userRole, effectiveRevealedCells, isOwnToken, dmShowSpiritTokens, currentMap?.width, currentMap?.height]
-  );
-
-  /**
-   * The tokens the map draws for this viewer, as the token layer decides it:
-   * in Player Preview what the preview shows, else every token this viewer
-   * can see. A selection is made, said and acted on only among these, so it
-   * never lands on a token the screen does not show.
-   */
-  const drawnTokens = useMemo((): Token[] => {
-    if (!currentMap) return [];
-    if (!previewing) return tokens.filter((t) => isTokenVisibleTo(t, tokenView));
-    const viewport: Viewport = {
-      zoom: mapControls.zoom,
-      panOffset: mapControls.panOffset,
-      gridSize: currentMap.gridSize,
-      mapWidth: currentMap.width,
-      mapHeight: currentMap.height,
-    };
-    const rule = (currentMap.lightingEnabled ?? false) ? ruleFor(tokens.filter(viewerOwn), viewport) : null;
-    const shown = previewTokens(tokens, viewerOwn, previewControls, rule?.canSee ?? null, viewport, previewedPlane);
-    return shown.filter((t) => isTokenVisibleTo(t, {
-      isDM: false,
-      revealedCells: viewerRevealed,
-      isOwnToken: viewerOwn,
-      dmShowSpiritTokens,
-      mapWidth: currentMap.width,
-      mapHeight: currentMap.height,
-    }));
-  }, [currentMap, previewing, tokens, tokenView, mapControls.zoom, mapControls.panOffset, ruleFor, viewerOwn, previewControls, previewedPlane, viewerRevealed, dmShowSpiritTokens]);
-  const drawnIds = useMemo(() => new Set(drawnTokens.map((t) => t.id)), [drawnTokens]);
 
   /**
    * Check if a grid coordinate is within a token's bounds
@@ -2466,6 +2904,12 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
    */
   const groundPressRef = useRef<{ x: number; y: number; panned: boolean; clears: boolean } | null>(null);
 
+  // SmugVTT v0.6.9: a movable token pressed with mouse/pen is only a drag candidate.
+  // A click selects it; movement starts only after the primary button remains held
+  // and the pointer crosses CLICK_COUNT_PX. Touch already reaches this tool as a
+  // gesture-level tap or drag, so a tap never creates a persistent held token.
+  const tokenDragPressRef = useRef<{ tokenId: string; x: number; y: number; offset: Position } | null>(null);
+
   /**
    * Put a token down on `square`: what a click does with a held token, and
    * an arrow key with the selected one. A player may not end a move where
@@ -2542,163 +2986,179 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
    * drag that starts on that token's own square carries it the same way, and
    * a drag anywhere else pans the map with the token still held.
    */
+  /** Start an intentional token drag after the pointer has actually become a drag. */
+  const beginTokenCarry = (token: Token, offset: Position, square: Position, finger: boolean) => {
+    if (!currentMap) return;
+    if (showRuler) putRulerAway();
+    heldOnMapRef.current = currentMap.id;
+    heldIdRef.current = token.id;
+    setDraggedToken(token);
+    setDragOffset(offset);
+    setCarrierSquare(square);
+    setPutBackOffered(false);
+    carryRef.current = { tokenId: token.id, offset };
+    setFingerCarrying(finger);
+
+    if (canEmit() && currentMap.id) {
+      const event: TokenMoveStartEvent = { tokenId: token.id, mapId: currentMap.id };
+      socket!.emitTokenMoveStart(event);
+    } else {
+      console.warn('⚠️ Cannot emit token.move.start - socket not connected');
+    }
+  };
+
+  /**
+   * Tokens and panning, when no other tool took the event.
+   *
+   * SmugVTT v0.6.9 deliberately separates selection from movement:
+   * - click/tap a token = select it only;
+   * - press + drag + release = move it;
+   * - empty-ground drag = pan the map.
+   *
+   * There is no click-to-pick-up / second-click-to-put-down state anymore.
+   */
   const tokenTool: MapTool = {
     down({ e, via, gridCoords }: PointerAt) {
       if (!currentMap) return false;
-        // If we're already holding a token, place it on this click
-        if (draggedToken && dragOffset && heldIdRef.current === draggedToken.id) {
-          if (via === 'drag') {
-            const own = useGameStore.getState().tokens[draggedToken.id] ?? draggedToken;
-            if (tokenCoversCell(own, gridCoords.x, gridCoords.y)) {
-              // Taken again by whichever of its squares the finger landed on.
-              const offset = { x: gridCoords.x - own.position.x, y: gridCoords.y - own.position.y };
-              carryRef.current = { tokenId: own.id, offset };
-              setFingerCarrying(true);
-              setDragOffset(offset);
-            } else {
-              groundPressRef.current = { x: e.clientX, y: e.clientY, panned: false, clears: false };
-              mapControls.startDrag(e);
-            }
-            return true;
-          }
-          putDown(draggedToken, carriedSquare({ square: gridCoords, offset: dragOffset }, draggedToken.size, currentMap));
+
+      // Deliberately looks past tokens this user cannot move rather than stopping
+      // at whatever is drawn on top: a player standing on the same square as an
+      // NPC can still select/move their own token.
+      const token = getMovableTokenAtPosition(gridCoords.x, gridCoords.y);
+      console.log('🔍 Movable token at press position:', token?.name || 'none');
+
+      if (token) {
+        const offset = { x: gridCoords.x - token.position.x, y: gridCoords.y - token.position.y };
+
+        // Touch reaches this branch as a recognised drag only after the gesture
+        // recogniser has crossed its drag threshold, so it may start carrying now.
+        if (via === 'drag') {
+          beginTokenCarry(token, offset, gridCoords, true);
           return true;
         }
 
-        // Check if clicked on a token to pick it up.
-        //
-        // Deliberately looks past tokens this user cannot move rather than stopping
-        // at whatever is drawn on top: a player standing on the same square as an
-        // NPC could otherwise never pick their own token up again.
-        const token = getMovableTokenAtPosition(gridCoords.x, gridCoords.y);
-        console.log('🔍 Movable token at click position:', token?.name || 'none');
-
-        if (token) {
-          // Pick up token — disable ruler if it was active
-          if (showRuler) putRulerAway();
-          console.log('👆 Picking up token:', token.name);
-          heldOnMapRef.current = currentMap.id;
-          heldIdRef.current = token.id;
-          const offset = { x: gridCoords.x - token.position.x, y: gridCoords.y - token.position.y };
-          setDraggedToken(token);
-          setDragOffset(offset);
-          setCarrierSquare(null);
-          setPutBackOffered(e.kind !== 'mouse' && via !== 'drag');
-          if (via === 'drag') {
-            carryRef.current = { tokenId: token.id, offset };
-            setFingerCarrying(true);
-          }
-
-          // Emit token.move.start event
-          if (canEmit() && currentMap.id) {
-            const event: TokenMoveStartEvent = {
-              tokenId: token.id,
-              mapId: currentMap.id,
-            };
-            socket!.emitTokenMoveStart(event);
-          } else {
-            console.warn('⚠️ Cannot emit token.move.start - socket not connected');
-          }
-          // A click or a tap selects what it picks up, if the screen draws it;
-          // a finger's drag does not until it puts the token down.
-          if (via !== 'drag' && drawnIds.has(token.id)) {
-            useGameStore.getState().selectToken(token.id);
-            setSelectionDetailsClosedFor(null);
-          }
-        } else {
-          // A click or a tap on a token this viewer may not move selects it,
-          // found as the viewer sees the map: in Player Preview, only what
-          // the preview draws. On empty ground it clears the selection when
-          // the button lifts, unless the press dragged the map.
-          const seen = via === 'drag' ? null : getHoverTokenAt(gridCoords.x, gridCoords.y);
-          if (seen) {
-            useGameStore.getState().selectToken(seen.id);
-            setSelectionDetailsClosedFor(null);
-          }
-          groundPressRef.current = { x: e.clientX, y: e.clientY, panned: false, clears: via !== 'drag' && !seen };
-          // Only start panning if we're not holding a token
-          mapControls.startDrag(e);
+        // Mouse/pen down is merely a candidate. Its release without crossing the
+        // threshold leaves the token exactly where it was and only selects it.
+        if (via === 'mouse') {
+          tokenDragPressRef.current = {
+            tokenId: token.id,
+            x: e.clientX,
+            y: e.clientY,
+            offset,
+          };
         }
+        if (drawnIds.has(token.id)) {
+          useGameStore.getState().selectToken(token.id);
+          setSelectionDetailsClosedFor(null);
+          sendTwDirectSelection(token);
+        }
+        return true;
+      }
+
+      // A click/tap on a token this viewer may see but may not move selects it.
+      // Empty ground clears selection on release unless the press panned the map.
+      const seen = via === 'drag' ? null : getHoverTokenAt(gridCoords.x, gridCoords.y);
+      if (seen) {
+        useGameStore.getState().selectToken(seen.id);
+        setSelectionDetailsClosedFor(null);
+        sendTwDirectSelection(seen);
+      }
+      groundPressRef.current = {
+        x: e.clientX,
+        y: e.clientY,
+        panned: false,
+        clears: via !== 'drag' && !seen,
+      };
+      mapControls.startDrag(e);
       return true;
     },
+
     up(at?: PointerAt) {
-      // A finger that carried a token puts it down where it lifted, by the
-      // put-down a click makes, and the token stays selected.
+      // A press that never became a drag was selection only.
+      tokenDragPressRef.current = null;
+
+      // An actual drag puts the token down where the pointer lifted.
       const carry = carryRef.current;
       if (carry) {
-        // The carry is still recorded while it is put down, so the hold ends
-        // even before a render has caught up with the drag's pick-up.
         const token = useGameStore.getState().tokens[carry.tokenId];
-        if (token && at && currentMap) putDown(token, carriedSquare({ square: at.gridCoords, offset: carry.offset }, token.size, currentMap));
-        else cancelHold();
+        if (token && at && currentMap) {
+          putDown(token, carriedSquare({ square: at.gridCoords, offset: carry.offset }, token.size, currentMap));
+        } else {
+          cancelHold();
+        }
         carryRef.current = null;
         setFingerCarrying(false);
         return;
       }
+
       const press = groundPressRef.current;
       groundPressRef.current = null;
       if (press?.clears && !press.panned) useGameStore.getState().selectToken(null);
     },
-    // The browser, a second finger or the window losing focus took the
-    // pointer: a pan stops, and a token a finger was carrying goes back where
-    // it was picked up. A token held by a click or a tap stays held.
+
+    // The browser, another gesture, or focus loss took the pointer: a candidate
+    // is forgotten, a pan stops, and an actual token drag goes back.
     cancel() {
+      tokenDragPressRef.current = null;
       groundPressRef.current = null;
       mapControls.stopDrag();
       if (carryRef.current) cancelHold();
     },
+
     move({ e, via, gridCoords }: PointerAt) {
       if (!currentMap) return false;
-        // What this move carries: for a finger, the token its drag took; for
-        // a mouse or a pen, the held token, wherever it goes over the map.
-        const carry = carryRef.current;
-        const carried = via === 'drag'
-          ? (carry ? { token: useGameStore.getState().tokens[carry.tokenId], offset: carry.offset } : null)
-          : (draggedToken && dragOffset ? { token: draggedToken, offset: dragOffset } : null);
-        if (carried?.token) {
-          const { token, offset } = carried;
-          const square = carriedSquare({ square: gridCoords, offset }, token.size, currentMap);
 
-          // Throttle move events to 60fps
-          const now = Date.now();
-          if (canEmit() && currentMap.id && now - lastMoveEmitRef.current >= MOVE_THROTTLE_MS) {
-            const event: TokenMoveEvent = {
-              tokenId: token.id,
-              mapId: currentMap.id,
-              x: square.x,
-              y: square.y,
-            };
-            socket!.emitTokenMove(event);
-            lastMoveEmitRef.current = now;
-          }
-
-          // The ghost is drawn under the pointer carrying it.
-          setCarrierSquare((prev) => (prev && prev.x === gridCoords.x && prev.y === gridCoords.y ? prev : gridCoords));
-
-          // Keep the hover panel honest while dragging. It used to be updated only
-          // in the branch below, so a held token left the last name it happened to
-          // read sitting beside live coordinates — "Brave Fighter (12, 8)" while
-          // the cursor was over something else entirely. Reading the square under
-          // the cursor also shows what you are about to land on.
-          setHoverToken(getHoverTokenAt(gridCoords.x, gridCoords.y));
-
-          // Ghost follows the cursor — tokens layer only.
-          markDirty('tokens');
+      // Promote a mouse/pen press to a token move only after real movement while
+      // the primary button is still down. Tiny hand jitter remains selection-only.
+      const pressed = tokenDragPressRef.current;
+      if (via !== 'drag' && pressed) {
+        if ((e.buttons & 1) === 0) {
+          tokenDragPressRef.current = null;
+        } else if (Math.hypot(e.clientX - pressed.x, e.clientY - pressed.y) > CLICK_COUNT_PX) {
+          const token = useGameStore.getState().tokens[pressed.tokenId];
+          tokenDragPressRef.current = null;
+          if (token && canMoveToken(token)) beginTokenCarry(token, pressed.offset, gridCoords, false);
         } else {
-          // Handle map panning
-          mapControls.handleDrag(e);
-          const press = groundPressRef.current;
-          if (press && !press.panned && Math.hypot(e.clientX - press.x, e.clientY - press.y) > CLICK_COUNT_PX) press.panned = true;
-
-          // Update hover token
-          const token = getHoverTokenAt(gridCoords.x, gridCoords.y);
-          setHoverToken(token);
-
-          // Pan moves the whole scene → repaint every layer.
-          if (mapControls.isDragging) {
-            markDirty('terrain', 'tokens', 'overlay');
-          }
+          setHoverToken(getHoverTokenAt(gridCoords.x, gridCoords.y));
+          return true;
         }
+      }
+
+      const carry = carryRef.current;
+      const carried = carry
+        ? { token: useGameStore.getState().tokens[carry.tokenId], offset: carry.offset }
+        : null;
+
+      if (carried?.token) {
+        const { token, offset } = carried;
+        const square = carriedSquare({ square: gridCoords, offset }, token.size, currentMap);
+
+        // Throttle move events to 60fps.
+        const now = Date.now();
+        if (canEmit() && currentMap.id && now - lastMoveEmitRef.current >= MOVE_THROTTLE_MS) {
+          const event: TokenMoveEvent = {
+            tokenId: token.id,
+            mapId: currentMap.id,
+            x: square.x,
+            y: square.y,
+          };
+          socket!.emitTokenMove(event);
+          lastMoveEmitRef.current = now;
+        }
+
+        setCarrierSquare((prev) => (prev && prev.x === gridCoords.x && prev.y === gridCoords.y ? prev : gridCoords));
+        setHoverToken(getHoverTokenAt(gridCoords.x, gridCoords.y));
+        markDirty('tokens');
+      } else {
+        // Handle ordinary empty-ground panning.
+        mapControls.handleDrag(e);
+        const press = groundPressRef.current;
+        if (press && !press.panned && Math.hypot(e.clientX - press.x, e.clientY - press.y) > CLICK_COUNT_PX) press.panned = true;
+
+        const token = getHoverTokenAt(gridCoords.x, gridCoords.y);
+        setHoverToken(token);
+        if (mapControls.isDragging) markDirty('terrain', 'tokens', 'overlay');
+      }
       return true;
     },
   };
@@ -2858,6 +3318,11 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
   const movePointer = (at: PointerAt) => {
     // Track raw map-px position (unquantised) for accurate ghost line in free-draw mode
     hoverMapPxRef.current = at.mapPx;
+    // Never hit-test a GM-only area against a player's filtered drawing list.
+    const zoneUnderPointer = zonesVisible && !draggedToken && !drawKind
+      ? [...drawingsShownList].reverse().find(z => !!z.zoneType && zoneContains(z, at.mapPx))?.id ?? null
+      : null;
+    setHoveredZoneId(prev => prev === zoneUnderPointer ? prev : zoneUnderPointer);
 
     trackMeasure(at);
 
@@ -2878,8 +3343,8 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
 
   /**
    * A button let go: the right one ends its pan; any other has every tool
-   * finish what it holds and stops the pan. A held token is put down by the
-   * token tool's down, on the second click.
+   * finish what it holds and stops the pan. An intentional token drag is put
+   * down by the token tool on this release.
    */
   const releaseButton = (button: number, at?: PointerAt) => {
     // Release right-button pan
@@ -3206,6 +3671,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
       setHoverCoords(null);
       setHoverToken(null);
       setHoveredDoorId(null);
+      setHoveredZoneId(null);
       hoverMapPxRef.current = null;
     }
   };
@@ -3483,6 +3949,15 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
    * acts once per press, and a held arrow at the pacer's rate.
    */
   const tokenKey = (e: KeyboardEvent): boolean => {
+    // SmugVTT v0.6.9: Delete removes the selected token through the existing
+    // confirmation dialog. Wall-selection Delete is handled before this function.
+    if (e.key === 'Delete' && !e.repeat && keyBelongsToMap(e, layersRef.current, contextMenuRef.current)) {
+      const selected = selectedShown();
+      if (!selected || userRole !== 'DM') return false;
+      setRemovingToken(selected);
+      e.preventDefault();
+      return true;
+    }
     const action = mapKeyAction(e);
     if (!action || !keyBelongsToMap(e, layersRef.current, contextMenuRef.current)) return false;
     const selected = selectedShown();
@@ -4192,6 +4667,13 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
     onSettingsChange: (patch) => setDrawSettings((prev) => ({ ...prev, ...patch })),
     isDM,
     onlyErase: eraseOnly,
+    zonesVisible,
+    onZonesVisibleChange: (visible) => { setZonesVisible(visible); if (!visible) drawTool.setSelectedZoneId(null); markDirty('overlay'); },
+    selectedZone,
+    onUpdateZone: mapDrawings.updateZone,
+    onDuplicateZone: duplicateZone,
+    onDeleteZone: (zone) => { drawTool.setSelectedZoneId(null); mapDrawings.erase(zone); },
+    onActivateZone: focusZone,
     polygonCorners: drawTool.polygonCorners,
     onPolygonDone: drawTool.finishPolygon,
     onPolygonCancel: drawTool.cancelPolygon,
@@ -4253,27 +4735,35 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
           the DM's to reveal, so they appear only once the HP bar is turned
           on, the rule the bar on the token itself draws by. */}
       {hoverToken && hoverCoords && (
-        <TokenDetailsCard
+        <SmugTokenDetailsCard
           token={hoverToken}
           square={hoverCoords}
           hp={visibleTokenHp(hoverToken, characterHpCache, isDM && !previewing)}
           imageSrc={cachedTokenImage(hoverToken, tokenImages)?.src}
           mayMove={canMoveToken(hoverToken)}
           docked={docked}
+          zoneEffects={zoneIndicators.find(entry => entry.token.id === hoverToken.id)?.state ?? null}
           above={heldDistanceCard}
         />
       )}
-
+      {hoveredZone && !hoverToken && !drawKind && zonesVisible && (
+        <aside className="pointer-events-none max-w-[20rem] rounded-cozy border border-ink/20 bg-parchment/95 p-2 text-xs text-ink shadow-xl" aria-label="Battlefield zone information">
+          <strong>{zoneName(hoveredZone)}</strong>
+          <p className="mt-1">{zoneExplanation(hoveredZone.zoneType)}</p>
+          {hoveredZone.audience === 'DM' && <p className="mt-1 text-amber-600">GM-only — players cannot see this zone</p>}
+        </aside>
+      )}
       {/* The selected token's details, in the same place, after a tap: a
           finger has no hover. Closed, they stay closed until the selection
           changes; the selection itself stays, for the keys. */}
       {selectionDetails && (
-        <TokenDetailsCard
+        <SmugTokenDetailsCard
           token={selectionDetails}
           square={selectionDetails.position}
           hp={visibleTokenHp(selectionDetails, characterHpCache, isDM && !previewing)}
           imageSrc={cachedTokenImage(selectionDetails, tokenImages)?.src}
           mayMove={canMoveToken(selectionDetails)}
+          zoneEffects={zoneIndicators.find(entry => entry.token.id === selectionDetails.id)?.state ?? null}
           onClose={() => setSelectionDetailsClosedFor(selectionDetails.id)}
           above={heldDistanceCard}
           docked={docked}
@@ -4294,6 +4784,24 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
+      {activeAoE && <div className="absolute inset-0 z-[80] flex items-center justify-center bg-black/40 pointer-events-auto" role="presentation">
+        <section role="alertdialog" aria-modal="true" aria-label={activeAoE.zoneType === 'healing' ? 'Confirm one-shot healing' : 'Review hazard'} className="w-[min(95vw,27rem)] max-h-[80vh] overflow-y-auto rounded-cozy bg-paper p-4 text-ink shadow-2xl">
+          <h3 className="font-semibold">{activeAoE.zoneType === 'healing' ? 'Healing AoE — approve once?' : 'Hazard area — GM review'}</h3>
+          <p className="mt-2 text-xs">This area has {inAoE.length} token(s): {inAoE.map(t=>t.name).join(', ') || 'none'}.</p>
+          <p className="mt-1 text-xs">The GM camera was focused and the area pinged locally. Only eligible Squad Command characters with missing HP can receive healing; downed units, vehicles and other systems are skipped.</p>
+          {activeAoE.zoneType === 'healing' ? <label className="mt-3 flex items-center gap-2 text-sm">Heal each eligible target by
+            <input type="number" min={1} max={100} value={zoneHealAmount} disabled={zoneApplying}
+              onChange={e=>setZoneHealAmount(Math.max(1,Math.min(100,Number(e.target.value)||1)))} className="w-20 rounded border border-ink/20 bg-paper px-2 py-1"/>
+            HP
+          </label> : <p className="mt-3 text-sm">Hazard effects are GM-adjudicated until a damage/condition rule is configured. This prompt does not change HP.</p>}
+          {zoneActivationError && <p role="alert" className="mt-3 text-xs text-red-600">{zoneActivationError}</p>}
+          <div className="mt-4 flex justify-end gap-2">
+            <button type="button" disabled={zoneApplying} onClick={()=>{setZoneActivationId(null);setZoneActivationError('');}} className="rounded border border-ink/30 px-4 py-2">No / Cancel</button>
+            {activeAoE.zoneType==='healing' && <button type="button" disabled={zoneApplying || zoneActivationAttempted || inAoE.length===0} onClick={()=>void confirmZoneHealing()} className="rounded bg-green-700 px-4 py-2 text-white disabled:opacity-50">{zoneApplying?'Applying…':'Yes, heal once'}</button>}
+          </div>
+        </section>
+      </div>}
+
       {/* Three stacked canvases. The vibe CSS filter is applied to
           the wrapper so it tints the composite of all three, matching the old
           single-canvas behaviour. The layout effect above sizes them at the
@@ -4355,6 +4863,42 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
         />
       </div>
 
+      <button
+        type="button"
+        onClick={() => setShowTokenNames((value) => !value)}
+        aria-pressed={showTokenNames}
+        aria-label={showTokenNames ? 'Hide token names' : 'Show token names'}
+        title={showTokenNames ? 'Hide token names' : 'Show token names'}
+        className="absolute z-20 top-3 pointer-events-auto rounded-cozy border border-ink/20 bg-parchment/95 px-2 py-1 text-[11px] font-semibold shadow-sm hover:bg-paper"
+        style={{ right: compact ? 12 : 'var(--smug-map-right-inset, 12px)' }}
+      >
+        {showTokenNames ? 'Names ✓' : 'Names'}
+      </button>
+
+      {currentMap && (zonesVisible ? visibleZoneCount > 0 : mapDrawings.drawings.some(d => !!d.zoneType && drawingSentTo(isDM && !previewing ? 'DM' : 'PLAYER', d))) && (
+        <button type="button" onClick={() => {setZonesVisible(v => !v); setHoveredZoneId(null);}}
+          aria-pressed={zonesVisible} aria-label={zonesVisible ? 'Hide battlefield zones' : 'Show battlefield zones'}
+          title="Show or hide battlefield zones in your view. Does not change combat effects."
+          className="absolute z-20 top-28 pointer-events-auto rounded-cozy border border-ink/20 bg-parchment/95 px-2 py-1 text-[11px] font-semibold shadow-sm hover:bg-paper"
+          style={{right:compact?12:'var(--smug-map-right-inset, 12px)'}}>
+          {zonesVisible ? 'Zones ✓' : 'Zones'}
+        </button>
+      )}
+
+      <button type="button" onClick={() => setShowSpeechBubbles((enabled) => !enabled)}
+        aria-pressed={showSpeechBubbles} aria-label={showSpeechBubbles ? 'Hide map speech bubbles' : 'Show map speech bubbles'}
+        title={showSpeechBubbles ? 'Hide map speech bubbles' : 'Show map speech bubbles'}
+        className="absolute z-20 top-12 pointer-events-auto rounded-cozy border border-ink/20 bg-parchment/95 px-2 py-1 text-[11px] font-semibold shadow-sm hover:bg-paper"
+        style={{ right: compact ? 12 : 'var(--smug-map-right-inset, 12px)' }}>
+        {showSpeechBubbles ? 'Speech ✓' : 'Speech'}
+      </button>
+      <button type="button" onClick={() => setShowSpeakerHighlights((enabled) => !enabled)}
+        aria-pressed={showSpeakerHighlights} aria-label={showSpeakerHighlights ? 'Hide map speaker highlight' : 'Show map speaker highlight'}
+        title={showSpeakerHighlights ? 'Hide map speaker highlight' : 'Show map speaker highlight'}
+        className="absolute z-20 top-20 pointer-events-auto rounded-cozy border border-ink/20 bg-parchment/95 px-2 py-1 text-[11px] font-semibold shadow-sm hover:bg-paper"
+        style={{ right: compact ? 12 : 'var(--smug-map-right-inset, 12px)' }}>
+        {showSpeakerHighlights ? 'Glow ✓' : 'Glow'}
+      </button>
       <p id={mapHintId} className="sr-only">{MAP_KEYS_HINT}</p>
       <p role="status" aria-live="polite" className="sr-only">{selectionAnnouncement}</p>
 
@@ -4431,7 +4975,10 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
           (map/toolbarLayout.ts). It passes clicks through between the two.
           On the compact layout the toolbar is one row across the map, and
           Map controls opens what that row leaves out. */}
-      <div ref={topBandRef} className={compact ? COMPACT_BAND : 'absolute top-4 left-4 right-0 flex flex-wrap items-start gap-2 pointer-events-none'}>
+      <div ref={topBandRef}
+        className={compact ? COMPACT_BAND : 'absolute top-4 flex flex-wrap items-start gap-2 pointer-events-none'}
+        style={compact ? undefined : { left: 'var(--smug-map-left-inset, 16px)', right: 'var(--smug-map-right-inset, 16px)' }}
+      >
         {compact ? (
           // Across the map on a phone, with More at its far end; from a
           // small tablet up as wide as its buttons, More beside Draw.
@@ -4851,7 +5398,8 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
          still leaves the way back to the DM's view. On the compact layout
          it is in the dock at the foot of the map, over the details card. */}
       {previewOffered && !compact && (
-        <div className="absolute bottom-20 right-2 z-30 flex items-center gap-1">
+        <div className="absolute bottom-20 z-30 flex items-center gap-1"
+          style={{ right: 'var(--smug-map-right-inset, 8px)' }}>
           {playerPreviewControls}
         </div>
       )}
@@ -4867,12 +5415,16 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
           measured), and under Put back while that shows. */}
       {showAoE && currentMap && (
         <div
-          className="absolute top-12 left-2 z-10 p-3 space-y-3 w-52 shadow-xl rounded-xl border border-moss-green/30 bg-parchment/95 backdrop-blur-xs"
+          className="absolute top-12 z-10 p-3 space-y-3 w-52 shadow-xl rounded-xl border border-moss-green/30 bg-parchment/95 backdrop-blur-xs"
+
           // Moved down, it keeps to the map, scrolling inside where it is
           // taller than the room below it.
-          style={aoeTop !== null
-            ? { top: aoeTop, maxHeight: `calc(100% - ${aoeTop}px - 1rem)`, overflowY: 'auto', overscrollBehavior: 'contain' }
-            : undefined}
+          style={{
+            left: 'var(--smug-map-left-inset, 8px)',
+            ...(aoeTop !== null
+              ? { top: aoeTop, maxHeight: `calc(100% - ${aoeTop}px - 1rem)`, overflowY: 'auto' as const, overscrollBehavior: 'contain' as const }
+              : {}),
+          }}
         >
           <p className="text-xs font-semibold text-brand-ink">AoE Shape</p>
 

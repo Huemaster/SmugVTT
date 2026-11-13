@@ -10,9 +10,12 @@
  */
 
 import { useState, type ComponentType } from 'react';
-import { ArrowUpRight, Circle, Crosshair, Eraser, Minus, Pencil, Pentagon, Square, Type, X } from 'lucide-react';
+import { ArrowUpRight, Circle, Crosshair, Eraser, Minus, Move, Pencil, Pentagon, Square, Type, X } from 'lucide-react';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import { DRAWING_LIMITS } from '@/constants/drawingLimits';
+import { ZONE_PRESETS } from './map/battlefieldZones';
+import type { Drawing } from '@/types/drawings';
+import ZoneEditorFields from './ZoneEditorFields';
 import { DRAW_TOOL_KINDS, type DrawSettings, type DrawToolKind } from './map/tools/useDrawTool';
 
 /** Each tool's name, as its button is called, and its icon. */
@@ -26,6 +29,7 @@ export const TOOLS: Record<DrawToolKind, { label: string; icon: ComponentType<{ 
   text: { label: 'Text label', icon: Type },
   eraser: { label: 'Eraser', icon: Eraser },
   laser: { label: 'Laser pointer', icon: Crosshair },
+  'zone-edit': { label: 'Edit Zone', icon: Move },
 };
 
 /** The named colours, by DRAWING_LIMITS.namedColors' order. */
@@ -42,6 +46,7 @@ export const HINTS: Record<DrawToolKind, string> = {
   text: 'Tap or click where the label goes, type it, then press Enter.',
   eraser: 'Tap or click a drawing to erase it.',
   laser: 'Drag to point. Everyone sees it fade; nothing is kept.',
+  'zone-edit': 'Select a zone and drag to move. Drag white corners to resize. Esc deselects.',
 };
 
 /** The tools Snap to grid applies to, and of those the ones Fill shapes does. */
@@ -68,6 +73,13 @@ export interface DrawControlsProps {
    * offered only the eraser and Clear mine, for their own drawings.
    */
   onlyErase?: boolean;
+  zonesVisible?: boolean;
+  onZonesVisibleChange?: (visible: boolean) => void;
+  selectedZone?: Drawing | null;
+  onUpdateZone?: (drawing: Drawing) => void;
+  onDuplicateZone?: (drawing: Drawing) => void;
+  onDeleteZone?: (drawing: Drawing) => void;
+  onActivateZone?: (drawing: Drawing) => void;
   /** The corners of the polygon being drawn, for Done and Cancel. */
   polygonCorners: number;
   onPolygonDone: () => void;
@@ -139,7 +151,7 @@ const toolButton = (on: boolean) =>
   }`;
 
 export default function DrawControls({
-  kind, onKindChange, settings, onSettingsChange, isDM, onlyErase = false, polygonCorners, onPolygonDone, onPolygonCancel, clearable, onClear, members, onClearMember, onClose,
+  kind, onKindChange, settings, onSettingsChange, isDM, onlyErase = false, zonesVisible = true, onZonesVisibleChange, selectedZone, onUpdateZone, onDuplicateZone, onDeleteZone, onActivateZone, polygonCorners, onPolygonDone, onPolygonCancel, clearable, onClear, members, onClearMember, onClose,
 }: DrawControlsProps) {
   const [asking, setAsking] = useState<ClearAsking>(null);
   const custom = !isNamedColour(settings.color);
@@ -163,7 +175,7 @@ export default function DrawControls({
       </div>
 
       <div className="flex flex-wrap gap-1">
-        {DRAW_TOOL_KINDS.filter((tool) => !onlyErase || tool === 'eraser').map((tool) => {
+        {DRAW_TOOL_KINDS.filter((tool) => (!onlyErase || tool === 'eraser') && (isDM || tool !== 'zone-edit')).map((tool) => {
           const { label, icon: Icon } = TOOLS[tool];
           return (
             <button
@@ -186,6 +198,10 @@ export default function DrawControls({
         {kind === 'eraser' && !isDM && ' You can erase only your own.'}
       </p>
 
+      {isDM && kind === 'zone-edit' && (
+        <ZoneEditorFields selectedZone={selectedZone ?? null} onUpdate={onUpdateZone} onDuplicate={onDuplicateZone} onDelete={onDeleteZone} onActivate={onActivateZone} />
+      )}
+
       {kind === 'polygon' && polygonCorners > 0 && (
         <div className="flex gap-1">
           <button
@@ -206,7 +222,44 @@ export default function DrawControls({
         </div>
       )}
 
-      {kind !== 'eraser' && (
+      {isDM && !onlyErase && (
+        <div className="flex flex-col gap-1.5 rounded-md border border-blue-400/30 bg-blue-900/15 p-2" aria-label="Battlefield zones">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-semibold text-blue-200">Battlefield Zones</span>
+            <button type="button" onClick={() => onZonesVisibleChange?.(!zonesVisible)} className="text-[11px] text-blue-200 underline" aria-pressed={zonesVisible}>
+              {zonesVisible ? 'Hide zones' : 'Show zones'}
+            </button>
+          </div>
+          <p className="text-[11px] text-stone-300">Zones show patterned fills. Cover, smoke and height affect Squad Command targets; GM approves one-shot healing.</p>
+          <div className="grid grid-cols-2 gap-1">
+            {ZONE_PRESETS.map((preset) => (
+              <button key={preset.id} type="button" aria-pressed={settings.zoneType === preset.id && FILLABLE.has(kind)}
+                onClick={() => {
+                  onSettingsChange({ zoneType: preset.id, color: preset.color, width: 3, fill: true });
+                  if (!FILLABLE.has(kind)) onKindChange('rect');
+                }}
+                className={`flex items-center gap-1.5 rounded border px-1.5 py-1 text-left text-[11px] ${settings.zoneType === preset.id && FILLABLE.has(kind) ? 'border-blue-300 bg-blue-800/40' : 'border-stone-600 bg-stone-800/50'}`}>
+                <span className="size-3 shrink-0 rounded-sm" style={{ backgroundColor: preset.color }} /> {preset.label}
+              </button>
+            ))}
+          </div>
+          {settings.zoneType && FILLABLE.has(kind) && (
+            <>
+              <div className="flex items-center gap-1 text-[11px]">
+                <button type="button" onClick={() => onKindChange('rect')} className="rounded border px-2 py-1 border-stone-500">Rectangle</button>
+                <button type="button" onClick={() => onKindChange('ellipse')} className="rounded border px-2 py-1 border-stone-500">Ellipse</button>
+                <button type="button" onClick={() => onSettingsChange({ zoneType: null, fill: false })} className="ml-auto text-stone-300 underline">Plain drawing</button>
+              </div>
+              <label className="flex flex-col gap-1 text-[11px] text-stone-300">Zone fill transparency — {settings.fillOpacity}% opacity
+                <input type="range" aria-label="Zone fill opacity" min={10} max={70} step={5} value={settings.fillOpacity}
+                  onChange={(e) => onSettingsChange({ fillOpacity: Number(e.target.value) })} className="accent-blue-400" />
+              </label>
+            </>
+          )}
+        </div>
+      )}
+
+      {kind !== 'eraser' && kind !== 'zone-edit' && (
         <>
           <div>
             <span className="text-[10px] text-stone-400 block mb-1">Colour</span>
@@ -279,7 +332,7 @@ export default function DrawControls({
       )}
 
       {/* The laser pointer goes to everyone, so the box is not offered with it. */}
-      {isDM && kind !== 'eraser' && kind !== 'laser' && (
+      {isDM && kind !== 'eraser' && kind !== 'laser' && kind !== 'zone-edit' && (
         <label className="touch-target flex items-center gap-2 text-[11px] cursor-pointer select-none">
           <input type="checkbox" checked={settings.dmOnly} onChange={(e) => onSettingsChange({ dmOnly: e.target.checked })} className="accent-amber-400" />
           Only I can see this

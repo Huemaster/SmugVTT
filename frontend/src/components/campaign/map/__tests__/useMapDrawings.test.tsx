@@ -29,12 +29,14 @@ function fakeSocket() {
   };
   const socket: MapDrawingsSocket = {
     addDrawing: (data) => { sent.push(['drawing:add', data]); return answers.add(data); },
+    updateDrawing: (data) => { sent.push(['drawing:update', data]); return answers.done(data); },
     removeDrawing: (data) => { sent.push(['drawing:remove', data]); return answers.done(data); },
     clearMyDrawings: (data) => { sent.push(['drawing:clear_mine', data]); return answers.done(data); },
     clearDrawings: (data) => { sent.push(['drawing:clear', data]); return answers.done(data); },
     sendDrawingPreview: (data) => { sent.push(['drawing:preview', data]); },
     requestDrawings: (data) => { sent.push(['drawings:request', data]); },
     onDrawingAdded: listen('drawing:added'),
+    onDrawingUpdated: listen('drawing:updated'),
     onDrawingRemoved: listen('drawing:removed'),
     onDrawingsCleared: listen('drawings:cleared'),
     onDrawingPreviewed: listen('drawing:previewed'),

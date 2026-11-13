@@ -42,7 +42,7 @@ describe('NewDrawingSchema', () => {
 
   it('takes a line and fills in the defaults', () => {
     expect(NewDrawingSchema.parse(line)).toEqual({
-      ...line, layer: 'MARKUP', audience: 'ALL', fillColor: null, rotation: 0, sortKey: 0, text: null,
+      ...line, layer: 'MARKUP', audience: 'ALL', fillColor: null, zoneType: null, fillOpacity: null, rotation: 0, sortKey: 0, text: null,
     });
   });
 
@@ -50,7 +50,28 @@ describe('NewDrawingSchema', () => {
     const parsed = NewDrawingSchema.parse({
       ...line, id: 'mine', authorId: 'someone-else', createdAt: '2020-01-01', mapId: 'x', pattern: 'stone', stamp: 'door',
     });
-    expect(Object.keys(parsed).sort()).toEqual(['audience', 'color', 'fillColor', 'kind', 'layer', 'points', 'rotation', 'sortKey', 'text', 'width']);
+    expect(Object.keys(parsed).sort()).toEqual(['audience', 'color', 'fillColor', 'fillOpacity', 'kind', 'layer', 'points', 'rotation', 'sortKey', 'text', 'width', 'zoneType']);
+  });
+
+  describe('battlefield zones', () => {
+    const zone = { kind: 'rect', color: '#e7ad42', fillColor: '#e7ad42', width: 3,
+      points: [[10, 10], [90, 80]], zoneType: 'light-cover', fillOpacity: 35 };
+    it('accepts a bounded-opacity colored rectangle, ellipse and polygon', () => {
+      expect(refusal(zone)).toBeNull();
+      expect(refusal({ ...zone, kind: 'ellipse' })).toBeNull();
+      expect(refusal({ ...zone, kind: 'polygon', points: [[10, 10], [90, 10], [90, 80]] })).toBeNull();
+    });
+    it('rejects unknown labels and invalid opacity', () => {
+      expect(refusal({ ...zone, zoneType: 'secret-faction' })).not.toBeNull();
+      expect(refusal({ ...zone, fillOpacity: 0 })).not.toBeNull();
+      expect(refusal({ ...zone, fillOpacity: 95 })).not.toBeNull();
+    });
+    it('rejects zones without fill, invalid shapes, and opacity on plain drawings', () => {
+      expect(refusal({ ...zone, fillColor: null })).not.toBeNull();
+      expect(refusal({ ...zone, kind: 'line' })).not.toBeNull();
+      expect(refusal({ ...zone, zoneType: null })).not.toBeNull();
+      expect(refusal({ ...zone, fillOpacity: null })).not.toBeNull();
+    });
   });
 
   describe('the points each kind takes', () => {

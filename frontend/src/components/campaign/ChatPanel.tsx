@@ -4,7 +4,8 @@
 // ============================================
 
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
-import type { ChangeEvent, FormEvent, KeyboardEvent } from 'react';
+import type { FormEvent, KeyboardEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { MessageCircle, Send, Loader, AlertCircle, Eraser, X, Lock, Shield } from 'lucide-react';
 import { useParams } from 'react-router';
 import { useWebSocket } from '@/contexts/WebSocketContext';
@@ -27,9 +28,20 @@ import Button from '@/components/ui/Button';
 import { errorMessage, errorSummary } from '@/utils/errors';
 import type { ChatSystemBroadcast } from '@/types';
 import { MAX_CHAT_MESSAGE_LENGTH } from '@/constants/chatLimits';
-import { DISPLAY_NAME_MAX_LENGTH } from '@/constants/accountLimits';
 import { useOnlineUserIds } from '@/stores/gameStore';
+import { speakerThemeStyle } from '@/utils/speakerTheme';
+import { DISPLAY_NAME_MAX_LENGTH } from '@/constants/accountLimits';
+  /* remove online-user selector import */
 import { whisperTargets, readSlashWhisper, isSlashWhisper, slashWhisperRefusal, byLabel } from '@/utils/chatWhisper';
+import ChatIdentitySelect from './ChatIdentitySelect';
+import ChatSoundControl from './ChatSoundControl';
+import { Dices } from 'lucide-react';
+import { useTableRoll } from '@/hooks/useTableRoll';
+// SmugVTT v0.6.7: chat dice commands + local roll mirror.
+import { chatChimeFromCharacterData, chatChimeFromMetadata, playChatChime } from '@/utils/chatChimes';
+import type { ChatIdentityOption, ChatMode, PortraitFrame } from './ChatIdentitySelect';
+import type { CampaignNpc } from '@/types/fork';
+import { publishSceneMessageHistory, publishLiveSceneMessage } from './sceneDialogue';
 
 /** Messages per page. The server caps this at MAX_CHAT_HISTORY_PAGE (constants/chatLimits.ts). */
 const PAGE_SIZE = 50;
@@ -124,9 +136,23 @@ function withinCap(held: Held, atNewest: boolean): Held {
   return kept.length === now.messages.length ? now : { ...now, messages: kept, earlier: { kind: 'find' } };
 }
 
+interface SpeakerPresence {
+  userId: string;
+  userName: string;
+  speaker: {
+    type: 'self' | 'character' | 'npc' | 'narrator';
+    id?: string;
+    name: string;
+    imageUrl?: string | null;
+    themeColor?: string;
+    frame?: { zoom: number; x: number; y: number };
+  };
+}
+
 export default function ChatPanel() {
   const { id: campaignId } = useParams<{ id: string }>();
   const { socket, joinedEpoch } = useWebSocket();
+  const rollAtTable = useTableRoll(socket);
   const { user } = useAuth();
   const { userRole, campaign } = useCampaign();
   // In the compact layout's Chat sheet, about 330 px tall on a phone, the
@@ -137,6 +163,7 @@ export default function ChatPanel() {
   // gets the room.
   const compact = useCompactLayout();
   const onlineUserIds = useOnlineUserIds();
+  /* remove online user list state from chat */
 
   // Everyone in the campaign, by user id, with the name the chat shows for
   // them; the To list offers everyone but this user, those in session first.
@@ -157,6 +184,24 @@ export default function ChatPanel() {
   const recipientName = recipient ? (targets.get(recipient.id)?.label ?? recipient.name) : null;
   /** Why the panel itself did not send what is in the box (a `/w` it could not read). */
   const [boxRefusal, setBoxRefusal] = useState<string | null>(null);
+  const [showDiceInChat, setShowDiceInChat] = useState(false);
+  useEffect(() => {
+    if (!campaignId) return;
+    try {
+      setShowDiceInChat(window.localStorage.getItem(`smug-dice-chat:${campaignId}`) === '1');
+    } catch {
+      setShowDiceInChat(false);
+    }
+  }, [campaignId]);
+  const toggleDiceInChat = () => {
+    setShowDiceInChat((current) => {
+      const next = !current;
+      try {
+        if (campaignId) window.localStorage.setItem(`smug-dice-chat:${campaignId}`, next ? '1' : '0');
+      } catch { /* local preference only */ }
+      return next;
+    });
+  };
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Older versions wrote a chat message every time someone connected or
@@ -196,7 +241,318 @@ export default function ChatPanel() {
   // The messages as last shown, for a send's answer that arrives later.
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
+  // Feed Scene and Map from the one canonical ChatPanel. No extra chat socket or copy.
+  useEffect(() => { if (campaignId) publishSceneMessageHistory(campaignId, messages); }, [campaignId, messages]);
   const [messageInput, setMessageInput] = useState('');
+
+  const [forkNpcs, setForkNpcs] = useState<CampaignNpc[]>([]);
+  const [speakerKey, setSpeakerKey] = useState('self');
+  const [chatMode, setChatMode] = useState<ChatMode>('ic');
+  const [draftReady, setDraftReady] = useState(false);
+  const [portraitFrames, setPortraitFrames] = useState<Record<string, PortraitFrame>>({});
+  const [speakerPresence, setSpeakerPresence] = useState<Record<string, SpeakerPresence>>({});
+  const [collapsedSpeakerIds, setCollapsedSpeakerIds] = useState<Set<string>>(new Set());
+  const [typingUsers, setTypingUsers] = useState<Record<string, string>>({});
+
+  const ownMembership = campaign?.memberships?.find((membership) => membership.userId === user?.id);
+  const speakAsOptions = useMemo<ChatIdentityOption[]>(() => {
+    const options: ChatIdentityOption[] = [
+      {
+        key: 'self',
+        type: 'self',
+        label: user?.displayName ?? 'You',
+        imageUrl: user?.avatarUrl ?? null,
+        frame: portraitFrames.self,
+        chatChime: 'default',
+      },
+    ];
+
+    const allowedCharacterIds = userRole === 'DM'
+      ? new Set((campaign?.characters ?? []).map((character) => character.id))
+      : new Set(ownMembership?.characterIds ?? []);
+
+    for (const character of campaign?.characters ?? []) {
+      if (!allowedCharacterIds.has(character.id)) continue;
+      options.push({
+        key: `character:${character.id}`,
+        type: 'character',
+        id: character.id,
+        label: character.name,
+        imageUrl: character.tokenImageUrl,
+        chatChime: chatChimeFromCharacterData(character.data),
+        frame: portraitFrames[`character:${character.id}`],
+      });
+    }
+
+    if (userRole === 'DM') {
+      options.push({ key: 'narrator', type: 'narrator', label: 'Narrator' });
+      for (const npc of forkNpcs) {
+        const matchingCharacterPortraits = (campaign?.characters ?? []).filter(
+          (character) => character.name === npc.name && character.tokenImageUrl,
+        );
+        const fallbackImageUrl =
+          matchingCharacterPortraits.length === 1
+            ? matchingCharacterPortraits[0].tokenImageUrl
+            : null;
+
+        options.push({
+          key: `npc:${npc.id}`,
+          type: 'npc',
+          id: npc.id,
+          label: npc.name,
+          imageUrl: npc.imageUrl ?? fallbackImageUrl,
+          frame: portraitFrames[`npc:${npc.id}`],
+        });
+      }
+    }
+
+    return options;
+  }, [campaign?.characters, forkNpcs, ownMembership?.characterIds, portraitFrames, user?.avatarUrl, user?.displayName, userRole]);
+
+  const selectedIdentity = speakAsOptions.find((option) => option.key === speakerKey) ?? speakAsOptions[0];
+
+  useEffect(() => {
+    const announce = () => {
+      if (!selectedIdentity) return;
+      window.dispatchEvent(new CustomEvent('smugvtt:speak-as-changed', {
+        detail: {
+          key: selectedIdentity.key,
+          type: selectedIdentity.type,
+          id: selectedIdentity.id,
+          label: selectedIdentity.label,
+          imageUrl: selectedIdentity.imageUrl ?? null,
+          chatChime: selectedIdentity.chatChime ?? 'default',
+        },
+      }));
+    };
+
+    const onRequest = () => announce();
+    const onSet = (event: Event) => {
+      const key = (event as CustomEvent<{ key?: string }>).detail?.key;
+      if (!key || !speakAsOptions.some((option) => option.key === key)) return;
+      setSpeakerKey(key);
+      setChatMode('ic');
+    };
+
+    announce();
+    window.addEventListener('smugvtt:speak-as-request', onRequest);
+    window.addEventListener('smugvtt:set-speak-as', onSet);
+    return () => {
+      window.removeEventListener('smugvtt:speak-as-request', onRequest);
+      window.removeEventListener('smugvtt:set-speak-as', onSet);
+    };
+  }, [selectedIdentity, speakAsOptions]);
+
+
+
+  useEffect(() => {
+    const expiryTimers = new Map<string, number>();
+
+    const clearTypingUser = (userId: string) => {
+      const existingTimer = expiryTimers.get(userId);
+      if (existingTimer !== undefined) {
+        window.clearTimeout(existingTimer);
+        expiryTimers.delete(userId);
+      }
+      setTypingUsers((current) => {
+        if (!(userId in current)) return current;
+        const next = { ...current };
+        delete next[userId];
+        return next;
+      });
+    };
+
+    const handleTyping = (data: {
+      userId?: string;
+      speakerName?: string;
+      typing?: boolean;
+    }) => {
+      if (!data?.userId || data.userId === user?.id) return;
+
+      if (data.typing !== true || !data.speakerName) {
+        clearTypingUser(data.userId);
+        return;
+      }
+
+      setTypingUsers((current) => ({
+        ...current,
+        [data.userId!]: data.speakerName!,
+      }));
+
+      const previous = expiryTimers.get(data.userId);
+      if (previous !== undefined) window.clearTimeout(previous);
+      expiryTimers.set(
+        data.userId,
+        window.setTimeout(() => clearTypingUser(data.userId!), 3500),
+      );
+    };
+
+    socket.on('chat.typing', handleTyping);
+    return () => {
+      socket.off('chat.typing', handleTyping);
+      for (const timer of expiryTimers.values()) window.clearTimeout(timer);
+    };
+  }, [socket, user?.id]);
+
+  useEffect(() => {
+    const handlePresence = (data: SpeakerPresence) => {
+      if (!data?.userId || !data.speaker?.name) return;
+      setSpeakerPresence((current) => ({ ...current, [data.userId]: data }));
+    };
+    const handlePresenceState = (data: { speakers?: SpeakerPresence[] }) => {
+      if (!Array.isArray(data?.speakers)) return;
+      setSpeakerPresence(Object.fromEntries(data.speakers.map((entry) => [entry.userId, entry])));
+    };
+
+    socket.on('speaker.presence', handlePresence);
+    socket.on('speaker.presence.state', handlePresenceState);
+    socket.getSocket()?.emit('speaker.presence.request');
+    return () => {
+      socket.off('speaker.presence', handlePresence);
+      socket.off('speaker.presence.state', handlePresenceState);
+    };
+  }, [socket, joinedEpoch]);
+
+  useEffect(() => {
+    const rawSocket = socket.getSocket();
+    if (!rawSocket?.connected || !selectedIdentity) return;
+    rawSocket.emit('speaker.presence', {
+      speakerType: selectedIdentity.type,
+      speakerId: selectedIdentity.id,
+      ...(selectedIdentity.frame ? { portraitFrame: selectedIdentity.frame } : {}),
+    });
+  }, [
+    joinedEpoch,
+    selectedIdentity?.frame?.x,
+    selectedIdentity?.frame?.y,
+    selectedIdentity?.frame?.zoom,
+    selectedIdentity?.id,
+    selectedIdentity?.key,
+    selectedIdentity?.type,
+    socket,
+  ]);
+
+  useEffect(() => {
+    const rawSocket = socket.getSocket();
+    if (!rawSocket?.connected || !selectedIdentity) return;
+
+    const hasText = messageInput.trim().length > 0;
+    rawSocket.emit('chat.typing', {
+      typing: hasText,
+      speakerType: selectedIdentity.type,
+      speakerId: selectedIdentity.id,
+    });
+
+    if (!hasText) return;
+
+    const stopTimer = window.setTimeout(() => {
+      rawSocket.emit('chat.typing', {
+        typing: false,
+        speakerType: selectedIdentity.type,
+        speakerId: selectedIdentity.id,
+      });
+    }, 1800);
+
+    return () => window.clearTimeout(stopTimer);
+  }, [
+    joinedEpoch,
+    messageInput,
+    selectedIdentity?.id,
+    selectedIdentity?.key,
+    selectedIdentity?.type,
+    socket,
+  ]);
+
+
+  useEffect(() => {
+    if (!campaignId) return;
+    try {
+      const raw = window.localStorage.getItem(`smug-portrait-frames:${campaignId}`);
+      if (raw) setPortraitFrames(JSON.parse(raw) as Record<string, PortraitFrame>);
+      else setPortraitFrames({});
+    } catch {
+      setPortraitFrames({});
+    }
+  }, [campaignId]);
+
+  useEffect(() => {
+    if (!campaignId) return;
+    try {
+      const raw = window.localStorage.getItem(`smug-speaker-collapsed:${campaignId}`);
+      const ids = raw ? JSON.parse(raw) : [];
+      setCollapsedSpeakerIds(new Set(Array.isArray(ids) ? ids.filter((id): id is string => typeof id === 'string') : []));
+    } catch {
+      setCollapsedSpeakerIds(new Set());
+    }
+  }, [campaignId]);
+
+  const toggleSpeakerPicture = (userId: string) => {
+    setCollapsedSpeakerIds((current) => {
+      const next = new Set(current);
+      if (next.has(userId)) next.delete(userId);
+      else next.add(userId);
+      if (campaignId) {
+        window.localStorage.setItem(`smug-speaker-collapsed:${campaignId}`, JSON.stringify([...next]));
+      }
+      return next;
+    });
+  };
+
+  const setPortraitFrame = (key: string, frame: PortraitFrame) => {
+    setPortraitFrames((current) => {
+      const next = { ...current, [key]: frame };
+      if (campaignId) window.localStorage.setItem(`smug-portrait-frames:${campaignId}`, JSON.stringify(next));
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    if (!campaignId || userRole !== 'DM') {
+      setForkNpcs([]);
+      return;
+    }
+    let cancelled = false;
+    void api.listCampaignNpcs(campaignId)
+      .then((result) => {
+        if (!cancelled) setForkNpcs(result.npcs);
+      })
+      .catch((err) => console.warn('[ChatPanel] Could not load NPC speaking identities:', errorSummary(err)));
+    return () => { cancelled = true; };
+  }, [campaignId, userRole]);
+
+  useEffect(() => {
+    if (!speakAsOptions.some((option) => option.key === speakerKey)) setSpeakerKey('self');
+  }, [speakAsOptions, speakerKey]);
+
+  useEffect(() => {
+    if (!campaignId || !user?.id) return;
+    const key = `fork-chat-draft:${campaignId}:${user.id}`;
+    try {
+      const raw = window.localStorage.getItem(key);
+      if (raw) {
+        const parsed = JSON.parse(raw) as { text?: unknown; mode?: unknown };
+        if (typeof parsed.text === 'string') setMessageInput(parsed.text);
+        // SmugVTT chat is IC-only; legacy draft mode values are intentionally ignored.
+      }
+    } catch {
+      // A damaged local draft should never block chat.
+    } finally {
+      setDraftReady(true);
+    }
+  }, [campaignId, user?.id]);
+
+  useEffect(() => {
+    if (!draftReady || !campaignId || !user?.id) return;
+    const key = `fork-chat-draft:${campaignId}:${user.id}`;
+    const timer = window.setTimeout(() => {
+      if (!messageInput) {
+        window.localStorage.removeItem(key);
+      } else {
+        window.localStorage.setItem(key, JSON.stringify({ text: messageInput }));
+      }
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [campaignId, draftReady, messageInput, user?.id]);
   // The box grows with what is typed: 4 lines in the compact layout's Chat
   // sheet, where the log gives up the rows, and 6 on a computer.
   useGrowingTextarea(textareaRef, messageInput, compact ? 4 : 6);
@@ -247,6 +603,60 @@ export default function ChatPanel() {
       return next === h.messages ? h : withinCap({ ...h, messages: next }, wasAtBottomRef.current);
     });
   }, []);
+
+
+  const patchHeldMessage = useCallback((patch: Partial<Message> & { id: string }) => {
+    setMessages((prev) => prev.map((message) => message.id === patch.id ? { ...message, ...patch } : message));
+  }, [setMessages]);
+
+  const editStoredMessage = async (message: Message) => {
+    if (!campaignId || isPending(message) || message.deletedAt) return;
+    const next = window.prompt('Edit message:', message.content);
+    if (next === null || next.trim() === message.content || !next.trim()) return;
+    try {
+      const result = await api.editForkChatMessage(campaignId, message.id, next.trim());
+      patchHeldMessage(result.message);
+    } catch (err) {
+      setError(errorMessage(err) || 'Could not edit message');
+    }
+  };
+
+  const deleteStoredMessage = async (message: Message) => {
+    if (!campaignId || isPending(message) || message.deletedAt) return;
+    if (!window.confirm('Delete this chat message? It can be restored later.')) return;
+    try {
+      const result = await api.deleteForkChatMessage(campaignId, message.id);
+      patchHeldMessage(result.message);
+    } catch (err) {
+      setError(errorMessage(err) || 'Could not delete message');
+    }
+  };
+
+  const restoreStoredMessage = async (message: Message) => {
+    if (!campaignId || isPending(message) || !message.deletedAt) return;
+    try {
+      const result = await api.restoreForkChatMessage(campaignId, message.id);
+      patchHeldMessage(result.message);
+    } catch (err) {
+      setError(errorMessage(err) || 'Could not restore message');
+    }
+  };
+
+  const showMessageHistory = async (message: Message) => {
+    if (!campaignId) return;
+    try {
+      const result = await api.getForkChatMessageRevisions(campaignId, message.id);
+      if (result.revisions.length === 0) {
+        window.alert('No earlier revisions.');
+        return;
+      }
+      window.alert(result.revisions
+        .map((revision, index) => `${index + 1}. ${new Date(revision.createdAt).toLocaleString()}\n${revision.content}`)
+        .join('\n\n'));
+    } catch (err) {
+      setError(errorMessage(err) || 'Could not load message history');
+    }
+  };
 
   // ============================================
   // Scroll Management
@@ -500,9 +910,13 @@ export default function ChatPanel() {
         recipient: data.recipientId ? { id: data.recipientId, displayName: data.recipientName ?? '' } : null,
         type: data.type,
         content: data.content,
-        metadata: null,
+        metadata: data.metadata ?? null,
         createdAt: data.timestamp,
       };
+      if (data.userId !== user?.id) {
+        playChatChime(chatChimeFromMetadata(data.metadata));
+      }
+      if (campaignId) publishLiveSceneMessage(campaignId, newMessage);
 
       // Our own message comes back with the name it was sent under, and
       // takes the place of the copy shown while it was sending (or marked
@@ -526,6 +940,24 @@ export default function ChatPanel() {
       } else if (!ownPendingId) {
         setNewBelow(true);
       }
+    };
+
+    const handleChatMutation = (data: {
+      id: string;
+      content?: string;
+      metadata?: Message['metadata'];
+      editedAt?: string | null;
+      deletedAt?: string | null;
+      deletedById?: string | null;
+    }) => {
+      patchHeldMessage({
+        id: data.id,
+        ...(data.content !== undefined ? { content: data.content } : {}),
+        ...(data.metadata !== undefined ? { metadata: data.metadata } : {}),
+        ...(data.editedAt !== undefined ? { editedAt: data.editedAt } : {}),
+        ...(data.deletedAt !== undefined ? { deletedAt: data.deletedAt } : {}),
+        ...(data.deletedById !== undefined ? { deletedById: data.deletedById } : {}),
+      });
     };
 
     const handleSystemMessage = (data: ChatSystemBroadcast) => {
@@ -554,12 +986,57 @@ export default function ChatPanel() {
 
     socket.onChatMessage(handleChatMessage);
     socket.onChatSystem(handleSystemMessage);
+    socket.on('chat.mutated', handleChatMutation);
 
     return () => {
       socket.off('chat.message', handleChatMessage);
       socket.off('chat.system', handleSystemMessage);
+      socket.off('chat.mutated', handleChatMutation);
     };
-  }, [socket, campaignId, addMessages]);
+  }, [socket, campaignId, addMessages, patchHeldMessage, user?.id]);
+
+  useEffect(() => {
+    if (!socket || !campaignId || !showDiceInChat) return;
+    const handleDiceRoll = (data: {
+      id?: string;
+      userId: string;
+      userName: string;
+      characterName?: string;
+      expression: string;
+      result: number;
+      breakdown?: string;
+      purpose?: string;
+      timestamp: string;
+      secret?: boolean;
+    }) => {
+      const speaker = data.characterName?.trim() || data.userName;
+      const purpose = data.purpose?.trim();
+      const lead = [speaker, purpose].filter(Boolean).join(' · ');
+      const content = `${lead ? `${lead} — ` : ''}${data.expression} = ${data.result}${data.secret ? ' · Secret' : ''}`;
+      const id = `smug-dice-${data.id ?? `${data.timestamp}-${data.userId}-${data.expression}-${data.result}`}`;
+      const diceMessage: Message = {
+        id,
+        campaignId,
+        userId: data.userId,
+        user: { id: data.userId, displayName: data.userName },
+        recipientId: null,
+        recipient: null,
+        type: MessageType.DICE_ROLL,
+        content,
+        metadata: null,
+        createdAt: data.timestamp,
+      };
+      addMessages((prev) => prev.some((message) => message.id === id) ? prev : [...prev, diceMessage]);
+      if (wasAtBottomRef.current) setTimeout(() => scrollToBottom(true), 50);
+      else setNewBelow(true);
+    };
+    socket.on('dice.rolled', handleDiceRoll);
+    socket.on('dice.rolled.secret', handleDiceRoll);
+    return () => {
+      socket.off('dice.rolled', handleDiceRoll);
+      socket.off('dice.rolled.secret', handleDiceRoll);
+    };
+  }, [socket, campaignId, showDiceInChat, addMessages]);
 
   // ============================================
   // Rate Limiting
@@ -620,12 +1097,29 @@ export default function ChatPanel() {
    * shown takes the stored id; refused or unanswered, it is marked Not sent
    * with the reason, for Retry or Discard.
    */
-  const deliver = async (clientId: string, content: string, type: ChatMessageEvent['type'], recipientId?: string) => {
+  const deliver = async (
+    clientId: string,
+    content: string,
+    type: ChatMessageEvent['type'],
+    recipientId?: string,
+    identity: ChatIdentityOption = selectedIdentity,
+    mode: ChatMode = chatMode,
+  ) => {
     if (!socket) return;
     const id = pendingId(clientId);
     setNotSent((prev) => withoutKey(prev, id));
-    const answer = await socket.sendChatMessage({ content, type, clientId, ...(recipientId ? { recipientId } : {}) });
+    const answer = await socket.sendChatMessage({
+      content,
+      type,
+      clientId,
+      ...(recipientId ? { recipientId } : {}),
+      speakerType: identity.type,
+      ...(identity.id ? { speakerId: identity.id } : {}),
+      mode,
+      ...(identity.frame ? { portraitFrame: identity.frame } : {}),
+    });
     if (answer.ok) {
+      playChatChime(identity.chatChime ?? 'default');
       // Usually the message itself has come back first and taken its place.
       setMessages((prev) => {
         if (!prev.some((msg) => msg.id === id)) return prev;
@@ -643,7 +1137,24 @@ export default function ChatPanel() {
   const retry = (message: Message) => {
     // A copy still being sent holds the type that was asked for, PLAYER or DM.
     const asked = message.type === MessageType.DM ? MessageType.DM : MessageType.PLAYER;
-    void deliver(message.id.slice('temp-'.length), message.content, asked, message.recipientId ?? undefined);
+    const rawSpeaker = message.metadata?.speaker;
+    const speaker = rawSpeaker && typeof rawSpeaker === 'object' && !Array.isArray(rawSpeaker)
+      ? rawSpeaker as { type?: unknown; id?: unknown; name?: unknown; imageUrl?: unknown; frame?: unknown; chatChime?: unknown }
+      : null;
+    const identity: ChatIdentityOption = {
+      key: typeof speaker?.id === 'string' ? `${String(speaker.type)}:${speaker.id}` : String(speaker?.type ?? 'self'),
+      type: speaker?.type === 'character' || speaker?.type === 'npc' || speaker?.type === 'narrator' ? speaker.type : 'self',
+      ...(typeof speaker?.id === 'string' ? { id: speaker.id } : {}),
+      label: typeof speaker?.name === 'string' ? speaker.name : user?.displayName ?? 'You',
+      imageUrl: typeof speaker?.imageUrl === 'string' ? speaker.imageUrl : null,
+      frame: speaker?.frame && typeof speaker.frame === 'object' && !Array.isArray(speaker.frame)
+        ? speaker.frame as PortraitFrame
+        : undefined,
+      chatChime: typeof speaker?.chatChime === 'string' ? speaker.chatChime : 'default',
+    };
+    const savedMode = message.metadata?.chatMode;
+    const mode: ChatMode = savedMode === 'ic' || savedMode === 'narrator' ? savedMode : 'ooc';
+    void deliver(message.id.slice('temp-'.length), message.content, asked, message.recipientId ?? undefined, identity, mode);
   };
 
   /** Drop a message marked Not sent. */
@@ -659,6 +1170,24 @@ export default function ChatPanel() {
   const sendMessage = (): void => {
     const text = messageInput.trim();
     if (!text || !canSend || !socket || !campaignId || !user) return;
+    const rollSlash = /^\/(?:r|roll)(?:\s+(.+))?$/i.exec(text);
+    if (rollSlash) {
+      const expression = rollSlash[1]?.trim();
+      if (!expression) {
+        setBoxRefusal('Roll syntax: /r 1d20+5 or /roll 4d6kh3');
+        return;
+      }
+      const characterName = selectedIdentity?.type === 'character' || selectedIdentity?.type === 'npc'
+        ? selectedIdentity.label
+        : undefined;
+      void rollAtTable({ expression, ...(characterName ? { characterName } : {}) }).then((made) => {
+        if (!made) return;
+        setMessageInput('');
+        setBoxRefusal(null);
+        window.requestAnimationFrame(() => textareaRef.current?.focus());
+      });
+      return;
+    }
 
     // `/w <name> <message>` whispers this one message; anything it cannot
     // read as that is kept in the box with the reason, and sent to no one.
@@ -677,7 +1206,10 @@ export default function ChatPanel() {
 
     // The type asked for, PLAYER or DM, also on a whisper: the server makes
     // it a WHISPER, and Retry sends what was asked.
-    const messageType: ChatMessageEvent['type'] = userRole === 'DM' ? MessageType.DM : MessageType.PLAYER;
+    const messageType: ChatMessageEvent['type'] =
+      userRole === 'DM' && (selectedIdentity.type === 'self' || selectedIdentity.type === 'narrator')
+        ? MessageType.DM
+        : MessageType.PLAYER;
 
     const optimisticMessage: Message = {
       id: pendingId(clientId),
@@ -688,7 +1220,17 @@ export default function ChatPanel() {
       recipient: to ? { id: to.id, displayName: targets.get(to.id)?.displayName ?? to.name } : null,
       type: messageType,
       content,
-      metadata: null,
+      metadata: {
+        speaker: {
+          type: selectedIdentity.type,
+          ...(selectedIdentity.id ? { id: selectedIdentity.id } : {}),
+          name: selectedIdentity.label.replace(/ \/ OOC$/, ''),
+          imageUrl: selectedIdentity.imageUrl ?? null,
+          ...(selectedIdentity.frame ? { frame: selectedIdentity.frame } : {}),
+          chatChime: selectedIdentity.chatChime ?? 'default',
+        },
+        chatMode,
+      },
       createdAt: new Date().toISOString(),
     };
 
@@ -696,20 +1238,38 @@ export default function ChatPanel() {
 
     // Clear input and scroll
     setMessageInput('');
+    if (campaignId && user?.id) {
+      window.localStorage.removeItem(`fork-chat-draft:${campaignId}:${user.id}`);
+    }
     setTimeout(() => scrollToBottom(true), 50);
 
     // Start rate limit cooldown
     startCooldown();
 
-    void deliver(clientId, content, messageType, to?.id);
+    void deliver(clientId, content, messageType, to?.id, selectedIdentity, chatMode);
   };
 
-  const chooseRecipient = (e: ChangeEvent<HTMLSelectElement>) => {
-    const id = e.target.value;
-    setBoxRefusal(null);
-    const target = targets.get(id);
-    setRecipient(target ? { id, name: target.label } : id && id === recipient?.id ? recipient : null);
+  useEffect(() => {
+    const refreshSpeakerProfile = () => {
+      const rawSocket = socket.getSocket();
+      if (!rawSocket?.connected || !selectedIdentity) return;
+      rawSocket.emit('speaker.presence', {
+        speakerType: selectedIdentity.type,
+        speakerId: selectedIdentity.id,
+        ...(selectedIdentity.frame ? { portraitFrame: selectedIdentity.frame } : {}),
+      });
+    };
+    window.addEventListener('smugvtt:speaker-profile-changed', refreshSpeakerProfile);
+    return () => window.removeEventListener('smugvtt:speaker-profile-changed', refreshSpeakerProfile);
+  }, [selectedIdentity, socket]);
+
+  const chooseSpeaker = (key: string) => {
+    setSpeakerKey(key);
+    setChatMode('ic');
   };
+
+
+  /* remove recipient dropdown change handler */
 
   /** Choosing a whisper's name sets the To list to the other person in it. */
   const whisperBack = useCallback((message: Message) => {
@@ -719,6 +1279,20 @@ export default function ChatPanel() {
     setRecipient({ id: target.userId, name: target.label });
     setBoxRefusal(null);
     textareaRef.current?.focus();
+  }, [targets, user?.id]);
+
+
+  useEffect(() => {
+    const beginWhisper = (event: Event) => {
+      const detail = (event as CustomEvent<{ userId?: string }>).detail;
+      const target = detail?.userId ? targets.get(detail.userId) : undefined;
+      if (!target || target.userId === user?.id) return;
+      setRecipient({ id: target.userId, name: target.label });
+      setBoxRefusal(null);
+      window.requestAnimationFrame(() => textareaRef.current?.focus());
+    };
+    window.addEventListener('smugvtt:whisper', beginWhisper);
+    return () => window.removeEventListener('smugvtt:whisper', beginWhisper);
   }, [targets, user?.id]);
 
   /** How a whisper is labelled in the list, or null for a message to everyone. */
@@ -748,8 +1322,7 @@ export default function ChatPanel() {
     : typingRefusal
       ? null
       : recipient && { id: recipient.id, name: recipientName ?? recipient.name, gone: recipientGone };
-  const dmTarget = others.find((t) => t.userId === dmUserId);
-  const players = others.filter((t) => t.userId !== dmUserId);
+  /* remove obsolete dmTarget/player recipient groups */
 
   // ============================================
   // Render
@@ -781,80 +1354,153 @@ export default function ChatPanel() {
 
   // The composer's parts, which the two arrangements lay out differently.
   // Each has a key, so a change of arrangement keeps the box and its focus.
-  const toLabel = (
-    <label htmlFor="chat-recipient" key="to-label" className={compact ? 'sr-only' : 'text-xs font-medium text-stone-gray'}>To</label>
-  );
-  // Who the message goes to, keyed by user id: display names are not unique.
-  const toList = (
-    <select
-      key="to"
-      id="chat-recipient"
-      value={recipient?.id ?? ''}
-      onChange={chooseRecipient}
-      className={`input-cozy min-w-0 text-sm py-1${compact ? ' w-32 px-2.5 shrink-0 min-h-11' : ' flex-1'}`}
-    >
-      <option value="">Everyone</option>
-      {recipientGone && recipient && <option value={recipient.id}>{recipient.name} (no longer in the campaign)</option>}
-      {/* The DM in a group the app names, which nothing a member writes can copy. */}
-      {dmTarget && (
-        <optgroup label={onlineUserIds.has(dmTarget.userId) ? 'DM' : 'DM, not in session'}>
-          <option value={dmTarget.userId}>{dmTarget.label}</option>
-        </optgroup>
-      )}
-      {players.some((t) => onlineUserIds.has(t.userId)) && (
-        <optgroup label="In session">
-          {players.filter((t) => onlineUserIds.has(t.userId)).map((t) => <option key={t.userId} value={t.userId}>{t.label}</option>)}
-        </optgroup>
-      )}
-      {players.some((t) => !onlineUserIds.has(t.userId)) && (
-        <optgroup label="Not in session">
-          {players.filter((t) => !onlineUserIds.has(t.userId)).map((t) => <option key={t.userId} value={t.userId}>{t.label}</option>)}
-        </optgroup>
-      )}
-    </select>
-  );
-  const messageBox = (
-    <textarea
-      key="box"
-      ref={textareaRef}
-      value={messageInput}
-      onChange={(e) => {
-        setMessageInput(e.target.value);
-        setBoxRefusal(null);
-      }}
-      onKeyDown={handleKeyDown}
-      placeholder={compact ? (recipient ? 'Whisper…' : 'Message…') : recipient ? 'Type a whisper…' : 'Type a message…'}
-      aria-label="Chat message"
-      aria-describedby="chat-hint"
-      className={`input-cozy flex-1 text-sm resize-none ${compact ? 'min-w-0 min-h-11 px-2.5' : 'min-h-[60px]'} ${canSend ? '' : 'opacity-50 cursor-not-allowed'}`}
-      rows={compact ? 1 : 2}
-      maxLength={slashInBox ? MAX_CHAT_MESSAGE_LENGTH + WHISPER_PREFIX_ROOM : MAX_CHAT_MESSAGE_LENGTH}
-      // Read-only through the cooldown, not disabled: disabling the
-      // box threw keyboard focus to the page after every message.
-      readOnly={!canSend}
-      aria-disabled={!canSend}
+  const speakerControls = (
+    <ChatIdentitySelect
+      options={speakAsOptions}
+      value={selectedIdentity.key}
+      onChange={chooseSpeaker}
+      onFrameChange={setPortraitFrame}
+      compact={compact}
     />
   );
+
+  /* remove To Everyone selector declarations */
+  const messageBox = (
+    <div key="box" className="min-w-0 flex-1">
+      <textarea
+        ref={textareaRef}
+        value={messageInput}
+        onChange={(e) => {
+          setMessageInput(e.target.value);
+          setBoxRefusal(null);
+        }}
+        onKeyDown={handleKeyDown}
+        placeholder={recipient ? 'Whisper…' : 'Message…  /w name · /r 1d20'}
+        aria-label="Chat message"
+        aria-describedby="chat-hint"
+        className={`input-cozy w-full text-sm resize-none ${compact ? 'min-h-11 px-2.5' : 'min-h-[60px] px-3'} ${canSend ? '' : 'opacity-50 cursor-not-allowed'}`}
+        rows={compact ? 1 : 2}
+        maxLength={slashInBox ? MAX_CHAT_MESSAGE_LENGTH + WHISPER_PREFIX_ROOM : MAX_CHAT_MESSAGE_LENGTH}
+        readOnly={!canSend}
+        aria-disabled={!canSend}
+      />
+    </div>
+  );
+
   const sendButton = (
-    <Button
-      key="send"
-      type="submit"
-      className={`${compact ? 'px-3 min-h-11 shrink-0' : 'px-4'} py-2 flex items-center gap-2`}
-      disabled={!messageInput.trim() || !canSend}
-      aria-label={!canSend ? `Rate limited — wait ${cooldownSeconds} seconds` : 'Send message'}
-    >
-      {!canSend && cooldownSeconds > 0 ? (
-        <span className="text-sm font-mono" aria-hidden="true">{cooldownSeconds}s</span>
-      ) : (
-        <Send className="w-4 h-4" aria-hidden="true" />
-      )}
-    </Button>
+    <div key="send" className="flex shrink-0 flex-col items-stretch gap-1">
+      <button
+        type="button"
+        onClick={toggleDiceInChat}
+        aria-pressed={showDiceInChat}
+        aria-label={showDiceInChat ? 'Hide dice rolls in chat' : 'Show dice rolls in chat'}
+        title={showDiceInChat ? 'Dice rolls are shown in Chat' : 'Dice rolls are hidden from Chat'}
+        className={`ml-auto inline-flex h-5 min-w-7 items-center justify-center rounded border px-1 transition-colors ${
+          showDiceInChat
+            ? 'border-moss-green/30 bg-moss-green/15 text-brand-ink'
+            : 'border-ink/10 bg-paper/70 text-warm-gray hover:text-brand-ink'
+        }`}
+      >
+        <Dices className="h-3.5 w-3.5" aria-hidden="true" />
+      </button>
+      <Button
+        type="submit"
+        className={`${compact ? 'px-3 min-h-11' : 'px-4'} py-2 flex items-center justify-center gap-2`}
+        disabled={!messageInput.trim() || !canSend}
+        aria-label={!canSend ? `Rate limited — wait ${cooldownSeconds} seconds` : 'Send message'}
+      >
+        {!canSend && cooldownSeconds > 0 ? (
+          <span className="text-sm font-mono" aria-hidden="true">{cooldownSeconds}s</span>
+        ) : (
+          <Send className="w-4 h-4" aria-hidden="true" />
+        )}
+      </Button>
+    </div>
   );
 
   // What the panel holds, which in a long session is not all there is.
-  const shownCount = messages.length > 0 && (
+  const visibleMessages = messages.filter((message) => !message.deletedAt && (showDiceInChat || message.type !== MessageType.DICE_ROLL));
+  const visibleSpeakerPresence = Object.values(speakerPresence)
+    .filter((entry) => entry.userId === user?.id || onlineUserIds.has(entry.userId))
+    .sort((a, b) => {
+      if (a.userId === user?.id) return -1;
+      if (b.userId === user?.id) return 1;
+      return a.userName.localeCompare(b.userName);
+    });
+
+  const speakAsOverlay = typeof document !== 'undefined'
+    ? createPortal(
+        <div className="pointer-events-none fixed bottom-3 left-3 z-[1200] flex max-w-[calc(100vw-1.5rem)] items-end gap-2 overflow-x-auto">
+          {visibleSpeakerPresence.map((entry) => {
+            const collapsed = collapsedSpeakerIds.has(entry.userId);
+            const frame = entry.speaker.frame ?? { zoom: 1, x: 50, y: 50 };
+            const theme = speakerThemeStyle(entry.speaker.themeColor);
+            const initial = entry.speaker.name.trim().charAt(0).toUpperCase() || '?';
+
+            return (
+              <div
+                key={entry.userId}
+                className="pointer-events-auto shrink-0 overflow-hidden rounded-cozy border border-paper/35 bg-black/75 shadow-2xl backdrop-blur-sm"
+                title={`${entry.userName} is speaking as ${entry.speaker.name}`}
+              >
+                {!collapsed && (
+                  <div className="relative h-40 w-32 overflow-hidden bg-ink/20">
+                    {entry.speaker.imageUrl ? (
+                      <img
+                        src={entry.speaker.imageUrl}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        style={{
+                          objectPosition: `${frame.x}% ${frame.y}%`,
+                          transform: `scale(${frame.zoom})`,
+                          transformOrigin: `${frame.x}% ${frame.y}%`,
+                        }}
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-paper/90 text-4xl font-semibold text-ink-secondary">
+                        {initial}
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div
+                  className="flex min-w-32 items-center gap-1 px-2.5 py-1.5"
+                  style={{ backgroundColor: theme.backgroundColor, color: theme.foregroundColor }}
+                >
+                  <span className="min-w-0 flex-1 truncate text-sm font-semibold leading-tight">
+                    {entry.speaker.name}
+                  </span>
+                  <button
+                    type="button"
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-sm font-bold leading-none opacity-80 hover:bg-black/15 hover:opacity-100"
+                    title={collapsed ? 'Show portrait' : 'Hide portrait'}
+                    aria-label={collapsed ? `Show ${entry.speaker.name} portrait` : `Hide ${entry.speaker.name} portrait`}
+                    onClick={() => toggleSpeakerPicture(entry.userId)}
+                  >
+                    {collapsed ? '+' : '−'}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>,
+        document.body,
+      )
+    : null;
+
+  const typingNames = Object.values(typingUsers);
+  const typingLabel =
+    typingNames.length === 0
+      ? null
+      : typingNames.length === 1
+        ? `${typingNames[0]} is typing…`
+        : typingNames.length === 2
+          ? `${typingNames[0]} and ${typingNames[1]} are typing…`
+          : `${typingNames.length} people are typing…`;
+
+  const shownCount = visibleMessages.length > 0 && (
     <span className="text-xs text-stone-gray/70 ml-auto">
-      {messages.length} shown
+      {visibleMessages.length} shown
     </span>
   );
   const clearJoinsButton = userRole === 'DM' && (
@@ -961,7 +1607,7 @@ export default function ChatPanel() {
         )}
 
         {/* Messages List */}
-        {messages.length === 0 ? (
+        {visibleMessages.length === 0 ? (
           <div className="text-center py-8">
             <MessageCircle className="w-12 h-12 text-brand-ink/30 mx-auto mb-3" />
             <p className="text-sm text-warm-gray mb-2">No messages yet</p>
@@ -971,8 +1617,15 @@ export default function ChatPanel() {
           </div>
         ) : (
           <>
-            {messages.map((message) => {
+            {visibleMessages.map((message) => {
               const whisper = whisperView(message);
+              const canModerateChat = userRole === 'DM' || ownMembership?.gmAccess === true;
+              const mayManage =
+                !isPending(message) &&
+                message.type !== MessageType.SYSTEM &&
+                message.type !== MessageType.DICE_ROLL &&
+                (message.userId === user?.id || (canModerateChat && !message.recipientId));
+              const mayEdit = mayManage && message.type !== MessageType.DICE_ROLL && !message.deletedAt;
               return (
                 <ChatMessage
                   key={message.id}
@@ -986,6 +1639,14 @@ export default function ChatPanel() {
                   whisperPeer={whisper?.peer}
                   sentByDM={!!dmUserId && message.userId === dmUserId}
                   onWhisperBack={whisper?.canReply ? whisperBack : undefined}
+                  canEdit={mayEdit}
+                  canDelete={mayManage && !message.deletedAt}
+                  canRestore={mayManage && !!message.deletedAt}
+                  canViewHistory={mayManage && !!message.editedAt}
+                  onEdit={() => void editStoredMessage(message)}
+                  onDelete={() => void deleteStoredMessage(message)}
+                  onRestore={() => void restoreStoredMessage(message)}
+                  onHistory={() => void showMessageHistory(message)}
                 />
               );
             })}
@@ -999,34 +1660,47 @@ export default function ChatPanel() {
       {/* Input Area */}
       <div className={`${compact ? 'px-3 py-2' : 'p-4'} border-t border-moss-green/20`}>
         <form onSubmit={handleSubmit} className="space-y-2">
+          <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1">{speakerControls}</div>
+            <ChatSoundControl />
+          </div>
           {/* Who the message goes to (keyed by user id: display names are not
               unique), the box and Send. The compact layout's Chat sheet puts
               all three on one row, so the log keeps the room; the parts have
               keys, so a change of arrangement keeps the box and its focus. */}
           {/* The compact layout's Chat sheet puts To, the box and Send on one
               row, so the log keeps the room. */}
-          {compact ? (
-            <>
-              {/* At the foot of the row, so To and Send stay one line as the box grows. */}
-              <div key="compose" className="flex items-end gap-2">
-                {toLabel}
-                {toList}
-                {messageBox}
-                {sendButton}
-              </div>
-            </>
-          ) : (
-            <>
-              <div key="to" className="flex items-center gap-2">
-                {toLabel}
-                {toList}
-              </div>
-              <div key="compose" className="flex gap-2">
-                {messageBox}
-                {sendButton}
-              </div>
-            </>
+          {typingLabel && (
+            <div
+              className="px-1 text-xs italic text-ink-muted"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              {typingLabel}
+            </div>
           )}
+          {recipient && (
+            <div className="flex items-center justify-between gap-2 rounded-cozy bg-accent/10 px-2 py-1 text-xs text-accent-ink">
+              <span className="min-w-0 truncate">
+                <Lock className="mr-1 inline h-3 w-3" aria-hidden="true" />
+                Whisper to {recipientName ?? recipient.name}
+              </span>
+              <button
+                type="button"
+                className="shrink-0 rounded p-0.5 hover:bg-accent/10"
+                title="Return to public chat"
+                aria-label="Return to public chat"
+                onClick={() => setRecipient(null)}
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+          <div key="compose" className="flex items-end gap-2">
+            {messageBox}
+            {sendButton}
+          </div>
+          {speakAsOverlay}
 
           {goesTo && (
             <p className={`text-xs text-center flex items-center justify-center gap-1 ${goesTo.gone ? 'text-warning-ink' : 'text-accent-ink'}`}>

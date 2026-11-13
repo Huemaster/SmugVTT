@@ -46,7 +46,7 @@ import {
 import { createPortal } from 'react-dom';
 
 /** The parts of the table that are drawn once for the page, in the order they are portaled. */
-const TABLE_PARTS = ['map', 'session', 'party'] as const;
+const TABLE_PARTS = ['map', 'session', 'party', 'stage'] as const;
 
 export type TablePart = (typeof TABLE_PARTS)[number];
 
@@ -133,6 +133,7 @@ export function TableHosts({ parts, children }: { parts: Record<TablePart, React
     map: makeHost('map'),
     session: makeHost('session'),
     party: makeHost('party'),
+    stage: makeHost('stage'),
   }));
   const parkingRef = useRef<HTMLDivElement>(null);
   // Where a parked part's lists stood in the slot it left: parked, it is

@@ -28,13 +28,13 @@ import {
   canReadMap, canDraw, drawRefusal, canDrawOnLayer, canEraseDrawing, eraseRefusal, drawingSentTo, DRAW_LAYER_REFUSAL,
 } from '../../services/permissions';
 import {
-  DrawingAddEventSchema, DrawingRemoveEventSchema, DrawingClearMineEventSchema, DrawingClearEventSchema,
+  DrawingAddEventSchema, DrawingUpdateEventSchema, DrawingRemoveEventSchema, DrawingClearMineEventSchema, DrawingClearEventSchema,
   DrawingPreviewEventSchema, DrawingsRequestEventSchema, drawingOutsideMap, markupLimitReached, drawingShare,
   DRAWING_OUTSIDE_MAP_MESSAGE, MARKUP_SHARE_FULL,
 } from '../../validators/drawings';
 import {
   campaignDmId, drawingSent, drawingsFor, markupHeld,
-  type DrawingAddedBroadcast, type DrawingRemovedBroadcast, type DrawingsClearedBroadcast, type DrawingPreviewedBroadcast,
+  type DrawingAddedBroadcast, type DrawingUpdatedBroadcast, type DrawingRemovedBroadcast, type DrawingsClearedBroadcast, type DrawingPreviewedBroadcast,
   type DrawingsStateBroadcast,
 } from '../../services/mapDrawings';
 
@@ -124,6 +124,8 @@ export function registerDrawingHandlers(io: Server, socket: AuthenticatedSocket)
         if (!map) return { refused: MAP_NOT_FOUND };
         if (!canDraw(role, map.campaign)) return { refused: drawRefusal(role, map.campaign) };
         if (!canDrawOnLayer(role, drawing.layer)) return { refused: DRAW_LAYER_REFUSAL };
+        // Player-created markup must never acquire GM-only battlefield semantics.
+        if (drawing.zoneType && role !== 'DM') return { refused: 'Only the GM may add battlefield zones' };
         if (drawingOutsideMap(drawing.points, map)) return { refused: DRAWING_OUTSIDE_MAP_MESSAGE };
         // A player's drawing is for everyone. The share it counts to: the
         // DM's for one for the DM alone, or by its author, the campaign's DM
@@ -144,6 +146,8 @@ export function registerDrawingHandlers(io: Server, socket: AuthenticatedSocket)
             audience,
             color: drawing.color,
             fillColor: drawing.fillColor,
+            zoneType: drawing.zoneType,
+            fillOpacity: drawing.fillOpacity,
             width: drawing.width,
             rotation: drawing.rotation,
             sortKey: drawing.sortKey,
@@ -168,6 +172,56 @@ export function registerDrawingHandlers(io: Server, socket: AuthenticatedSocket)
     } catch (error) {
       logger.error('drawing:add failed', { err: error, userId: socket.userId });
       refuse('Failed to add the drawing');
+    }
+  });
+
+  /**
+   * drawing:update — GM-only edit for a stored battlefield zone. Keep the
+   * original row's identity, owner and audience: editing must never grant
+   * ordinary drawings privileged zone semantics or expose a secret zone.
+   * Validates the same drawing geometry as creation, under the map lock.
+   */
+  socket.on('drawing:update', async (data: unknown, ackArg?: unknown) => {
+    const ack = ackFrom(ackArg);
+    const refuse = (message: string) => refuseRequest(socket, ack, message);
+    try {
+      if (!socket.campaignId) return refuse('Not authenticated to a campaign');
+      if (!withinCeiling(socket, 'drawing:update', ack)) return;
+      if (socket.role !== 'DM') return refuse('Only the GM may edit battlefield zones');
+      const parsed = DrawingUpdateEventSchema.safeParse(data);
+      if (!parsed.success) return refuse(parsed.error.issues[0]?.message ?? 'Invalid battlefield zone');
+      const { mapId, drawingId, drawing } = parsed.data;
+      if (!drawing.zoneType) return refuse('The edited drawing must remain a battlefield zone');
+      const campaignId = socket.campaignId;
+      const outcome = await withMapsLocked([mapId], async (tx): Promise<Locked<MapDrawing>> => {
+        const map = await readableMap(tx, mapId, campaignId, 'DM');
+        if (!map) return { refused: MAP_NOT_FOUND };
+        const stored = await tx.mapDrawing.findUnique({ where: { id: drawingId } });
+        if (!stored || stored.mapId !== mapId || !stored.zoneType) return { refused: DRAWING_NOT_FOUND };
+        if (drawingOutsideMap(drawing.points, map)) return { refused: DRAWING_OUTSIDE_MAP_MESSAGE };
+        // Audience is intentionally immutable here. Changing a public zone to
+        // private (or vice versa) requires a separate explicit visibility flow.
+        if (drawing.audience !== stored.audience) return { refused: 'Zone visibility cannot be changed by editing' };
+        const updated = await tx.mapDrawing.update({ where: { id: stored.id }, data: {
+          kind: drawing.kind, layer: stored.layer, audience: stored.audience,
+          color: drawing.color, fillColor: drawing.fillColor,
+          zoneType: drawing.zoneType, fillOpacity: drawing.fillOpacity,
+          width: drawing.width, rotation: drawing.rotation,
+          sortKey: drawing.sortKey, points: drawing.points, text: drawing.text,
+        } });
+        return { done: updated };
+      });
+      if ('refused' in outcome) return refuse(outcome.refused);
+      const updated = outcome.done;
+      await emitToMapReadersAs(io, campaignId, mapId, 'drawing:updated', (reader) =>
+        drawingSentTo(reader, updated)
+          ? { event: 'drawing:updated', data: { mapId, drawing: drawingSent(updated), ...echoedOpId(data) } satisfies DrawingUpdatedBroadcast }
+          : null
+      );
+      ack?.({ ok: true, ...echoedOpId(data) });
+    } catch (error) {
+      logger.error('drawing:update failed', { err: error, userId: socket.userId });
+      refuse('Failed to update the battlefield zone');
     }
   });
 

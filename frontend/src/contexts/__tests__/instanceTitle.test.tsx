@@ -2,7 +2,7 @@
  * The browser tab shows the instance's name.
  *
  * The name an admin gives the instance was stored and never shown: the tab
- * said SmugVTT whatever it was. It now comes with the appearance every page
+ * said CozyVTT whatever it was. It now comes with the appearance every page
  * reads, and becomes the page title.
  */
 
@@ -26,7 +26,7 @@ const appearance = (instanceName: string): AppearanceSettings => ({
 });
 
 beforeEach(() => {
-  document.title = 'SmugVTT';
+  document.title = 'CozyVTT';
   getAppearance.mockReset();
 });
 
@@ -39,13 +39,13 @@ describe('the page title', () => {
     await waitFor(() => expect(document.title).toBe('The Hearthstone Tavern'));
   });
 
-  it('stays SmugVTT when the name is empty', async () => {
+  it('stays CozyVTT when the name is empty', async () => {
     getAppearance.mockResolvedValue(appearance('   '));
 
     render(<ThemeProvider><div /></ThemeProvider>);
 
     await waitFor(() => expect(getAppearance).toHaveBeenCalled());
     await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(document.title).toBe('SmugVTT');
+    expect(document.title).toBe('CozyVTT');
   });
 });

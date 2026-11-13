@@ -88,7 +88,7 @@ it('gives the DM every drawing on the map, in drawing order, as the socket sends
   expect(res.status).toBe(200);
   expect(res.body.drawings.map((d: { id: string }) => d.id)).toEqual(order);
   expect(res.body.drawings[1]).toEqual({
-    id: secretId, authorId: dmId, audience: 'DM', layer: 'MARKUP', kind: 'text', color: '#3d8bd9', fillColor: null,
+    id: secretId, authorId: dmId, audience: 'DM', layer: 'MARKUP', kind: 'text', color: '#3d8bd9', fillColor: null, zoneType: null, fillOpacity: null,
     width: 3, rotation: 0, sortKey: 0, points: [[5, 5]], text: 'The vault', createdAt: expect.any(String),
   });
 });

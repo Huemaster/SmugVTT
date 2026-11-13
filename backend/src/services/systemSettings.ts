@@ -12,8 +12,7 @@ import logger from '../utils/logger';
 /** What a fresh instance's settings row holds. */
 const DEFAULT_SETTINGS = {
   setupCompleted: false,
-  instanceName: 'SmugVTT',
-  themeId: 'smug-gold',
+  instanceName: 'CozyVTT',
   timezone: 'UTC',
   allowRegistration: false,
   requireAdminApproval: true,

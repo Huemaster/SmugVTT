@@ -8,6 +8,9 @@ import { useMinuteClock } from '@/hooks/useMinuteClock';
 import { useCompactLayout } from '@/contexts/LayoutContext';
 import { Bot, Lock, Shield } from 'lucide-react';
 import type { Message, MessageType } from '@/types';
+import ChatMessageMenu from './ChatMessageMenu';
+import SmugChatText from './SmugChatText';
+import { speakerThemeStyle } from '@/utils/speakerTheme';
 import { formatRelativeTime } from '@/utils/format';
 
 interface ChatMessageProps {
@@ -27,6 +30,14 @@ interface ChatMessageProps {
   sentByDM?: boolean;
   /** Choosing a whisper's name whispers back to the other person, while they are a member. */
   onWhisperBack?: (message: Message) => void;
+  canEdit?: boolean;
+  canDelete?: boolean;
+  canRestore?: boolean;
+  canViewHistory?: boolean;
+  onEdit?: () => void;
+  onDelete?: () => void;
+  onRestore?: () => void;
+  onHistory?: () => void;
 }
 
 /**
@@ -88,7 +99,7 @@ function getMessageStyle(type: MessageType): { bg: string; textColor: string; bo
 /** A whisper's tint, whoever sent it. */
 const WHISPER_STYLE = { bg: 'bg-accent/10', textColor: 'text-stone-gray', borderColor: 'border-accent/30' };
 
-function ChatMessageInner({ message, isCurrentUser = false, isPending = false, notSentReason, onRetry, onDiscard, whisperLabel, whisperPeer, sentByDM = false, onWhisperBack }: ChatMessageProps) {
+function ChatMessageInner({ message, isCurrentUser = false, isPending = false, notSentReason, onRetry, onDiscard, whisperLabel, whisperPeer, sentByDM = false, onWhisperBack , canEdit = false, canDelete = false, canRestore = false, canViewHistory = false, onEdit, onDelete, onRestore, onHistory}: ChatMessageProps) {
   // The row is memoised, so without this its "just now" never moved on.
   const now = useMinuteClock();
   const isWhisper = whisperLabel !== undefined;
@@ -97,16 +108,62 @@ function ChatMessageInner({ message, isCurrentUser = false, isPending = false, n
   const isDM = message.type === 'DM';
   const showShield = isDM || (isWhisper && sentByDM);
 
-  // Get display name
+  const rawSpeaker = message.metadata?.speaker;
+  const speaker = rawSpeaker && typeof rawSpeaker === 'object' && !Array.isArray(rawSpeaker)
+    ? rawSpeaker as { type?: unknown; id?: unknown; name?: unknown; imageUrl?: unknown; frame?: unknown; themeColor?: unknown }
+    : null;
+  const speakerName = typeof speaker?.name === 'string' ? speaker.name : null;
+  const speakerImageUrl = typeof speaker?.imageUrl === 'string' ? speaker.imageUrl : null;
+  const rawMode = message.metadata?.chatMode;
+  const chatMode = rawMode === 'ic' || rawMode === 'ooc' || rawMode === 'narrator' ? rawMode : null;
+  const showYou = isCurrentUser && !isSystem && (!speaker || speaker.type === 'self');
+
+  const rawFrame = speaker?.frame;
+  const frame = rawFrame && typeof rawFrame === 'object' && !Array.isArray(rawFrame)
+    ? rawFrame as { zoom?: unknown; x?: unknown; y?: unknown }
+    : null;
+  const portraitZoom = typeof frame?.zoom === 'number' ? Math.max(0.6, Math.min(2, frame.zoom)) : 1;
+  const portraitX = typeof frame?.x === 'number' ? Math.max(0, Math.min(100, frame.x)) : 50;
+  const portraitY = typeof frame?.y === 'number' ? Math.max(0, Math.min(100, frame.y)) : 50;
+  const portraitStyle = {
+    objectPosition: `${portraitX}% ${portraitY}%`,
+    transform: `scale(${portraitZoom})`,
+    transformOrigin: `${portraitX}% ${portraitY}%`,
+  };
+  const speakerTheme = speakerThemeStyle(
+    typeof speaker?.themeColor === 'string' ? speaker.themeColor : undefined,
+  );
+  const speakerNameStyle = speakerName
+    ? { color: speakerTheme.backgroundColor }
+    : undefined;
+
+  // Get display name. A server-resolved Speak As identity wins over the account.
   const displayName = isSystem
     ? 'System'
-    : message.user?.displayName || 'Unknown User';
+    : speakerName || message.user?.displayName || 'Unknown User';
 
   const compact = useCompactLayout();
 
   const nameColor = isDM ? 'text-warning-ink' : isSystem || isCurrentUser ? 'text-brand-ink' : 'text-stone-gray';
   const onlyYou = `Only you and ${whisperPeer} can see this.`;
   const sentAt = message.createdAt ? new Date(message.createdAt).toLocaleString() : 'Unknown time';
+  const shownContent = message.deletedAt ? 'Message deleted' : message.content;
+  const editNotice = message.editedAt && !message.deletedAt
+    ? <div className="mt-1 text-[10px] italic text-ink-muted">edited</div>
+    : null;
+  const actionMenu = !isSystem && !isPending ? (
+    <ChatMessageMenu
+      deleted={!!message.deletedAt}
+      hasHistory={canViewHistory}
+      canEdit={canEdit}
+      canDelete={canDelete}
+      canRestore={canRestore}
+      onEdit={onEdit}
+      onDelete={onDelete}
+      onRestore={onRestore}
+      onHistory={onHistory}
+    />
+  ) : null;
 
   const notSentRow = notSentReason && (
     <div className={`${compact ? 'mt-1' : 'mt-2'} flex flex-wrap items-center gap-2 text-xs`} role="status">
@@ -120,20 +177,23 @@ function ChatMessageInner({ message, isCurrentUser = false, isPending = false, n
     </div>
   );
 
-  // Metadata (e.g., dice roll results) - hide for internal system actions
-  const metadataBlock = message.metadata &&
-    Object.keys(message.metadata).length > 0 &&
-    message.metadata.action !== 'user.joined' &&
-    message.metadata.action !== 'user.left' &&
-    message.metadata.action !== 'spirit_layer.toggle' &&
-    message.metadata.action !== 'vibe.update' &&
-    message.metadata.action !== 'session.started' &&
-    message.metadata.action !== 'session.paused' &&
-    message.metadata.action !== 'session.ended' &&
-    message.metadata.action !== 'session.resumed' && (
+  // Speak-As metadata belongs in the header, not as a raw JSON dump.
+  const visibleMetadata = message.metadata
+    ? Object.fromEntries(Object.entries(message.metadata).filter(([key]) => key !== 'speaker' && key !== 'chatMode'))
+    : null;
+  const metadataBlock = !message.deletedAt && visibleMetadata &&
+    Object.keys(visibleMetadata).length > 0 &&
+    visibleMetadata.action !== 'user.joined' &&
+    visibleMetadata.action !== 'user.left' &&
+    visibleMetadata.action !== 'spirit_layer.toggle' &&
+    visibleMetadata.action !== 'vibe.update' &&
+    visibleMetadata.action !== 'session.started' &&
+    visibleMetadata.action !== 'session.paused' &&
+    visibleMetadata.action !== 'session.ended' &&
+    visibleMetadata.action !== 'session.resumed' && (
       <div className="mt-2 pt-2 border-t">
         <pre className="text-xs opacity-70 font-mono">
-          {JSON.stringify(message.metadata, null, 2)}
+          {JSON.stringify(visibleMetadata, null, 2)}
         </pre>
       </div>
     );
@@ -148,7 +208,7 @@ function ChatMessageInner({ message, isCurrentUser = false, isPending = false, n
       <div data-message-id={message.id} className="px-2 py-0.5 text-center text-xs text-ink-muted">
         <Bot className="mr-1 inline h-3 w-3 align-[-0.1em]" aria-hidden="true" />
         <span className="sr-only">System: </span>
-        <span className="whitespace-pre-wrap wrap-break-word">{message.content}</span>
+        <span className="whitespace-pre-wrap wrap-break-word"><SmugChatText text={shownContent} /></span>
         <span className="whitespace-nowrap" title={sentAt}> · {messageAge(message.createdAt, now)}</span>
         {metadataBlock}
       </div>
@@ -167,8 +227,9 @@ function ChatMessageInner({ message, isCurrentUser = false, isPending = false, n
     return (
       <div
         data-message-id={message.id}
-        className={`rounded-lg border px-2.5 py-1 ${bg} ${borderColor} ${isPending ? 'opacity-60' : ''} ${notSentReason ? 'border-danger/40' : ''}`}
+        className={`relative rounded-lg border px-2.5 py-1 pr-8 ${bg} ${borderColor} ${isPending ? 'opacity-60' : ''} ${notSentReason ? 'border-danger/40' : ''}`}
       >
+        {actionMenu}
         <p className={`text-sm ${textColor} whitespace-pre-wrap wrap-break-word`}>
           {isSystem && <Bot className={`${icon} text-brand-ink`} />}
           {isWhisper && (
@@ -176,6 +237,12 @@ function ChatMessageInner({ message, isCurrentUser = false, isPending = false, n
               <Lock className={`${icon} text-accent-ink`} aria-hidden="true" />
             </span>
           )}
+          {speakerImageUrl && !isWhisper && (
+            <span className="mr-1 inline-flex h-7 w-7 overflow-hidden rounded-full bg-ink/5 align-middle">
+              <img src={speakerImageUrl} alt="" className="h-full w-full object-cover" style={portraitStyle} />
+            </span>
+          )}
+
           {showShield && <Shield className={`${icon} text-warning-ink`} />}
           {isWhisper ? (
             <>
@@ -195,9 +262,10 @@ function ChatMessageInner({ message, isCurrentUser = false, isPending = false, n
               <span className="sr-only">{onlyYou}</span>
             </>
           ) : (
-            <span className={`text-xs font-semibold ${nameColor}`}>
+            <span className={`text-xs font-semibold ${nameColor}`} style={speakerNameStyle}>
               {displayName}
-              {isCurrentUser && !isSystem && ' (You)'}
+              {showYou && ' (You)'}
+              {chatMode && chatMode !== 'ic' && <span className="ml-1 font-normal uppercase opacity-60">[{chatMode}]</span>}
             </span>
           )}
           {/* The text keeps its own spaces and line breaks, so one space each. */}
@@ -214,9 +282,11 @@ function ChatMessageInner({ message, isCurrentUser = false, isPending = false, n
               </span>
             </>
           )}{' '}
-          {message.content}
+          <SmugChatText text={shownContent} />
         </p>
         {notSentRow}
+      {editNotice}
+        {editNotice}
         {metadataBlock}
       </div>
     );
@@ -225,10 +295,11 @@ function ChatMessageInner({ message, isCurrentUser = false, isPending = false, n
   return (
     <div
       data-message-id={message.id}
-      className={`p-3 rounded-lg border ${bg} ${borderColor} transition-all hover:shadow-xs ${
+      className={`relative p-3 pr-9 rounded-lg border ${bg} ${borderColor} transition-all hover:shadow-xs ${
         isPending ? 'opacity-60' : ''
       } ${notSentReason ? 'border-danger/40' : ''}`}
     >
+      {actionMenu}
       {/* Message Header */}
       <div className="flex items-center gap-2 mb-1">
         {/* Icon for special message types */}
@@ -238,6 +309,12 @@ function ChatMessageInner({ message, isCurrentUser = false, isPending = false, n
             <Lock className="w-3.5 h-3.5 text-accent-ink" aria-hidden="true" />
           </span>
         )}
+        {speakerImageUrl && !isWhisper && (
+          <span className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-ink/5">
+            <img src={speakerImageUrl} alt="" className="h-full w-full object-cover" style={portraitStyle} />
+          </span>
+        )}
+
         {showShield && <Shield className="w-3.5 h-3.5 shrink-0 text-warning-ink" />}
 
         {isWhisper ? (
@@ -258,9 +335,10 @@ function ChatMessageInner({ message, isCurrentUser = false, isPending = false, n
           </>
         ) : (
         /* Username */
-        <span className={`text-xs font-semibold ${nameColor}`}>
+        <span className={`text-xs font-semibold ${nameColor}`} style={speakerNameStyle}>
           {displayName}
-          {isCurrentUser && !isSystem && ' (You)'}
+          {showYou && ' (You)'}
+          {chatMode && chatMode !== 'ic' && <span className="ml-1 font-normal uppercase opacity-60">[{chatMode}]</span>}
         </span>
         )}
 
@@ -276,7 +354,7 @@ function ChatMessageInner({ message, isCurrentUser = false, isPending = false, n
 
       {/* Message Content */}
       <p className={`text-sm ${textColor} whitespace-pre-wrap wrap-break-word`}>
-        {message.content}
+        <SmugChatText text={shownContent} />
       </p>
 
       {notSentRow}

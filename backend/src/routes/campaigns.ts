@@ -193,7 +193,7 @@ router.get('/', authenticated, async (req: AuthenticatedRequest, res: Response) 
 
     const campaigns = memberships.map((m) => ({
       ...m.campaign,
-      userRole: m.role,
+      userRole: m.gmAccess && m.role !== 'DM' ? 'DM' : m.role,
       characterIds: m.characterIds,
     }));
 
@@ -1448,6 +1448,9 @@ router.get('/:campaignId/messages', campaignMember, async (req: AuthenticatedReq
         content: msg.content,
         type: msg.type,
         metadata: msg.metadata || null,
+        editedAt: msg.editedAt?.toISOString() ?? null,
+        deletedAt: msg.deletedAt?.toISOString() ?? null,
+        deletedById: msg.deletedById ?? null,
         createdAt: msg.createdAt.toISOString(),
       }));
 

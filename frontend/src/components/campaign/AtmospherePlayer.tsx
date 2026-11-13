@@ -17,6 +17,7 @@ import { useCampaign } from '@/contexts/CampaignContext';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import { currentVibeTrack, trackEndTarget } from '@/utils/ambientFallback';
 import type { AtmosphereAudioUpdatedBroadcast, AtmosphereEffectUpdatedBroadcast } from '@/types';
+import { getJukeboxLocalPrefs, jukeboxLocalGain } from '@/utils/jukeboxLocal';
 
 const FADE_DURATION_MS = 1500; // 1.5-second crossfade
 
@@ -75,6 +76,8 @@ export default function AtmospherePlayer() {
   const { campaign, userRole, currentVibe, activeAtmosphereAudio, updateAtmosphereAudio, updateAtmosphereEffect } = useCampaign();
   const { socket } = useWebSocket();
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const localGainRef = useRef(jukeboxLocalGain(getJukeboxLocalPrefs()));
+  const serverVolumeRef = useRef(activeAtmosphereAudio?.volume ?? 0.5);
   // Used to cancel any in-progress fade when a new command arrives
   const fadeSignalRef = useRef<{ cancelled: boolean }>({ cancelled: false });
 
@@ -91,6 +94,25 @@ export default function AtmospherePlayer() {
       volume: activeAtmosphereAudio?.volume ?? 0.5,
     };
   }, [userRole, campaign?.vibeSettings, currentVibe, activeAtmosphereAudio?.volume]);
+  useEffect(() => {
+    serverVolumeRef.current = activeAtmosphereAudio?.volume ?? 0.5;
+  }, [activeAtmosphereAudio?.volume]);
+
+  useEffect(() => {
+    const onLocalGain = (event: Event) => {
+      const detail = (event as CustomEvent<{ gain?: number }>).detail;
+      const gain = typeof detail?.gain === 'number'
+        ? Math.max(0, Math.min(1, detail.gain))
+        : jukeboxLocalGain(getJukeboxLocalPrefs());
+      localGainRef.current = gain;
+      const audio = audioRef.current;
+      if (audio) {
+        audio.volume = Math.max(0, Math.min(1, serverVolumeRef.current * gain));
+      }
+    };
+    window.addEventListener('smugvtt:jukebox-local-gain', onLocalGain);
+    return () => window.removeEventListener('smugvtt:jukebox-local-gain', onLocalGain);
+  }, []);
 
   // ============================================
   // Initialize audio element once
@@ -217,7 +239,7 @@ export default function AtmospherePlayer() {
 
     if (audio.src === normalizedNew) {
       // Same track — just update volume
-      fadeTo(audio, volume, () => {}, signal);
+      fadeTo(audio, volume * localGainRef.current, () => {}, signal);
     } else {
       // New track — fade out current, swap, fade in
       fadeTo(audio, 0, () => {
@@ -227,7 +249,7 @@ export default function AtmospherePlayer() {
         audio.load();
         audio.volume = 0;
         tryPlay(audio);
-        fadeTo(audio, volume, () => {}, signal);
+        fadeTo(audio, volume * localGainRef.current, () => {}, signal);
       }, signal);
     }
   }, [activeAtmosphereAudio, tryPlay]);

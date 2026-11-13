@@ -10,6 +10,7 @@ import { getDnD5eTemplate } from './dnd5e-templates';
 import { getPF2eTemplate } from './pathfinder2e-templates';
 import { getSR6Template } from './shadowrun6e-templates';
 import { getCoC7eTemplate } from './callOfCthulhu7e-templates';
+import { getSquadCommandTemplate } from './squadCommand-templates';
 
 export type { CharacterTemplate };
 
@@ -32,6 +33,8 @@ export function getCharacterTemplate(
       return getSR6Template(templateName);
     case GameSystem.CALL_OF_CTHULHU_7E:
       return getCoC7eTemplate(templateName);
+    case GameSystem.SQUAD_COMMAND:
+      return getSquadCommandTemplate(templateName);
     default:
       throw new Error(`Unsupported game system: ${gameSystem}`);
   }

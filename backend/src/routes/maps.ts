@@ -1755,7 +1755,7 @@ router.put('/:id/tokens/:tokenId', campaignMember, async (req: AuthenticatedRequ
       // `size` and `sightRadius` are here because both decide what the server
       // sends this player: a token always sees half its own footprint, so a
       // player who could enlarge their token would enlarge their sight.
-      const restrictedFields = ['hp', 'notes', 'showHpBar', 'type', 'disposition', 'initiative', 'visible', 'name', 'imageUrl', 'layer', 'controlledBy', 'displayMode', 'statBlock', 'creatureTemplateId', 'metadata', 'sightRadius', 'size', 'obscured'];
+      const restrictedFields = ['hp', 'notes', 'showHpBar', 'type', 'disposition', 'initiative', 'visible', 'name', 'imageUrl', 'layer', 'controlledBy', 'displayMode', 'statBlock', 'creatureTemplateId', 'metadata', 'sightRadius', 'size', 'obscured', 'characterId'];
       for (const field of restrictedFields) {
         if (updates[field] !== undefined) {
           return res.status(403).json({ error: 'Forbidden', message: `Only DM can update token field: ${field}` });
@@ -1791,9 +1791,23 @@ router.put('/:id/tokens/:tokenId', campaignMember, async (req: AuthenticatedRequ
       return res.status(400).json({ error: 'Validation Error', message: TOKEN_IMAGE_NOT_A_TOKEN_PICTURE_MESSAGE });
     }
 
+    // Unlinking an old spawned sheet is a DM-only operation. If a link is
+    // changed to another character, that sheet MUST belong to this campaign;
+    // never allow a token to reference a cross-campaign/foreign character.
+    if (updates.characterId !== undefined && shapes.value.characterId) {
+      const targetCharacter = await prisma.character.findUnique({
+        where: { id: shapes.value.characterId },
+        select: { campaignId: true },
+      });
+      if (!targetCharacter || targetCharacter.campaignId !== campaignId) {
+        return res.status(400).json({ error: 'Validation Error', message: 'Token characterId must belong to this campaign' });
+      }
+    }
+
     // Build updated token (merge updates with existing). The position and the
     // metadata are worked out under the lock, below.
     const changes: Partial<Token> = {
+      ...(updates.characterId !== undefined && { characterId: shapes.value.characterId ?? null }),
       ...(shapes.value.name && { name: shapes.value.name }),
       ...(nextImageUrl !== undefined && { imageUrl: nextImageUrl }),
       ...(shapes.value.size && { size: shapes.value.size }),

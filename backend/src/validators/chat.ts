@@ -50,6 +50,14 @@ export const ChatMessageSchema = z.object(
       .string({ error: WHISPER_RECIPIENT_REFUSAL })
       .uuid({ error: WHISPER_RECIPIENT_REFUSAL })
       .optional(),
+    speakerType: z.enum(['self', 'character', 'npc', 'narrator']).optional(),
+    speakerId: z.string().uuid().optional(),
+    mode: z.enum(['ic', 'ooc', 'narrator']).optional(),
+    portraitFrame: z.object({
+      zoom: z.number().min(0.6).max(2),
+      x: z.number().min(0).max(100),
+      y: z.number().min(0).max(100),
+    }).optional(),
   },
   { error: CHAT_CONTENT_REFUSAL }
 );

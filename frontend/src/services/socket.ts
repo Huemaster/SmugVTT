@@ -46,12 +46,14 @@ import type {
 import type {
   DrawingAddEvent,
   DrawingAddAck,
+  DrawingUpdateEvent,
   DrawingRemoveEvent,
   DrawingClearMineEvent,
   DrawingClearEvent,
   DrawingPreviewEvent,
   DrawingsRequestEvent,
   DrawingAddedBroadcast,
+  DrawingUpdatedBroadcast,
   DrawingRemovedBroadcast,
   DrawingsClearedBroadcast,
   DrawingPreviewedBroadcast,
@@ -787,6 +789,11 @@ class SocketClient {
     return this.askFor<DrawingAddAck>('drawing:add', data, DRAWING_ANSWER_TIMEOUT_MS, "That drawing didn't reach the table. Check your connection and try again.");
   }
 
+  /** Edit a battlefield zone in place; only the GM may do so. */
+  updateDrawing(data: DrawingUpdateEvent): Promise<DoneAck> {
+    return this.askFor<DoneAck>('drawing:update', data, DRAWING_ANSWER_TIMEOUT_MS, 'No answer from the server');
+  }
+
   /** Erase one drawing, and wait for the answer. */
   removeDrawing(data: DrawingRemoveEvent): Promise<DoneAck> {
     return this.askFor<DoneAck>('drawing:remove', data, DRAWING_ANSWER_TIMEOUT_MS, 'No answer from the server');
@@ -814,6 +821,10 @@ class SocketClient {
 
   onDrawingAdded(callback: EventCallback<DrawingAddedBroadcast>) {
     this.addListener('drawing:added', callback);
+  }
+
+  onDrawingUpdated(callback: EventCallback<DrawingUpdatedBroadcast>) {
+    this.addListener('drawing:updated', callback);
   }
 
   onDrawingRemoved(callback: EventCallback<DrawingRemovedBroadcast>) {
