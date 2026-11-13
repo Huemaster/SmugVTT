@@ -47,12 +47,11 @@ SmugVTT is a **solo-maintained, independent project**, not an official CozyVTT r
 
 ## What makes SmugVTT different?
 
-### Available in the public foundation
+### What is currently on public `main`
 
-- **Independent identity:** SmugVTT branding, golden-apple artwork, browser/application identity, and **Smug Gold** styling.
-- **Self-hosted starting point:** Docker Compose setup, deployment guidance, and retained compatibility with existing storage formats where migrations are not warranted.
-- **An explicit design philosophy:** Map, Chat, and Canvas should be treated as equal ways to run a tabletop session.
-- **Separate stewardship:** Public documentation, attribution, and a roadmap for changes developed independently of CozyVTT.
+The public foundation has the original CozyVTT functionality, SmugVTT-specific configuration and documentation, and privacy-safe **Squad Command** learning samples. A logo, color theme, and project name establish identity, but are **not** themselves gameplay features or reasons to choose this fork.
+
+**Most SmugVTT gameplay additions are still in local development builds pending source integration and release checks.** They are detailed below so visitors can follow the work without mistaking it for a published download.
 
 ### Built or prototyped in local development builds — not yet on public `main`
 
@@ -91,6 +90,24 @@ These local tools are being generalized as **Squad Command**, an **optional** co
 
 Some of these systems are only partially verified in the live installation. In particular, cleanup of ambiguous older records and recent combat-status/chat fixes are still subject to regression testing.
 
+### Battlefield Overlay Toolkit — local development (v0.8.4 series)
+
+A new GM toolkit for visual and tactical map annotations, designed to work without forcing a particular ruleset:
+
+- **Color-coded zones** for light/heavy cover, high/low ground, smoke, obscuration, healing, and hazards.
+- **Editable shapes:** draw, select, move, resize, duplicate, recolor, and remove rectangles, ellipses, and polygons, with adjustable transparency.
+- **Visible textures and explanations:** hatched/dotted fills and mouseover plates describing each area.
+- **Per-player artwork visibility controls:** hide visible overlay artwork without disabling the gameplay effect or exposing GM-only information.
+- **Positional effects:** token containment detection; cover affects applicable sheetless Squad Command attacks, while smoke and elevation use existing modifiers where supported.
+- **One-shot healing AoE:** GM reviews highlighted eligible targets and explicitly approves or declines a single healing activation. No healing over time, automatic repeat trigger, or repeated entry healing.
+- **Token status feedback:** active conditions, cover, Rally/Eager/Relentless readiness, and other tracked traits are being surfaced in compact token badges and hover details.
+
+*Development verification:* Zone creation/editing, Light/Heavy Cover effects, improved textures, and cover hover labels have received local user confirmation. More recent targeting, status, dialogue-panel, and combat fixes are still pending a coordinated public build and regression pass. The full toolkit is **not yet on this repository's default branch**.
+
+### Safety, backwards compatibility, and game-system separation
+
+The generic Map/Chat/Canvas/Scene work is intended to serve **any RPG system**. Squad Command is an optional rules module: its combat mechanics, unit templates, and status tracking should not be imposed on other systems. The public module will contain **two learning units and two learning weapons** rather than an exported private campaign roster. Existing user-created characters and tokens must remain intact through upgrades.
+
 ## Development roadmap
 
 These are *plans*, not features in the public download.
@@ -98,7 +115,7 @@ These are *plans*, not features in the public download.
 | Pass | Focus | Status |
 | :--- | :--- | :--- |
 | **v0.8.3 — Combat reliability** | Finish status indicators and hover cards; verify sheetless-unit state synchronization, action restrictions, Overwatch/Rally behavior, and turn controls. | **In progress locally** |
-| **v0.8.4 — Battlefield tools** | GM cover/elevation/visibility overlays; movable area-of-effect templates; square/hex grid options; optional coordinates; consistent measuring/targeting. | **Planned** |
+| **v0.8.4 — Battlefield zones** | Colored overlays, editable zones, textured fills, player artwork toggle, positional effects, and one-shot GM-confirmed healing; further hex-grid work remains separate. | **Developed locally; integration/testing pending** |
 | **v0.8.5 — Scene and Canvas polish** | Shared staging, quoted in-character dialogue, portrait speech bubbles, persistence, and permission/regression testing. | **Tentative** |
 | **Public release preparation** | Integrate reviewed local changes, run tests, document compatibility and migrations, and publish source/release notes. | **Required before release** |
 
@@ -152,6 +169,10 @@ SmugVTT does not automatically incorporate every upstream CozyVTT release. Upstr
 - [Security Policy](SECURITY.md) — private vulnerability reporting
 
 Focused bug reports and proposed improvements are welcome. Please use **fictional examples** and do not submit private character records, campaign material, credentials, or personal data.
+
+## Documentation policy
+
+**Every new SmugVTT-specific user-facing feature must be documented in this README and the changelog when its source is integrated.** Feature descriptions must distinguish available public releases from local prototypes and future plans. Branding updates alone are not gameplay features.
 
 ## Credits and license
 
