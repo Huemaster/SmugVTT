@@ -1,14 +1,22 @@
 {
-  "name": "CozyVTT",
-  "short_name": "CozyVTT",
-  "description": "A self-hosted virtual tabletop",
+  "name": "SmugVTT",
+  "short_name": "SmugVTT",
+  "description": "A self-hosted, flexible virtual tabletop",
   "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",
-  "theme_color": "#5c6b3c",
-  "background_color": "#fff9e6",
+  "theme_color": "#d8a83e",
+  "background_color": "#19191f",
   "icons": [
-    { "src": "/favicon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+    {
+      "src": "/favicon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
   ]
 }

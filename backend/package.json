@@ -1,7 +1,7 @@
 {
   "name": "cozyvtt-backend",
   "version": "1.6.0",
-  "description": "CozyVTT Backend - Self-hosted Virtual Tabletop",
+  "description": "SmugVTT Backend - Self-hosted Virtual Tabletop",
   "main": "dist/server.js",
   "scripts": {
     "dev": "node --watch -r ts-node/register src/server.ts",

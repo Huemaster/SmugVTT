@@ -1,5 +1,5 @@
 /**
- * CozyVTT Theme Definitions
+ * SmugVTT Theme Definitions
  *
  * Each theme defines RGB channel triplets (e.g. "74 93 78") for every CSS
  * variable consumed by Tailwind, set on the page as --rgb-x. The @theme block in
@@ -61,7 +61,7 @@ export const PRESET_THEMES: ThemeDefinition[] = [
   {
     id: 'cozy-default',
     name: 'Cozy Default',
-    description: 'The original warm, earthy CozyVTT palette',
+    description: 'The original warm, earthy upstream CozyVTT palette',
     category: 'warm',
     colors: {
       brand: '74 93 78',

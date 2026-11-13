@@ -1,4 +1,4 @@
-# CozyVTT Frontend
+# SmugVTT Frontend
 
 React 19 + TypeScript + Vite SPA. Talks to the [backend](../backend/) over REST and Socket.io. Needs Node.js 26, the version `.nvmrc` names.
 

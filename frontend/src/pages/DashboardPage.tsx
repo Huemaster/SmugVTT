@@ -88,7 +88,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-brand-ink font-heading">
-                  CozyVTT
+                  SmugVTT
                 </h1>
                 <p className="text-sm text-warm-gray">
                   Welcome back, {user?.displayName}
@@ -123,7 +123,7 @@ export default function DashboardPage() {
               <Button
                 onClick={handleLogout}
                 variant="danger" className="flex items-center gap-2"
-                aria-label="Log out of CozyVTT"
+                aria-label="Log out of SmugVTT"
               >
                 <LogOut className="w-4 h-4" aria-hidden="true" />
                 <span className="hidden sm:inline">Logout</span>

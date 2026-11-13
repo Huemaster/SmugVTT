@@ -1,20 +1,21 @@
-<p align="center">
-  <img src="assets/default-logo.png" alt="CozyVTT Logo" width="300" />
-</p>
+<p align="center"><img src="assets/default-logo.png" alt="SmugVTT golden apple" width="160" /></p>
+<h1 align="center">SmugVTT</h1>
+<p align="center"><strong>Three Pillars. One Tabletop.</strong><br /><em>A VTT should adapt to the way people play.</em></p>
 
-<p align="center">
-  <a href="https://cozyvtt.com">cozyvtt.com</a>
-</p>
-
-A self-hosted, browser-based Virtual Tabletop (VTT) platform. Designed for ease of use and narrative-driven tabletop RPG campaigns where atmosphere matters more than mechanics.
+An independently maintained, self-hosted Virtual Tabletop (VTT) derived from CozyVTT. Designed to support diverse tabletop RPG styles and adaptable group workflows.
 
 > **Self-hosted** — you own your data. One instance can host multiple concurrent campaigns run by different GMs for different player groups.
+
+
+> **Fork status:** This branch rebrands the upstream-based CozyVTT v1.6.0 application. The proposed three-pillar Map / Chat / Canvas workspace is a future SmugVTT direction, **not a completed feature of this release**. Existing map and chat features are available; a distinct Canvas pillar is not yet included.
+
+> **Upstream credit:** SmugVTT is an independent fork of [CozyVTT](https://github.com/CheekyChinchilla/CozyVTT), not an official release. Upstream authorship, license, and third-party attribution are preserved. See [LICENSE](LICENSE), [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md), and [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt).
 
 ---
 
 ## ⚠️ Self-Hosted Reality Check
 
-CozyVTT is a self-hosted, community-maintained project run **by you** on **your hardware**. It is provided as-is, with no warranty, no SLA, and no central support — see the [AGPL-3.0 License](LICENSE) for the legal version of this.
+SmugVTT is a self-hosted, community-maintained project run **by you** on **your hardware**. It is provided as-is, with no warranty, no SLA, and no central support — see the [AGPL-3.0 License](LICENSE) for the legal version of this.
 
 **You are responsible for the security and uptime of your instance.** We do our best (Argon2id passwords, MFA, magic-byte file validation, per-endpoint rate limiting, security headers on the app page, a backend that runs as an unprivileged user — the full list is under [Features → Security](#security)), but the operating environment is yours.
 
@@ -28,7 +29,7 @@ CozyVTT is a self-hosted, community-maintained project run **by you** on **your 
 - Configure regular database backups (`backend/scripts/backup.sh` + cron — see [DEPLOYMENT.md](docs/DEPLOYMENT.md))
 - Review the **Hardening Checklist** in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) before flipping public
 
-If those words mean nothing to you, run CozyVTT **only on your local network** (e.g. via a Tailscale node, ZeroTier, or just LAN-accessible) until you've leveled up your sysadmin chops. That's a perfectly valid way to play — your campaigns aren't worse for being LAN-only, and you skip the whole attack-surface conversation.
+If those words mean nothing to you, run SmugVTT **only on your local network** (e.g. via a Tailscale node, ZeroTier, or just LAN-accessible) until you've leveled up your sysadmin chops. That's a perfectly valid way to play — your campaigns aren't worse for being LAN-only, and you skip the whole attack-surface conversation.
 
 If you find a security issue, please report it privately per [SECURITY.md](SECURITY.md) rather than filing a public issue.
 
@@ -41,20 +42,20 @@ If you find a security issue, please report it privately per [SECURITY.md](SECUR
 - **Role-based access control** — Platform Admin, Campaign DM, Player, and Spectator roles; the DM seat can be handed to another member without losing ownership of the campaign; players and spectators can leave a campaign on their own
 - **Setup wizard** — guided first-run initialization; no manual database seeding required. It asks for a one-time setup token printed in the backend log, so only the person running the server can create the first administrator
 - **Admin Panel** — user management, system settings, activity logs, uploaded files, instance backups (database and uploaded files)
-- **Works on phones and tablets** — below 1,024 pixels wide the campaign page has a layout of its own: the map across the screen, a bar of Map, Chat, Dice, Initiative, Party and More along the bottom, and each panel in a sheet over the map; menus open as lists from the bottom of the screen, and Back closes what is open. On a phone on its side the bar moves into the header. A tablet turned across 1,024 pixels switches layout without losing anything; CozyVTT can also go on the home screen from the browser's own menu
+- **Works on phones and tablets** — below 1,024 pixels wide the campaign page has a layout of its own: the map across the screen, a bar of Map, Chat, Dice, Initiative, Party and More along the bottom, and each panel in a sheet over the map; menus open as lists from the bottom of the screen, and Back closes what is open. On a phone on its side the bar moves into the header. A tablet turned across 1,024 pixels switches layout without losing anything; SmugVTT can also go on the home screen from the browser's own menu
 - **Keyboard and screen reader support** — dialogs and side panels are named, keep focus and close on Escape; the dice and chat logs announce new entries; initiative runs from the keyboard; a token can be selected, moved, turned and stepped through from the keyboard, a screen reader hears which one is selected, and **?** lists the map's shortcuts; reduced-motion settings are honoured
 
 ### Campaign Tools
-- **Interactive map canvas** — upload map images or draw a map in CozyVTT, place tokens, click a token to pick it up and click a square to put it down, or select it and move it with the arrow keys, with every move shown to the table in real time; on a tablet, slide a token with your finger or tap it and tap a square, tap a token for its details, press and hold a token, a door, a character or a combatant for its menu, and pinch to zoom
-- **Draw a map in CozyVTT** — the DM makes a blank map of the size and colour they choose and paints it with a brush, an eraser, lines, curves, rectangles, ellipses, polygons, rooms that add their own walls, stamps, textures, a fill bucket, text and an eyedropper, by mouse, finger or stylus, on a phone or a tablet too, with undo and redo and a draft kept in the browser until it is saved, then saves it as the map's picture, during play too; tokens, walls, lights and fog work on it as on any map
+- **Interactive map canvas** — upload map images or draw a map in SmugVTT, place tokens, click a token to pick it up and click a square to put it down, or select it and move it with the arrow keys, with every move shown to the table in real time; on a tablet, slide a token with your finger or tap it and tap a square, tap a token for its details, press and hold a token, a door, a character or a combatant for its menu, and pinch to zoom
+- **Draw a map in SmugVTT** — the DM makes a blank map of the size and colour they choose and paints it with a brush, an eraser, lines, curves, rectangles, ellipses, polygons, rooms that add their own walls, stamps, textures, a fill bucket, text and an eyedropper, by mouse, finger or stylus, on a phone or a tablet too, with undo and redo and a draft kept in the browser until it is saved, then saves it as the map's picture, during play too; tokens, walls, lights and fog work on it as on any map
 - **Prepare a map while the table plays** — the DM opens any map on their own screen to set up its walls, lights, fog, tokens and drawings while the players stay on theirs and are sent nothing of it, then brings everyone over with one button
 - **Token system** — player, NPC, and object token types with disposition (friendly/neutral/hostile), HP bars, conditions, stat blocks, and notes; three display modes (pog, top-down, full-art); tokens turn to face any direction; colored-letter placeholders for tokens without images; the DM can hide a token from players or obscure what it is, and players are sent only what they may see of each token
 - **Creature library** — browse, search, and place creatures from the SRD bestiary (imported from Open5e by an administrator, with one button) or custom campaign-specific templates; per-campaign favorites with star toggle; duplicate SRD creatures to customize; edit custom creatures in-place; save token images back to templates
 - **Token templates** — save reusable token configurations (image, stats, HP, size, disposition, full NPC stat block); place from library or save from map context menu; copy templates between campaigns the DM owns
 - **NPC right-click rolls** — DMs right-click any NPC token to roll abilities, saves, skills, attacks, and damage parsed from its stat block; advantage/disadvantage selector for d20 systems; free-form custom roll fallback for systems whose stat blocks have nothing to parse
-- **Campaign export/import** — export campaigns as portable `.cozyvtt` archives; import on any CozyVTT instance; includes maps, tokens, drawings, creatures, templates, and assets; multi-step preview flow; optional audio toggle; secured against path traversal, zip bombs, and malicious files
+- **Campaign export/import** — export campaigns as portable `.cozyvtt` archives; import on any SmugVTT instance; includes maps, tokens, drawings, creatures, templates, and assets; multi-step preview flow; optional audio toggle; secured against path traversal, zip bombs, and malicious files
 - **Walls & dynamic lighting** — DM-drawn wall segments (walls, doors, windows) with raycasting visibility; draw, polygon, and brush drawing modes; snap-to-grid and snap-to-endpoint; split, select, erase, and merge point tools; multi-select with Shift, a drag-box or Ctrl+A, then move or delete the lot together; snap-to-wall door/window placement (auto-splits existing walls); players only see what their character can: bright light clearly, dim light and the token's darkvision at half, nothing beyond, and light never reveals through a wall — a lit room is visible only to someone with line of sight into it; per-map Global Illumination lights everything in line of sight for tables that prefer it; explored areas are remembered per player and shown in grey until seen again; door interactions for both DM and players; bright/dim light radii matching D&D 5e and PF2e rules; named light presets (Candle, Torch, Lamp, Lantern, Campfire); overlapping dim zones combine to bright
-- **Universal VTT import/export** — bring in a `.uvtt`, `.dd2vtt` or `.df2vtt` map from Dungeondraft, Dungeon Alchemist, Czepeku and others, with its walls, doors and lights already placed, and export any map back out. One file is one map, as the format intends; if a file's walls reach outside its own picture, CozyVTT says so before importing rather than leaving you to wonder
+- **Universal VTT import/export** — bring in a `.uvtt`, `.dd2vtt` or `.df2vtt` map from Dungeondraft, Dungeon Alchemist, Czepeku and others, with its walls, doors and lights already placed, and export any map back out. One file is one map, as the format intends; if a file's walls reach outside its own picture, SmugVTT says so before importing rather than leaving you to wonder
 - **Fog of war** — drag a box to reveal or hide chunks of the map; the selection snaps to whole grid squares, with animated fade transitions
 - **Spirit layer** — a second canvas layer for ethereal / astral / out-of-body scenes, hidden from players by default
 - **Initiative tracker** — real-time combat turn order that follows each token; the DM runs it and players roll their own initiative. Players see every combatant the DM has not hidden, on the map the table is looking at and on their own plane, even one they cannot yet find in the dark or under fog, and a creature's hit points only when the DM turns its HP bar on. The acting token is ringed on the map for everyone, hovering a name highlights its token (and vice versa), and clicking or tapping a combatant's name, or right-clicking its row, opens their sheet and rolls
@@ -83,7 +84,7 @@ If you find a security issue, please report it privately per [SECURITY.md](SECUR
 - **Whispers** — a chat message to one member, seen by the two of you alone, from the **To** list or with `/w` (or `/whisper`) and a name
 - **System messages** — automatic notices when a session starts, pauses, resumes or ends, when the DM changes the time of day, and when the spirit layer is revealed or hidden
 - **Personal notes** — private per-campaign notes in Markdown, with a rendered preview and autosave; readable only by their author, enforced server-side
-- **Documents** — upload a PDF, plain text or Markdown rulebook or handout, or write one in the app, and read it without leaving CozyVTT; a DM shares documents with a campaign, and every member reads them from inside the session; text and Markdown documents can be edited by their uploader
+- **Documents** — upload a PDF, plain text or Markdown rulebook or handout, or write one in the app, and read it without leaving SmugVTT; a DM shares documents with a campaign, and every member reads them from inside the session; text and Markdown documents can be edited by their uploader
 - **Session history** — every finished session with its date, length and the recap the DM wrote; the DM can edit or clear any past recap
 
 ### Theming & Customization
@@ -104,7 +105,7 @@ If you find a security issue, please report it privately per [SECURITY.md](SECUR
 - **Admin-approval registration** (optional)
 - **File upload validation** — magic-byte content checks (not just MIME header), size limits by type; text uploads must genuinely be text, and documents are served as plain text or PDF, never as a web page
 - **Per-endpoint rate limiting** — global API limit, strict auth limit, asset upload limit (configurable via `ASSET_UPLOAD_RATE_LIMIT`), a limit on campaign invitation emails per DM, and per-account limits on everything sent to the live table, set far above what a game sends
-- **Security headers on the app page** — a Content-Security-Policy that allows script only from your own instance, plus `X-Frame-Options`, `nosniff`, `Referrer-Policy` and `Permissions-Policy`. Injected script cannot run, the app cannot be framed by another site, and the browser will not send data to an address CozyVTT does not use. The Docker setup sends them; an install without Docker gets them from the Nginx example in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#5-serve-with-nginx)
+- **Security headers on the app page** — a Content-Security-Policy that allows script only from your own instance, plus `X-Frame-Options`, `nosniff`, `Referrer-Policy` and `Permissions-Policy`. Injected script cannot run, the app cannot be framed by another site, and the browser will not send data to an address SmugVTT does not use. The Docker setup sends them; an install without Docker gets them from the Nginx example in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#5-serve-with-nginx)
 - **WebSocket campaign isolation** — server-authenticated campaign membership; no client-spoofing
 - **The backend runs as an unprivileged user** — the container starts as root only long enough to fix ownership on your mounted folders, then drops to `appuser` before the app itself runs. In the two nginx containers the master process runs as root, as nginx's own image does, and the worker processes that handle requests run as the unprivileged `nginx` user. The database container runs PostgreSQL as the unprivileged `postgres` user, as its official image does. Every container runs with `no-new-privileges` and drops every Linux capability except the few its start-up needs, such as changing a folder's owner and switching user, and the frontend, the proxy and the backend have read-only filesystems, apart from the folders each writes to
 - **Production refuses to start** with a placeholder `SESSION_SECRET` or `DATABASE_PASSWORD`, or a `SESSION_SECRET` shorter than 32 characters
@@ -161,8 +162,8 @@ If you find a security issue, please report it privately per [SECURITY.md](SECUR
 ### Docker (Recommended)
 
 ```bash
-git clone https://github.com/CheekyChinchilla/CozyVTT.git
-cd CozyVTT
+git clone https://github.com/CheekyChinchilla/SmugVTT.git
+cd SmugVTT
 
 # Copy it, then set at least DATABASE_PASSWORD and SESSION_SECRET (see docs/DEPLOYMENT.md)
 cp .env.example .env
@@ -175,7 +176,7 @@ Navigate to `http://localhost` and complete the setup wizard. It asks for the se
 
 ### Local Development
 
-If you've cloned the repo to hack on CozyVTT itself, use the dev compose file instead — it enables hot reload, publishes the frontend, backend and database ports on this computer only, and runs `NODE_ENV=development`:
+If you've cloned the repo to hack on SmugVTT itself, use the dev compose file instead — it enables hot reload, publishes the frontend, backend and database ports on this computer only, and runs `NODE_ENV=development`:
 
 ```bash
 docker compose -f docker-compose.dev.yml up
@@ -253,30 +254,30 @@ Pictures also have fixed limits: at most 16,384 pixels on each side, and for an 
 | [Development Setup](docs/DEVELOPMENT.md) | Local development guide |
 | [Architecture](docs/ARCHITECTURE.md) | System architecture and design decisions |
 | [Deployment](docs/DEPLOYMENT.md) | Production deployment guide |
-| [Contributing](docs/CONTRIBUTING.md) | How to contribute to CozyVTT |
+| [Contributing](docs/CONTRIBUTING.md) | How to contribute to SmugVTT |
 | [Game Systems](docs/GAME_SYSTEMS.md) | How to add new game system support |
 | [API Reference](docs/API_REFERENCE.md) | REST API and WebSocket event reference |
-| [API changes](docs/api-changes/README.md) | What changed for programs driving CozyVTT, release by release |
+| [API changes](docs/api-changes/README.md) | What changed for programs driving SmugVTT, release by release |
 | [WebSocket Events](backend/docs/WEBSOCKET_DOCUMENTATION.md) | Detailed Socket.io event schema |
 | [Future Features](docs/FUTURE_FEATURES.md) | Backlog of planned work |
 | [Security Policy](SECURITY.md) | How to report vulnerabilities |
 | [Changelog](CHANGELOG.md) | Release history |
-| [Third-Party Licenses](THIRD_PARTY_LICENSES.md) | Licences of the fonts, icons, libraries and game content CozyVTT uses |
+| [Third-Party Licenses](THIRD_PARTY_LICENSES.md) | Licences of the fonts, icons, libraries and game content SmugVTT uses |
 | [SRD Attribution](SRD_ATTRIBUTION.md) | Attribution for the D&D 5e SRD creatures an administrator can import |
 
 ---
 
 ## Community Projects
 
-Built by other people, on their own terms. They are not part of CozyVTT, are not maintained by this project, and are listed because they are useful — check their own documentation and licence before running them.
+Built by other people, on their own terms. They are not part of SmugVTT, are not maintained by this project, and are listed because they are useful — check their own documentation and licence before running them.
 
 | Project | What it does |
 |---------|--------------|
 | [cozyvtt-mcp](https://github.com/yanjingzhaisun/cozyvtt-mcp) | An MCP bridge that lets an AI assistant act in a campaign — post to chat, roll dice, move tokens, change maps and run initiative. MIT licensed, independent of this codebase. |
 
-A note on building things like this. CozyVTT's HTTP and WebSocket surfaces are **not a public API**: they are what the web client calls, they are not versioned, and they carry no compatibility promise, so they can change in any release. They *can* be driven by a program — signing in with your own email and password returns a session cookie that authenticates both, and a script can do exactly what the web client does, as that user with that user's permissions. Unsupported is the honest word for it, not impossible.
+A note on building things like this. SmugVTT's HTTP and WebSocket surfaces are **not a public API**: they are what the web client calls, they are not versioned, and they carry no compatibility promise, so they can change in any release. They *can* be driven by a program — signing in with your own email and password returns a session cookie that authenticates both, and a script can do exactly what the web client does, as that user with that user's permissions. Unsupported is the honest word for it, not impossible.
 
-That is why `cozyvtt-mcp` pins to a CozyVTT version and keeps a compatibility table. Check that table before pairing the two: the surface it builds on is unversioned and can change in any release.
+That is why `cozyvtt-mcp` pins to a SmugVTT version and keeps a compatibility table. Check that table before pairing the two: the surface it builds on is unversioned and can change in any release.
 
 ---
 
@@ -301,6 +302,6 @@ Backups made from the Admin Panel are not kept here: they go in `backend/backups
 
 GNU Affero General Public License v3.0 — see [LICENSE](LICENSE) for details.
 
-CozyVTT is free to use, self-host, and fork. The AGPLv3 requires that any modified version you run as a network service must also make its source code available under the same license.
+SmugVTT is free to use, self-host, and fork. The AGPLv3 requires that any modified version you run as a network service must also make its source code available under the same license.
 
 For third-party font and content licenses, see [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
