@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "note": "Illustrative learning templates only. Not imported automatically and not a complete ruleset.",
+  "systemId": "SQUAD_COMMAND",
+  "factions": [
+    {
+      "id": "faction-1",
+      "label": "Faction 1"
+    },
+    {
+      "id": "faction-2",
+      "label": "Faction 2"
+    },
+    {
+      "id": "faction-3",
+      "label": "Faction 3"
+    },
+    {
+      "id": "faction-4",
+      "label": "Faction 4"
+    }
+  ],
+  "weapons": [
+    {
+      "id": "example-rifle",
+      "name": "Example Rifle",
+      "kind": "attack",
+      "damage": "1d6",
+      "accuracy": 0,
+      "ap": "0",
+      "range": "close",
+      "effectiveRange": 3,
+      "maxRange": 6,
+      "canOverwatch": true
+    },
+    {
+      "id": "example-launcher",
+      "name": "Example Launcher",
+      "kind": "attack",
+      "damage": "2d6",
+      "accuracy": -1,
+      "ap": "1",
+      "range": "medium",
+      "effectiveRange": 6,
+      "maxRange": 9,
+      "canOverwatch": false
+    }
+  ],
+  "units": [
+    {
+      "id": "example-infantry",
+      "name": "Example Infantry",
+      "faction": "faction-1",
+      "profile": "trooper",
+      "stats": {
+        "hpCurrent": 10,
+        "hpMax": 10,
+        "defense": 9,
+        "av": 0,
+        "move": 6,
+        "shieldCurrent": 0,
+        "shieldMax": 0,
+        "suppression": 0
+      },
+      "weaponIds": [
+        "example-rifle"
+      ]
+    },
+    {
+      "id": "example-support",
+      "name": "Example Support",
+      "faction": "faction-2",
+      "profile": "trooper",
+      "stats": {
+        "hpCurrent": 12,
+        "hpMax": 12,
+        "defense": 8,
+        "av": 1,
+        "move": 5,
+        "shieldCurrent": 0,
+        "shieldMax": 0,
+        "suppression": 0
+      },
+      "weaponIds": [
+        "example-launcher"
+      ]
+    }
+  ]
+}
