@@ -58,7 +58,7 @@ describe('the Characters page on a phone', () => {
   it('wraps its header, the buttons going under the title', async () => {
     renderPage();
     const title = await screen.findByRole('heading', { name: 'My Characters' });
-    expect(classes(around(title, screen.getByRole('button', { name: 'Log out of CozyVTT' })))).toEqual(expect.arrayContaining(WRAPS));
+    expect(classes(around(title, screen.getByRole('button', { name: 'Log out of SmugVTT' })))).toEqual(expect.arrayContaining(WRAPS));
   });
 
   it('wraps the list heading, Import and Create Character going under it', async () => {

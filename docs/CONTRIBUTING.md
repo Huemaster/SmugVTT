@@ -3,6 +3,13 @@
 SmugVTT is an independently maintained fork of [CozyVTT](https://github.com/CheekyChinchilla/CozyVTT). Contributions are welcome, but maintainership is volunteer-based and acceptance is not guaranteed.
 
 ## Bugs and feature requests
+Please include these details in a bug report:
+
+- SmugVTT version (or git commit hash)
+- Browser and OS
+- Steps to reproduce
+- Expected vs actual behavior
+- Console output or screenshots (after removing secrets)
 
 Before opening a new report, search [existing issues](https://github.com/Huemaster/SmugVTT/issues). For bugs, include a short reproduction, expected and actual behavior, the affected version/commit, your browser and operating system, and whether you use Docker or a manual installation.
 
@@ -33,7 +40,7 @@ npm ci
 npx prisma generate
 npx tsc --noEmit
 npm run lint
-npm test -- --runInBand
+npx jest --runInBand
 ```
 
 Backend integration tests require a test PostgreSQL database. The existing [GitHub Actions workflow](../.github/workflows/ci.yml) also checks documentation, dependencies, production images, and browser smoke tests.

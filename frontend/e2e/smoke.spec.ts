@@ -24,7 +24,7 @@ test('signs in and out', async ({ page }) => {
   await signIn(page);
   await expect(page.getByRole('heading', { name: 'Your Campaigns' })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Log out of CozyVTT' }).click();
+  await page.getByRole('button', { name: 'Log out of SmugVTT' }).click();
 
   await expect(page.getByRole('button', { name: 'Sign In' })).toBeVisible();
   expect((await page.request.get('/api/auth/me')).status()).toBe(401);

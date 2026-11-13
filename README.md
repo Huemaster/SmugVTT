@@ -29,10 +29,12 @@ Built on [CozyVTT](https://github.com/CheekyChinchilla/CozyVTT), SmugVTT aims to
 The current application supports **map-based play** and **chat/dice**. A separate general-purpose **Canvas** workspace is part of the project's design direction; it isn't a shipped standalone feature yet. The guiding idea is to make Map, Chat, and Canvas equally useful ways to play.
 
 See the [User Guide](docs/USER_GUIDE.md) for more detail on the existing tools.
+To move a token on the current map, click it to pick it up and click its destination to put it down, or select it and use the arrow keys.
 
 ## Quick start
 
 **Requirements:** Docker with Docker Compose, Git, and a modern web browser. This is the recommended self-hosted installation method.
+- Node.js 26+ for a manual, non-Docker installation (Docker provides Node.js inside its images).
 
 ~~~bash
 git clone https://github.com/Huemaster/SmugVTT.git
@@ -59,6 +61,7 @@ docker compose logs backend
 Open **http://localhost** in your browser and complete the setup wizard. The backend logs contain the one-time setup token requested by the wizard.
 
 For public access, configure the correct `CORS_ORIGIN`, HTTPS, trusted proxy settings, and backups before sharing your instance. See the [Deployment Guide](docs/DEPLOYMENT.md) for detailed setup, upgrades, and troubleshooting. Your data lives on infrastructure you control.
+The backend switches to an unprivileged `appuser`. In the bundled Nginx containers, the master process runs as root while worker processes run as the `nginx` user. Each container drops every Linux capability except the few its start-up needs. See the deployment guide for the complete security model.
 
 ## Documentation
 
