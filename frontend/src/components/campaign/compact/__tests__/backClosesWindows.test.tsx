@@ -83,7 +83,7 @@ function MapLibrary({ open, onClose }: { open: boolean; onClose: () => void }) {
 /** The compact arrangement under the page, with its Map Library, and `party` as the Party content. */
 function CompactPage({ party = <button type="button">party content</button> }: { party?: ReactNode }) {
   const [maps, setMaps] = useState(false);
-  const parts = { map: <div>the map</div>, session: <button type="button">session panels</button>, party };
+  const parts = { map: <div>the map</div>, session: <button type="button">session panels</button>, party, stage: <div>scene stage</div> };
   return (
     <LayoutProvider compact>
       <TableHosts parts={parts}>

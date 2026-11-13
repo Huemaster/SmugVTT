@@ -890,8 +890,8 @@ model CampaignNpc {
   gmNotes    String?  @db.Text
   revealed   Boolean  @default(false)
   favorite   Boolean  @default(false)
-  controllerIds String[]
-  tags          String[]
+  controllerIds String[] @default([])
+  tags          String[] @default([])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -945,13 +945,13 @@ model CampaignScene {
   location       String?
   timeLabel      String?
   imageUrl       String?
-  participantIds String[]
+  participantIds String[] @default([])
   summary        String?  @db.Text
   gmNotes        String?  @db.Text
   revealed       Boolean  @default(false)
   active          Boolean  @default(false)
   boardVisibility String   @default("gm")
-  boardState      Json     @default("{}")
+  boardState      Json     @default("{\"background\":\"#f4efe6\",\"elements\":[]}")
   boardVersion    Int      @default(1)
   startedAt      DateTime?
   endedAt        DateTime?
@@ -960,6 +960,7 @@ model CampaignScene {
   updatedAt DateTime @updatedAt
 
   @@index([campaignId, createdAt])
+  @@index([campaignId, active])
 }
 
 model CampaignEntry {
@@ -973,7 +974,7 @@ model CampaignEntry {
   content    String?  @db.Text
   gmNotes    String?  @db.Text
   imageUrl   String?
-  tags       String[]
+  tags       String[] @default([])
   revealed   Boolean  @default(false)
   pinned     Boolean  @default(false)
   sortOrder  Int      @default(0)
@@ -1023,7 +1024,7 @@ model ActionTransaction {
   actorId    String?
   actionId   String?
   actionName String
-  targetIds  String[]
+  targetIds  String[] @default([])
   beforeState Json?
   afterState  Json?
   undoneAt   DateTime?

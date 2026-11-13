@@ -32,6 +32,7 @@ const parts = {
   map: <div data-testid="map">the map</div>,
   session: <button type="button">session panels</button>,
   party: <button type="button">party content</button>,
+  stage: <div>scene stage</div>,
 };
 
 function openers() {
