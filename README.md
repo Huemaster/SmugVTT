@@ -10,61 +10,105 @@
 </p>
 
 <p align="center">
-  <a href="#the-idea">The idea</a> ·
-  <a href="#project-status">Project status</a> ·
-  <a href="#direction">Direction</a> ·
-  <a href="#getting-started">Getting started</a> ·
+  <a href="#why-smugvtt">Why SmugVTT?</a> ·
+  <a href="#what-makes-smugvtt-different">Features</a> ·
+  <a href="#development-roadmap">Roadmap</a> ·
+  <a href="#getting-started">Install</a> ·
   <a href="#credits-and-license">Credits</a>
 </p>
 
 ---
 
-## The idea
+## Why SmugVTT?
 
-**SmugVTT** is an independently maintained fork of [CozyVTT](https://github.com/CheekyChinchilla/CozyVTT), created to explore a virtual tabletop that adjusts to different ways of playing rather than expecting every session to follow the same workflow.
+**SmugVTT** is an independently maintained, self-hosted fork of [CozyVTT](https://github.com/CheekyChinchilla/CozyVTT). It explores a different approach to virtual tabletop design: let the group choose whether a session revolves around a tactical map, in-character conversation, or arranging visual material, rather than forcing every campaign into the same interface.
 
-The guiding principle is **Three Pillars. One Tabletop.** A campaign might depend on maps, unfold almost entirely through conversation, or benefit from a space for arranging information and ideas. No single approach should dominate the interface.
+**Three Pillars. One Tabletop.**
 
-This is a **solo-maintained project**, not a company, a team, or an official CozyVTT release. The existing application and most of its functionality come from CozyVTT. SmugVTT's purpose is to take that foundation in a different design direction, with clear credit to the original project.
+| Pillar | Purpose |
+| :--- | :--- |
+| **Map** | A spacious, interactive battlefield and exploration workspace. |
+| **Chat** | A first-class place for conversation, character portrayal, and dice. |
+| **Canvas** | A free-form visual workspace for staging, images, handouts, and ideas. |
 
-## The three pillars
+A **Scene** workflow connects character portraits and in-character dialogue with the other workspaces. Optional game-system tools should enhance play without becoming mandatory for every campaign.
 
-| Pillar | Public status | Direction |
+SmugVTT is a **solo-maintained, independent project**, not an official CozyVTT release. Its inherited engine and much of its functionality are CozyVTT's work. The features described below distinguish the fork's *development direction and additions*, not a claim to have invented maps, chat, dice, character sheets, or other upstream features.
+
+## Release status: public repository vs. local development
+
+> **Important (November 2026):** The public `main` branch is a **foundation snapshot** with SmugVTT branding and documentation. Many of the additions below have been developed as **local patch builds**, but **have not yet been committed and released in this GitHub repository**. Cloning `main` does **not** currently install the full feature set described under local development. The roadmap is not a promise of completed features or release dates.
+
+| Status | What it means |
+| :--- | :--- |
+| **Public foundation** | Available from this GitHub repository's default branch. |
+| **Local development** | Implemented or prototyped in local SmugVTT builds; public source and integration testing are still pending. |
+| **Planned** | Design or implementation work remains; not available as a release. |
+
+## What makes SmugVTT different?
+
+### Available in the public foundation
+
+- **Independent identity:** SmugVTT branding, golden-apple artwork, browser/application identity, and **Smug Gold** styling.
+- **Self-hosted starting point:** Docker Compose setup, deployment guidance, and retained compatibility with existing storage formats where migrations are not warranted.
+- **An explicit design philosophy:** Map, Chat, and Canvas should be treated as equal ways to run a tabletop session.
+- **Separate stewardship:** Public documentation, attribution, and a roadmap for changes developed independently of CozyVTT.
+
+### Built or prototyped in local development builds — not yet on public `main`
+
+These items describe work developed in the local fork. Individual features may still have bugs, incomplete permissions, or pending regression tests.
+
+#### Flexible Map, Chat, and Canvas layout
+
+- **Full-bleed map workspace** with panels intended to dock or overlay without unnecessarily shrinking the play area.
+- **Three-pillar interface experiments:** more flexible access to Chat, Journal/handouts, Media Library, and Dice.
+- **Token interaction refinements:** click to select, drag to move, keyboard nudging, and clearer selection/deletion behavior.
+- **Map-focused quick access:** compact token details and action panels intended to reduce constant switching between character sheets.
+
+#### Roleplay-first chat and Scenes
+
+- **Character-focused conversation:** speaker presentation, portraits, presence, and typing indicators.
+- **In-character dialogue tools:** quoted lines and portrait-based speech bubbles for staged interactions.
+- **Scene staging:** a dedicated space for arranging participants and connecting roleplay to Map and Canvas.
+- **Chat usability improvements:** integrated dice-command workflow and work on consistent message persistence and deletion.
+- **Portrait and media presentation** refined for narrative sessions as well as encounters.
+
+#### Canvas and shared visual material
+
+- **Free-form Canvas work** for placing and organizing images and other scene material.
+- **Scene/Canvas integration experiments** for shared staging and portrait presentation.
+- **Media and handout workflow refinements** to support sessions that do not center on a battlemap.
+
+#### Optional combat and unit-management tools
+
+Developed for a **private, optional rules module**; they are **not advertised as universal combat mechanics** or required by other game systems.
+
+- **Unified combat HUD:** quick access to health, defense, shields, suppression, and relevant active conditions.
+- **Token targeting and feedback:** target selection, range assistance, readable hover information, and condition markers.
+- **Reusable unit templates and sheetless spawns:** place temporary combat units directly on maps without filling the permanent character roster.
+- **Legacy-unit cleanup tooling:** guarded identification and preview of older sheet-backed spawns, with backup-conscious cleanup procedures.
+- **Combat action refinements:** special-action UI, animated targeting feedback, activation controls, and synchronization between map tokens and character sheets.
+
+Some of these systems are only partially verified in the live installation. In particular, cleanup of ambiguous older records and recent combat-status/chat fixes are still subject to regression testing.
+
+## Development roadmap
+
+These are *plans*, not features in the public download.
+
+| Pass | Focus | Status |
 | :--- | :--- | :--- |
-| **Map** | Existing CozyVTT foundation | A full-screen workspace that can take priority when the table needs it |
-| **Chat** | Existing CozyVTT foundation | A first-class part of play, not something that has to compete with the map for attention |
-| **Canvas** | **Planned; not released** | A flexible space for free-form material, scene organization, and collaborative ideas |
+| **v0.8.3 — Combat reliability** | Finish status indicators and hover cards; verify sheetless-unit state synchronization, action restrictions, Overwatch/Rally behavior, and turn controls. | **In progress locally** |
+| **v0.8.4 — Battlefield tools** | GM cover/elevation/visibility overlays; movable area-of-effect templates; square/hex grid options; optional coordinates; consistent measuring/targeting. | **Planned** |
+| **v0.8.5 — Scene and Canvas polish** | Shared staging, quoted in-character dialogue, portrait speech bubbles, persistence, and permission/regression testing. | **Tentative** |
+| **Public release preparation** | Integrate reviewed local changes, run tests, document compatibility and migrations, and publish source/release notes. | **Required before release** |
 
-These are **design goals**, not a claim that SmugVTT invented the existing Map or Chat functionality. In particular, the separate Canvas pillar and the complete three-pillar layout have **not** been released in the public fork.
-
-## Project status
-
-The first public development pass concentrates on establishing an identity and a dependable starting point:
-
-- **SmugVTT branding:** independent project name, golden-apple artwork, browser icons, and application-facing text.
-- **Smug Gold:** a default gold-and-slate theme, while preserving the option to choose other themes or custom instance branding.
-- **Public documentation:** fork-specific installation instructions, contribution information, and upstream attribution.
-- **Compatibility:** existing storage identifiers and archive formats are retained where changing them would require a migration.
-
-**What this is not:** a new VTT engine, a claim of ownership over CozyVTT's features, or a completed redesign. Features inherited from CozyVTT are documented in the existing [User Guide](docs/USER_GUIDE.md) rather than presented here as SmugVTT additions.
-
-## Direction
-
-SmugVTT is intended to become a tabletop that is easier to reshape around a particular game or group. The priorities are:
-
-1. **A more flexible workspace.** Allow Map, Chat, and eventually Canvas to stand on their own instead of following one fixed layout.
-2. **Tools without mandatory workflows.** Keep system-specific behavior optional, so the interface does not assume every campaign uses the same rules or structure.
-3. **A cleaner public foundation.** Keep the generic fork separate from private campaign material, and review changes for compatibility before incorporating upstream updates.
-
-No release dates are attached to these priorities. The [issues](https://github.com/Huemaster/SmugVTT/issues) and [pull requests](https://github.com/Huemaster/SmugVTT/pulls) show what is actually being worked on.
+Beyond individual passes, the goal is a **customizable, system-agnostic core** with optional specialized modules, legible GM controls, and a workflow that accommodates theater-of-the-mind, narrative, and tactical play alike.
 
 ## Getting started
 
-SmugVTT is self-hosted. The recommended setup uses Docker Compose. A manual installation requires:
+SmugVTT is self-hosted. The public repository uses Docker Compose. A manual install requires **Node.js 26+** (Docker supplies its own Node.js runtime).
 
-- Node.js 26+ (Docker provides its own Node.js runtime).
-
-With Docker, Git, and a modern browser installed, clone the repository and create a local configuration file:
+Install Docker, Git, and a modern browser, then clone the **public foundation**:
 
 ```bash
 git clone https://github.com/Huemaster/SmugVTT.git
@@ -72,9 +116,9 @@ cd SmugVTT
 cp .env.example .env
 ```
 
-On Windows PowerShell, use `Copy-Item .env.example .env` for the last command.
+On Windows PowerShell, replace the final command with `Copy-Item .env.example .env`.
 
-Set unique values for **`DATABASE_PASSWORD`** and **`SESSION_SECRET`** inside `.env`. The session secret must be at least 32 random characters. For example, with OpenSSL:
+Set unique `DATABASE_PASSWORD` and `SESSION_SECRET` values in `.env`. The session secret must be at least 32 random characters; for example:
 
 ```bash
 openssl rand -hex 16  # database password
@@ -88,32 +132,32 @@ docker compose up -d --build
 docker compose logs backend
 ```
 
-Open **http://localhost** and follow the initial setup. The backend logs provide the one-time setup token. For current controls, including click interactions and keyboard shortcuts, refer to the [User Guide](docs/USER_GUIDE.md).
+Open **http://localhost** and follow initial setup. The backend logs provide the one-time setup token.
 
-**Before exposing an instance to the internet**, review the [Deployment Guide](docs/DEPLOYMENT.md) for HTTPS, `CORS_ORIGIN`, proxy settings, account security and backups. Never commit `.env` files, private campaign exports, character records, chat history, or database backups.
-
-The backend switches to an unprivileged `appuser`. In the bundled Nginx containers, the master process runs as root while worker processes run as the `nginx` user. Each container drops every Linux capability except the few its start-up needs. The [deployment documentation](docs/DEPLOYMENT.md) explains the security model in more detail.
+**Before exposing your instance to the internet**, read the [Deployment Guide](docs/DEPLOYMENT.md) for HTTPS, `CORS_ORIGIN`, proxies, account security, and backups. Never commit `.env` files, private campaigns, chat logs, character records, or database exports.
 
 ### Updating an installation
 
-SmugVTT does not automatically follow every CozyVTT release. Upstream changes may include database migrations and changes to stored data. Back up an installation and test important custom material on a disposable copy before upgrading.
+SmugVTT does not automatically incorporate every upstream CozyVTT release. Upstream or local changes may affect schemas and saved data. Back up your installation and test important material on a disposable copy before updating.
+
+**Local patch ZIPs discussed during development are not part of a fresh GitHub clone** unless their changes have subsequently been integrated and released.
 
 ## Documentation
 
-- [Deployment Guide](docs/DEPLOYMENT.md) — hosting, configuration, hardening and backups
-- [User Guide](docs/USER_GUIDE.md) — reference for existing application functionality
-- [Development Guide](docs/DEVELOPMENT.md) — building and testing the code
+- [Deployment Guide](docs/DEPLOYMENT.md) — hosting, configuration, hardening, and backups
+- [User Guide](docs/USER_GUIDE.md) — existing application functionality
+- [Development Guide](docs/DEVELOPMENT.md) — building and testing
 - [Branding Guide](docs/BRANDING.md) — SmugVTT's visual identity
-- [Contributing](docs/CONTRIBUTING.md) — bug reports and proposed changes
-- [Security Policy](SECURITY.md) — reporting vulnerabilities privately
+- [Contributing](docs/CONTRIBUTING.md) — contributions and issue reports
+- [Security Policy](SECURITY.md) — private vulnerability reporting
 
-Bug reports and focused proposals are welcome. Please use **fictional examples** rather than personal information or private campaign files.
+Focused bug reports and proposed improvements are welcome. Please use **fictional examples** and do not submit private character records, campaign material, credentials, or personal data.
 
 ## Credits and license
 
-SmugVTT is based on **[CozyVTT](https://github.com/CheekyChinchilla/CozyVTT)**. The original maintainers and contributors deserve credit for the code and functionality that form this fork's foundation. SmugVTT is independent and is not endorsed by the CozyVTT project.
+SmugVTT is based on **[CozyVTT](https://github.com/CheekyChinchilla/CozyVTT)**. The original maintainers and contributors deserve full credit for the project's foundation and inherited functionality. SmugVTT is independent and is **not endorsed by CozyVTT**.
 
-The source remains licensed under the [GNU Affero General Public License v3.0](LICENSE). Original copyright notices and applicable third-party and game-content attributions are retained:
+The source remains licensed under the [GNU Affero General Public License v3.0](LICENSE). Original copyright notices and applicable third-party attributions are retained:
 
 - [Third-party licenses](THIRD_PARTY_LICENSES.md)
 - [Third-party notices](THIRD_PARTY_NOTICES.txt)
