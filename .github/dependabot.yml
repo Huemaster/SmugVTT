@@ -1,5 +1,5 @@
 # Dependabot: a pull request each week for the dependencies with a newer
-# version, into dev, where work lands (main only takes releases). Minor and
+# version, into main, the default branch of this fork. Minor and
 # patch updates come grouped, one pull request per project. Each major
 # version of an npm package comes as a pull request of its own, since it can
 # change behaviour, apart from the ones named under ignore below, each with
@@ -19,7 +19,7 @@ version: 2
 updates:
   - package-ecosystem: npm
     directory: /backend
-    target-branch: dev
+    target-branch: main
     schedule:
       interval: weekly
     cooldown:
@@ -53,7 +53,7 @@ updates:
 
   - package-ecosystem: npm
     directory: /frontend
-    target-branch: dev
+    target-branch: main
     schedule:
       interval: weekly
     cooldown:
@@ -81,7 +81,7 @@ updates:
   # its version comment together.
   - package-ecosystem: github-actions
     directory: /
-    target-branch: dev
+    target-branch: main
     schedule:
       interval: weekly
     cooldown:
@@ -96,7 +96,7 @@ updates:
   # frontend/Dockerfile.prod together, which a backend test holds in step.
   - package-ecosystem: docker
     directory: /backend
-    target-branch: dev
+    target-branch: main
     schedule:
       interval: weekly
     cooldown:
@@ -107,7 +107,7 @@ updates:
 
   - package-ecosystem: docker
     directory: /frontend
-    target-branch: dev
+    target-branch: main
     schedule:
       interval: weekly
     cooldown:
@@ -123,7 +123,7 @@ updates:
   # release of its own.
   - package-ecosystem: docker-compose
     directory: /
-    target-branch: dev
+    target-branch: main
     schedule:
       interval: weekly
     cooldown:

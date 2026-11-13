@@ -127,7 +127,7 @@ export default function LoginPage() {
             Welcome Back
           </h1>
           <p className="mt-2 text-sm text-warm-gray">
-            Sign in to your CozyVTT account
+            Sign in to your SmugVTT account
           </p>
         </div>
 
