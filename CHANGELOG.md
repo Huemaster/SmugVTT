@@ -1,5 +1,24 @@
 # Changelog
 
+## SmugVTT development integration — unreleased (November 2026)
+
+The entries below describe changes developed in local patch builds. **They are not yet a public source release**; the GitHub default branch is a foundation until the reviewed source is integrated.
+
+### Added in local development
+- Three-pillar Map / Chat / Canvas interface and roleplay Scene staging, portrait dialogue, and in-character speech presentation.
+- Battlefield overlay toolkit: colored cover, elevation, smoke, obscuration, healing, and hazard zones; editable shapes, texture fills, per-player artwork visibility, and hover explanations.
+- Position-aware cover in optional squad combat, plus a one-shot GM-confirmed healing AoE (not healing over time).
+- Sheetless spawned units and guarded legacy-sheet cleanup controls.
+- Targeting, combat hover status, token effects, ability controls, and restoration of Chat in Map mode.
+- Persistent chat deletion fix and Fodder recovery/condition regression repairs under testing.
+
+### Public integration policy
+- Introduce this ruleset to the public as **Squad Command** with four generic faction labels and only two example units/two example weapons. Do not ship private campaign catalogs or histories.
+- Every feature unique to SmugVTT should be documented in both this changelog and the project README when published.
+- Do not mark the above features released until the source, tests, compatibility, and privacy review are complete.
+
+
+
 All notable changes to CozyVTT will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
