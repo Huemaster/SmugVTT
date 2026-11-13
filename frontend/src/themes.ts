@@ -57,6 +57,30 @@ export interface FontOption {
 // ────────────────────────────────────────────────────
 
 export const PRESET_THEMES: ThemeDefinition[] = [
+  // SmugVTT signature theme; the legacy Cozy Default remains available.
+  {
+    id: 'smug-gold',
+    name: 'Smug Gold',
+    description: 'Gold accents on a dark slate tabletop',
+    category: 'dark',
+    colors: {
+      brand: '216 168 62',
+      brandDark: '149 99 31',
+      accent: '216 168 62',
+      accentHover: '241 190 91',
+      accentText: '25 25 31',
+      bgBase: '25 25 31',
+      bgSurface: '35 35 43',
+      bgSurfaceLight: '47 47 56',
+      bgSurfaceDark: '20 20 27',
+      ink: '241 233 218',
+      inkSecondary: '210 204 193',
+      inkMuted: '190 185 174',
+      paper: '43 43 52',
+      danger: '233 100 93',
+      spirit: '178 151 255',
+    },
+  },
   // ── WARM ──
   {
     id: 'cozy-default',

@@ -4,7 +4,7 @@
 // ============================================
 
 import React, { Component, ReactNode } from 'react';
-import { AlertTriangle, RefreshCcw, ExternalLink } from 'lucide-react';
+import { AlertTriangle, RefreshCcw } from 'lucide-react';
 import Button from '@/components/ui/Button';
 
 interface Props {
@@ -65,7 +65,7 @@ export default class ErrorBoundary extends Component<Props, State> {
               Something went wrong
             </h1>
             <p className="text-sm text-warm-gray">
-              CozyVTT encountered an unexpected error. Your data is safe — this is a display problem only.
+              SmugVTT encountered an unexpected error. Try again or reload the page.
             </p>
           </div>
 
@@ -102,16 +102,6 @@ export default class ErrorBoundary extends Component<Props, State> {
               Reload Page
             </Button>
 
-            <a
-              href="https://github.com/CheekyChinchilla/CozyVTT/issues"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-secondary flex items-center justify-center gap-2"
-              aria-label="Report this issue on GitHub (opens in new tab)"
-            >
-              <ExternalLink className="w-4 h-4" aria-hidden="true" />
-              Report Issue
-            </a>
           </div>
         </div>
       </div>

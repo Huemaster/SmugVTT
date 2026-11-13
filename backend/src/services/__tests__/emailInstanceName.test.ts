@@ -69,12 +69,12 @@ describe('the instance name in emails', () => {
     expect(sent().subject).toContain('Welcome to Env Tavern');
   });
 
-  it('still sends, as CozyVTT, when the settings cannot be read', async () => {
+  it('still sends, as SmugVTT, when the settings cannot be read', async () => {
     getSystemSettings.mockRejectedValue(new Error('database down'));
 
     await sendWelcomeEmail('p@x.test', 'Pat', 'TEMP-PASS-WORD-0000');
 
-    expect(sent().subject).toContain('Welcome to CozyVTT');
+    expect(sent().subject).toContain('Welcome to SmugVTT');
   });
 });
 

@@ -10,7 +10,7 @@ SmugVTT is an independent virtual-tabletop fork of [CozyVTT](https://github.com/
 - **Colors:** gold `#D8A83E`, amber `#95631F`, ink `#19191F`, slate `#30313B`, ivory `#F1E9DA`.
 - **Editable icon master:** `assets/brand-apple.svg`; PNG icons in `frontend/public` and `assets/default-logo.png`.
 
-The brand palette is **not** a forced user theme. Preserve existing themes and per-instance logo/mascot customization.
+The Smug Gold theme is the default for new installations, but the brand palette is **not** a forced user theme. Preserve existing themes and per-instance logo/mascot customization.
 
 ## Current release scope
 This first branding pass changes product naming, the default artwork, web manifest, browser metadata and public repository presentation. The proposed three-pillar Map / Chat / Canvas workspace is a development direction, not an advertised shipped capability.
@@ -26,4 +26,4 @@ Retain the AGPL-3.0 license, upstream attribution and third-party notices. SmugV
 - Check login, dashboard, setup wizard, PWA metadata and browser icons.
 - Check existing user themes and admin-installed branding.
 - Run `npm run typecheck`, `npm run lint` and `npm run test:run` in the frontend, plus backend tests.
-- Check commits and files for secrets, private game systems, user information and personal local paths.
+- Review release contents and complete the normal quality checks.

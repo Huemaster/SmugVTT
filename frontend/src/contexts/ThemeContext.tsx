@@ -69,7 +69,7 @@ const ThemeContext = createContext<ThemeContextValue>({
   refreshAppearance: async () => {},
   mascotUrl: '/default-mascot.png',
   logoUrl: '/default-logo.png',
-  faviconUrl: '/default-mascot.png',
+  faviconUrl: '/favicon-32.png',
   applyUserPreferences: () => {},
 });
 
@@ -282,7 +282,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const mascotUrl = appearance?.customMascotUrl || '/default-mascot.png';
   const logoUrl = appearance?.customLogoUrl || '/default-logo.png';
-  const faviconUrl = appearance?.customFaviconUrl || '/default-mascot.png';
+  const faviconUrl = appearance?.customFaviconUrl || '/favicon-32.png';
 
   return (
     <ThemeContext.Provider

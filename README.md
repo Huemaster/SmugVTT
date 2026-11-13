@@ -88,7 +88,7 @@ If you find a security issue, please report it privately per [SECURITY.md](SECUR
 - **Session history** — every finished session with its date, length and the recap the DM wrote; the DM can edit or clear any past recap
 
 ### Theming & Customization
-- **16 built-in color themes** — warm, cool, dark, neutral, and vibrant palettes
+- **17 built-in color themes** — warm, cool, dark, neutral, and vibrant palettes
 - **Per-user themes** — each account picks its own theme and font from the profile page; preferences persist across logout/login
 - **Custom theme** — pick primary, accent, background, and text colors to create a unique look
 - **Character sheets follow the theme** — every sheet takes the theme's paper, text, and colors, so a sheet reads as well in a dark theme as the rest of the app
