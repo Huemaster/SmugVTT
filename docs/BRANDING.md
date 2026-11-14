@@ -13,7 +13,7 @@ SmugVTT is an independent virtual-tabletop fork of [CozyVTT](https://github.com/
 The Smug Gold theme is the default for new installations, but the brand palette is **not** a forced user theme. Preserve existing themes and per-instance logo/mascot customization.
 
 ## Current release scope
-This first branding pass changes product naming, the default artwork, web manifest, browser metadata and public repository presentation. The proposed three-pillar Map / Chat / Canvas workspace is a development direction, not an advertised shipped capability.
+SmugVTT v0.9.0 integrates the fork's public Map / Chat / Canvas / Scene-oriented source baseline, optional Squad Command tooling and reviewed frontend/backend CI repairs. Product naming, default artwork, web manifest, browser metadata and repository presentation use SmugVTT branding. See [the release notes](releases/v0.9.0.md) for shipped functionality, known limitations and future work. Do not imply the experimental hosted demo or portable installer is already available.
 
 ## Compatibility
 Do not globally rename lowercase `cozyvtt` identifiers. Browser storage keys (`cozyvtt_user_theme`, `cozyvtt_prefs`), archive suffixes, persisted settings, database names, API identifiers and package names may be needed for upgrades or user-data portability. Change any of them only with an explicit migration and tests. Existing customized instance names and user preferences must remain untouched.
