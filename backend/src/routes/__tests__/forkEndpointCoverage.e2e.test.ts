@@ -104,19 +104,20 @@ describe('Scene and NPC endpoints', () => {
 
 describe('chat moderation endpoints', () => {
   it('allows a DM to moderate public messages but keeps whispers private to their participants', async () => {
+    const recipient = await createTestUser({ displayName: 'Whisper recipient' });
+    ids.push(recipient.id);
+    await prisma.campaignMembership.create({ data: { userId: recipient.id, campaignId, role: 'PLAYER', characterIds: [] } });
+    const recipientAgent = await login(recipient.email);
+    // A different player must not edit the sender's public message.
     const publicMessage = await prisma.message.create({
       data: { campaignId, userId: playerId, type: 'PLAYER', content: 'Public note' },
     });
-    expect((await player.patch(`/api/campaigns/${campaignId}/fork/chat/${publicMessage.id}`).send({ content: 'No' })).status).toBe(403);
+    expect((await recipientAgent.patch(`/api/campaigns/${campaignId}/fork/chat/${publicMessage.id}`).send({ content: 'No' })).status).toBe(403);
     expect((await dm.patch(`/api/campaigns/${campaignId}/fork/chat/${publicMessage.id}`).send({ content: 'Edited' })).status).toBe(200);
     expect((await dm.get(`/api/campaigns/${campaignId}/fork/chat/${publicMessage.id}/revisions`)).status).toBe(200);
     expect((await dm.delete(`/api/campaigns/${campaignId}/fork/chat/${publicMessage.id}`)).status).toBe(200);
     expect((await dm.post(`/api/campaigns/${campaignId}/fork/chat/${publicMessage.id}/restore`).send({})).status).toBe(200);
 
-    const recipient = await createTestUser({ displayName: 'Whisper recipient' });
-    ids.push(recipient.id);
-    await prisma.campaignMembership.create({ data: { userId: recipient.id, campaignId, role: 'PLAYER', characterIds: [] } });
-    const recipientAgent = await login(recipient.email);
     const whisper = await prisma.message.create({
       data: { campaignId, userId: playerId, recipientId: recipient.id, type: 'WHISPER', content: 'Secret' },
     });
