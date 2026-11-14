@@ -59,6 +59,21 @@ const without = (roll: DiceRolledEvent, key: string): DiceRolledEvent => {
 };
 
 describe('DiceResult', () => {
+
+  it.each([
+    ['18 - 1', '-1'],
+    ['18 + 1', '+1'],
+    ['18 * 2', '×2'],
+    ['18 / 2', '÷2'],
+  ])('shows the right modifier sign for %s', (formula, shown) => {
+    const roll = wellFormed();
+    roll.breakdown.formula = formula;
+    roll.breakdown.rolls[1] = { type: 'modifier', value: Number(formula.split(' ')[2]), total: Number(formula.split(' ')[2]) };
+    const { container } = render(<DiceResult roll={roll} isCurrentUser={false} />);
+    expect(container.querySelector('[data-modifier]')).toHaveTextContent(shown);
+  });
+
+
   // A deleted account's rolls stay in the history with no one attached.
   it('names a roll whose roller has deleted their account', () => {
     const orphan = { ...wellFormed(), userId: null, userName: null };
