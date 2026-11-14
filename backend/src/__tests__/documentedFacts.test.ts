@@ -297,7 +297,7 @@ describe('the game systems named in the guides', () => {
   // number of systems counted it.
   it('are counted in GAME_SYSTEMS.md as the ones that can be chosen', () => {
     expect(selectable).not.toContain('SHADOWRUN_6E');
-    expect(read('docs/GAME_SYSTEMS.md')).toContain(`CozyVTT currently ships ${words[selectable.length]} systems you can choose`);
+    expect(read('docs/GAME_SYSTEMS.md')).toContain(`SmugVTT currently ships ${words[selectable.length]} systems you can choose`);
   });
 });
 
