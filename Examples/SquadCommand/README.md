@@ -1,6 +1,6 @@
 # Squad Command — generic public example
 
-**Status: documentation and sample templates only. Not yet a selectable game system in the public build.**
+**Status: v0.9.0 has an integrated selectable Squad Command game system and supporting source modules.** This folder contains documentation and two generic sample units/weapons only; it is not a seeded campaign, and the examples are not automatically imported. Specialized rules and edge-case testing remain in development.
 
 Squad Command is the intended public, system-optional identity for the combat/unit-management tools developed in local SmugVTT builds. The core VTT should work without selecting it.
 
@@ -17,15 +17,15 @@ Squad Command is the intended public, system-optional identity for the combat/un
 
 See [sample-templates.json](sample-templates.json). These two units and two weapons use generic names and placeholder values intended to explain the data structure, **not balance a particular game**. They are not automatically imported.
 
-## Public integration checklist
+## Integration and follow-up checklist
 
 - [x] Public-safe terminology and minimal examples documented.
-- [ ] Receive and audit the **complete latest local source** (not only older patch installers).
-- [ ] Convert internal source, types, registry/schema, routes, and UI consistently.
-- [ ] Choose and test compatibility mapping for pre-existing local saves.
-- [ ] Remove all original preset units/weapons, private names, unique artwork, and campaign data from publicly distributed assets.
-- [ ] Integrate and test Map / Chat / Canvas / Scene and Squad Command interactions against the actual current codebase.
-- [ ] Run builds, tests, GM/player permissions checks, and a clean-install Docker smoke test.
-- [ ] Publish a source-complete development release with honest release notes.
+- [x] Publish a reviewed integrated source baseline, not only patch installers.
+- [x] Integrate generic selectable game-system types, registry/schema, routes, and UI for v0.9.0.
+- [ ] Continue testing legacy local-save compatibility and imported custom records.
+- [x] Keep this public sample folder limited to generic fictional units and weapons; do not publish private data.
+- [ ] Expand live multiplayer/player-permission and specialized rule-edge verification beyond the v0.9.0 CI baseline.
+- [x] Pass the v0.9.0 frontend/backend, permissions, documentation and Docker/browser CI baseline.
+- [x] Document the integrated v0.9.0 release, separating shipped code from work in progress.
 
-This file is a public design/reference artifact. It should not be mistaken for a feature-complete release.
+This folder contains public learning/reference data. The optional Squad Command system exists in the v0.9.0 source, but the learning files are not a feature-complete combat ruleset.
