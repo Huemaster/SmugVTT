@@ -691,6 +691,103 @@ erDiagram
         datetime expire
     }
 
+    CampaignNpc {
+        string id PK
+        string campaignId FK
+        string name
+        string imageUrl
+        GameSystem gameSystem
+        json data
+    }
+
+    MessageRevision {
+        string id PK
+        string messageId FK
+        string editorId
+        string content
+        json metadata
+        datetime createdAt
+    }
+
+    MessageReaction {
+        string id PK
+        string messageId FK
+        string userId
+        string emoji
+        datetime createdAt
+    }
+
+    MessageBookmark {
+        string id PK
+        string messageId FK
+        string userId
+        string category
+        datetime createdAt
+    }
+
+    CampaignScene {
+        string id PK
+        string campaignId FK
+        string title
+        string location
+        string timeLabel
+        string imageUrl
+    }
+
+    CampaignEntry {
+        string id PK
+        string campaignId FK
+        string kind
+        string title
+        string content
+        string gmNotes
+    }
+
+    Encounter {
+        string id PK
+        string campaignId FK
+        string name
+        bool active
+        string notes
+    }
+
+    EncounterMember {
+        string id PK
+        string encounterId FK
+        string actorType
+        string actorId
+        int sortOrder
+        json state
+    }
+
+    ActionTransaction {
+        string id PK
+        string campaignId FK
+        string actorType
+        string actorId
+        string actionId
+        string actionName
+    }
+
+    CampaignEvent {
+        string id PK
+        string campaignId FK
+        string sessionId
+        string category
+        string summary
+        json payload
+    }
+
+    Campaign ||--o{ CampaignNpc : "has NPCs"
+    Message ||--o{ MessageRevision : "has revisions"
+    Message ||--o{ MessageReaction : "has reactions"
+    Message ||--o{ MessageBookmark : "is bookmarked"
+    Campaign ||--o{ CampaignScene : "stages scenes"
+    Campaign ||--o{ CampaignEntry : "has entries"
+    Campaign ||--o{ Encounter : "has encounters"
+    Encounter ||--o{ EncounterMember : "has members"
+    Campaign ||--o{ ActionTransaction : "records actions"
+    Campaign ||--o{ CampaignEvent : "records events"
     User ||--o{ Campaign : "owns"
     User ||--o{ CampaignMembership : "belongs to"
     Campaign ||--o{ CampaignMembership : "has"
