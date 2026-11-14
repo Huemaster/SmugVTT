@@ -159,7 +159,7 @@ describe('POST /api/characters with a game system that does not exist', () => {
     expect(res.status).toBe(400);
     expect(res.body).toEqual({
       error: 'Validation Error',
-      message: 'Invalid option: expected one of "DND_5E"|"PATHFINDER_2E"|"SHADOWRUN_6E"|"CALL_OF_CTHULHU_7E"',
+      message: 'Invalid option: expected one of "DND_5E"|"PATHFINDER_2E"|"SHADOWRUN_6E"|"CALL_OF_CTHULHU_7E"|"SQUAD_COMMAND"',
     });
     expect(await prisma.character.count({ where: { userId: ownerId, name: 'Nobody' } })).toBe(0);
   });
