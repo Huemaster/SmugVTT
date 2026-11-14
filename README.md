@@ -11,178 +11,203 @@
 
 <p align="center">
   <a href="#why-smugvtt">Why SmugVTT?</a> ·
-  <a href="#what-makes-smugvtt-different">Features</a> ·
-  <a href="#development-roadmap">Roadmap</a> ·
+  <a href="#whats-new-in-v090">What's new</a> ·
+  <a href="#feature-guide">Features</a> ·
   <a href="#getting-started">Install</a> ·
+  <a href="#roadmap-and-limitations">Roadmap</a> ·
   <a href="#credits-and-license">Credits</a>
 </p>
+
+[![SmugVTT CI](https://github.com/Huemaster/SmugVTT/actions/workflows/ci.yml/badge.svg)](https://github.com/Huemaster/SmugVTT/actions/workflows/ci.yml)
+[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 
 ---
 
 ## Why SmugVTT?
 
-**SmugVTT** is an independently maintained, self-hosted fork of [CozyVTT](https://github.com/CheekyChinchilla/CozyVTT). It explores a different approach to virtual tabletop design: let the group choose whether a session revolves around a tactical map, in-character conversation, or arranging visual material, rather than forcing every campaign into the same interface.
+**SmugVTT** is a free, self-hosted virtual tabletop for groups who want maps, roleplay, and visual storytelling to matter equally. You can run a conventional tactical session, play mostly through in-character chat, stage an encounter with portraits and illustrations, or move between those styles as the game requires.
 
-**Three Pillars. One Tabletop.**
+The design revolves around three connected spaces:
 
-| Pillar | Purpose |
+| Pillar | What you do there |
 | :--- | :--- |
-| **Map** | A spacious, interactive battlefield and exploration workspace. |
-| **Chat** | A first-class place for conversation, character portrayal, and dice. |
-| **Canvas** | A free-form visual workspace for staging, images, handouts, and ideas. |
+| **Map** | Explore, move tokens, track positions, handle tactical encounters and apply visual annotations. |
+| **Chat** | Speak as characters, whisper, roll dice, follow the live conversation and preserve campaign history. |
+| **Canvas** | Arrange visual material, stage participants and present scenes without making the battlemap the focus. |
 
-A **Scene** workflow connects character portraits and in-character dialogue with the other workspaces. Optional game-system tools should enhance play without becoming mandatory for every campaign.
+**Scenes** tie visual staging to the live in-character conversation. They do not create a second, separate chat history. **Squad Command** is an optional system-oriented layer for units and tactical tools; it is not a requirement for other campaigns.
 
-SmugVTT is a **solo-maintained, independent project**, not an official CozyVTT release. Its inherited engine and much of its functionality are CozyVTT's work. The features described below distinguish the fork's *development direction and additions*, not a claim to have invented maps, chat, dice, character sheets, or other upstream features.
+SmugVTT is an **independent fork of [CozyVTT](https://github.com/CheekyChinchilla/CozyVTT)**, not an official CozyVTT release. CozyVTT supplies the substantial underlying VTT engine, hosting architecture, accounts, campaign management, character sheets, maps, chat, dice, and much more. SmugVTT builds a different workflow on top of that foundation. We retain upstream attribution and the AGPL license.
 
-## Release status: public repository vs. local development
+## Release status
 
-> **Important (November 2026):** The public `main` branch is a **foundation snapshot** with SmugVTT branding and documentation. Many of the additions below have been developed as **local patch builds**, but **have not yet been committed and released in this GitHub repository**. Cloning `main` does **not** currently install the full feature set described under local development. The roadmap is not a promise of completed features or release dates.
+**v0.9.0 is SmugVTT's first integrated public source release.** The code previously described here as a collection of private/local patch builds has been integrated into the public repository. It went through frontend, backend/PostgreSQL, documentation, dependency advisory, and production Docker/browser CI checks as part of [PR #10](https://github.com/Huemaster/SmugVTT/pull/10).
 
-| Status | What it means |
-| :--- | :--- |
-| **Public foundation** | Available from this GitHub repository's default branch. |
-| **Local development** | Implemented or prototyped in local SmugVTT builds; public source and integration testing are still pending. |
-| **Planned** | Design or implementation work remains; not available as a release. |
+- **Public source:** the default branch contains the integrated SmugVTT features described below, not just a branding-only foundation.
+- **Installation:** the supported deployment is self-hosted with Docker Compose. A manual Node.js/PostgreSQL deployment is also documented.
+- **Players:** connect through a modern web browser; they do **not** need Docker.
+- **Not available yet:** a hosted public trial, an installer-free portable Windows application, and anonymous disposable demo campaigns. These are planned, not part of v0.9.0.
+- **Versioning:** v0.9.0 is the **SmugVTT fork's** release number. Some internal package/database identifiers remain compatible with the CozyVTT foundation and must not be renamed without a migration.
 
-## What makes SmugVTT different?
+For a release-by-release breakdown, see [v0.9.0 release notes](docs/releases/v0.9.0.md) and [CHANGELOG.md](CHANGELOG.md).
 
-### What is currently on public `main`
+## What's new in v0.9.0?
 
-The public foundation has the original CozyVTT functionality, SmugVTT-specific configuration and documentation, and privacy-safe **Squad Command** learning samples. A logo, color theme, and project name establish identity, but are **not** themselves gameplay features or reasons to choose this fork.
+### A connected Map / Chat / Canvas workspace
 
-**Most SmugVTT gameplay additions are still in local development builds pending source integration and release checks.** They are detailed below so visitors can follow the work without mistaking it for a published download.
+The campaign UI makes room for a full-width map and accessible conversation, Journal/handouts, Media and Dice panels. You can switch emphasis between tactical and narrative play rather than treating every session as a battlemap encounter.
 
-### Built or prototyped in local development builds — not yet on public `main`
+**Token input is deliberately predictable:** a click or tap selects a token; press, drag and release to move it. A single click does not pick a token up for a second click to place it. Eligible selected tokens can also be moved with the arrow keys. Press **Esc** to clear selection or cancel an in-progress operation where supported. The release includes touch, keyboard and responsive layout regression tests.
 
-These items describe work developed in the local fork. Individual features may still have bugs, incomplete permissions, or pending regression tests.
+Compact token details and hover feedback help GMs see relevant map information without repeatedly opening full character sheets.
 
-#### Flexible Map, Chat, and Canvas layout
+### Roleplay-first Chat and Scenes
 
-- **Full-bleed map workspace** with panels intended to dock or overlay without unnecessarily shrinking the play area.
-- **Three-pillar interface experiments:** more flexible access to Chat, Journal/handouts, Media Library, and Dice.
-- **Token interaction refinements:** click to select, click-drag-release to move, keyboard nudging, and clearer selection/deletion behavior.
-- **Map-focused quick access:** compact token details and action panels intended to reduce constant switching between character sheets.
+SmugVTT adds character-oriented presentation, in-character speaker information and portrait-related scene presentation to the existing chat.
 
-#### Roleplay-first chat and Scenes
+- **In-character conversation:** speaker identity, quoted dialogue and staged portrait/speech presentation can accompany the live chat experience.
+- **Scene staging:** use the Stage/Canvas workspaces to arrange participants and visual context, with stage state tied to the active stored scene.
+- **Saved history:** the Stage reads canonical IC chat messages; it does not create a parallel message database.
+- **Message moderation:** message edits, revision history, soft deletion and restoration are covered by permission checks. GM moderation of ordinary public messages does not grant access to private whispers.
+- **Whispers:** the inherited private-message system limits recipients; server operators can still access stored data and backups, so this is not end-to-end encryption.
+- **Reliability:** after a message mutation is saved, a temporary live-broadcast failure no longer reports that the saved write failed. Clients should still refresh if a connection is interrupted.
 
-- **Character-focused conversation:** speaker presentation, portraits, presence, and typing indicators.
-- **In-character dialogue tools:** quoted lines and portrait-based speech bubbles for staged interactions.
-- **Scene staging:** a dedicated space for arranging participants and connecting roleplay to Map and Canvas.
-- **Chat usability improvements:** integrated dice-command workflow and work on consistent message persistence and deletion.
-- **Portrait and media presentation** refined for narrative sessions as well as encounters.
+Some advanced staging and permission paths remain an active area for real-table playtesting; v0.9.0 is a working public baseline, not a claim of flawless support for every conceivable workflow.
 
-#### Canvas and shared visual material
+### Canvas and visual presentation
 
-- **Free-form Canvas work** for placing and organizing images and other scene material.
-- **Scene/Canvas integration experiments** for shared staging and portrait presentation.
-- **Media and handout workflow refinements** to support sessions that do not center on a battlemap.
+Canvas supports arranging visual elements, scene art and text, with saved board state and GM/shared visibility controls in the scene workflow. Portraits and live dialogue can be presented alongside artwork instead of requiring a tactical map.
 
-#### Optional combat and unit-management tools
+Map, Canvas and Scenes are related workspaces but not identical storage systems. Changes to visibility should be tested with a real player account before a campaign uses sensitive GM-only material.
 
-These local tools are being generalized as **Squad Command**, an **optional** combat/unit-management module, not a required ruleset. The public repository currently contains [privacy-safe example templates and the integration checklist](Examples/SquadCommand/README.md), **not the working module**.
+### Optional Squad Command tools
 
-- **Unified combat HUD:** quick access to health, defense, shields, suppression, and relevant active conditions.
-- **Token targeting and feedback:** target selection, range assistance, readable hover information, and condition markers.
-- **Reusable unit templates and sheetless spawns:** place temporary combat units directly on maps without filling the permanent character roster.
-- **Legacy-unit cleanup tooling:** guarded identification and preview of older sheet-backed spawns, with backup-conscious cleanup procedures.
-- **Combat action refinements:** special-action UI, animated targeting feedback, activation controls, and synchronization between map tokens and character sheets.
+SmugVTT includes the **Squad Command** game-system integration and generic unit-oriented tools. It is optional: groups using other systems should not have Squad Command mechanics imposed on them.
 
-Some of these systems are only partially verified in the live installation. In particular, cleanup of ambiguous older records and recent combat-status/chat fixes are still subject to regression testing.
+Current integration includes character-sheet and compact combat information, reusable GM NPC/unit concepts, sheetless token/unit interfaces, targeting and range feedback, and status-oriented HUD components. Some specialized actions and rule interactions remain under development and should be confirmed during play, rather than assumed to automate every rule.
 
-### Battlefield Overlay Toolkit — local development (v0.8.4 series)
+For public examples, see [Examples/SquadCommand](Examples/SquadCommand/README.md): sample units and weapons are fictional teaching data, not an exported private campaign or a built-in campaign roster.
 
-A new GM toolkit for visual and tactical map annotations, designed to work without forcing a particular ruleset:
+### Battlefield overlays and map assistance
 
-- **Color-coded zones** for light/heavy cover, high/low ground, smoke, obscuration, healing, and hazards.
-- **Editable shapes:** draw, select, move, resize, duplicate, recolor, and remove rectangles, ellipses, and polygons, with adjustable transparency.
-- **Visible textures and explanations:** hatched/dotted fills and mouseover plates describing each area.
-- **Per-player artwork visibility controls:** hide visible overlay artwork without disabling the gameplay effect or exposing GM-only information.
-- **Positional effects:** token containment detection; cover affects applicable sheetless Squad Command attacks, while smoke and elevation use existing modifiers where supported.
-- **One-shot healing AoE:** GM reviews highlighted eligible targets and explicitly approves or declines a single healing activation. No healing over time, automatic repeat trigger, or repeated entry healing.
-- **Token status feedback:** active conditions, cover, Rally/Eager/Relentless readiness, and other tracked traits are being surfaced in compact token badges and hover details.
+The fork includes GM-facing tools for visual tactical zones, such as cover, elevation, smoke, obscuration, healing and hazards. The interface provides editable geometry, translucent/hatched visual treatments, and relevant token/zone feedback.
 
-*Development verification:* Zone creation/editing, Light/Heavy Cover effects, improved textures, and cover hover labels have received local user confirmation. More recent targeting, status, dialogue-panel, and combat fixes are still pending a coordinated public build and regression pass. The full toolkit is **not yet on this repository's default branch**.
+These tools are intended to assist adjudication, not silently impose one universal combat ruleset. In particular, zone effects, eligibility and one-shot healing behavior should be reviewed by the GM in the campaign's chosen system.
 
-### Safety, backwards compatibility, and game-system separation
+### Permissions, presentation and release hardening
 
-The generic Map/Chat/Canvas/Scene work is intended to serve **any RPG system**. Squad Command is an optional rules module: its combat mechanics, unit templates, and status tracking should not be imposed on other systems. The public module will contain **two learning units and two learning weapons** rather than an exported private campaign roster. Existing user-created characters and tokens must remain intact through upgrades.
+v0.9.0 also brings together co-GM access controls, Scenes/NPC routes, message moderation, clearer mobile touch targets, a consistent SmugVTT title/theme, and documentation aligned with the integrated routes and schema.
 
-## Development roadmap
+The release-candidate consolidation repaired stale tests without disabling the CI gates, including accessibility, token drag/select behavior, compact panel names, scene/chat coverage, database-schema documentation and route-permission test inventory.
 
-These are *plans*, not features in the public download.
+## Feature guide
 
-| Pass | Focus | Status |
+| Area | Available in v0.9.0 | Notes |
 | :--- | :--- | :--- |
-| **v0.8.3 — Combat reliability** | Finish status indicators and hover cards; verify sheetless-unit state synchronization, action restrictions, Overwatch/Rally behavior, and turn controls. | **In progress locally** |
-| **v0.8.4 — Battlefield zones** | Colored overlays, editable zones, textured fills, player artwork toggle, positional effects, and one-shot GM-confirmed healing; further hex-grid work remains separate. | **Developed locally; integration/testing pending** |
-| **v0.8.5 — Scene and Canvas polish** | Shared staging, quoted in-character dialogue, portrait speech bubbles, persistence, and permission/regression testing. | **Tentative** |
-| **Public release preparation** | Integrate reviewed local changes, run tests, document compatibility and migrations, and publish source/release notes. | **Required before release** |
-
-Beyond individual passes, the goal is a **customizable, system-agnostic core** with optional specialized modules, legible GM controls, and a workflow that accommodates theater-of-the-mind, narrative, and tactical play alike.
+| Campaigns and accounts | Campaign creation, invites, GM/player/spectator roles | Foundation from CozyVTT; restrict public registration if not needed |
+| Maps and tokens | Fog, lighting, walls, rulers, drawings, token movement | Includes SmugVTT selection/drag refinements |
+| Chat and dice | Public chat, whispers, dice commands and saved history | Speaker/Scene presentation is extended by SmugVTT |
+| Journal and Media | Handouts, assets and presentation panels | Respect owner and GM visibility |
+| Canvas and Scene | Saved visual boards and portrait-based live staging | Advanced workflows still need player-side verification |
+| Squad Command | Optional system with unit/HUD integrations | Rule automation and edge cases are still evolving |
+| Battlefield zones | GM overlays and contextual visual/positional feedback | Not a replacement for GM adjudication |
+| Hosting | Docker Compose; documented manual deployment | No bundled one-click desktop installer |
+| Public guest demo | **Not yet** | Planned, with fictional content and isolated guests |
 
 ## Getting started
 
-SmugVTT is self-hosted. The public repository uses Docker Compose. A manual install requires **Node.js 26+** (Docker supplies its own Node.js runtime).
+The recommended way to host SmugVTT is Docker Compose. The app runs on your own server or PC; **your players open a URL in their browsers**.
 
-- Node.js 26+
+**Requirements**
 
-Install Docker, Git, and a modern browser, then clone the **public foundation**:
+- Docker with Compose v2, Git and a modern browser for the recommended deployment.
+- Node.js 26+ for a manual installation (Docker supplies its own Node.js runtime).
+- PostgreSQL 15 for a manual installation (Docker supplies a database container).
 
-```bash
+**1. Get the public source**
+
+~~~bash
 git clone https://github.com/Huemaster/SmugVTT.git
 cd SmugVTT
 cp .env.example .env
-```
+~~~
 
-On Windows PowerShell, replace the final command with `Copy-Item .env.example .env`.
+On Windows PowerShell use **Copy-Item .env.example .env** for the last command.
 
-Set unique `DATABASE_PASSWORD` and `SESSION_SECRET` values in `.env`. The session secret must be at least 32 random characters; for example:
+**2. Secure the configuration**
 
-```bash
-openssl rand -hex 16  # database password
+Set **DATABASE_PASSWORD** and **SESSION_SECRET** to unique random values in the local **.env** file. Do not use example/default secrets.
+
+~~~bash
+openssl rand -hex 16  # database password; letters and digits only
 openssl rand -hex 32  # session secret
-```
+~~~
 
-Start the application:
+**3. Start the stack**
 
-```bash
+~~~bash
 docker compose up -d --build
 docker compose logs backend
-```
+~~~
 
-Open **http://localhost** and follow initial setup. The backend logs provide the one-time setup token.
+Open **http://localhost** and complete the setup wizard with the setup token in the backend logs.
 
-**Before exposing your instance to the internet**, read the [Deployment Guide](docs/DEPLOYMENT.md) for HTTPS, `CORS_ORIGIN`, proxies, account security, and backups. Never commit `.env` files, private campaigns, chat logs, character records, or database exports.
+Do not expose the instance publicly until HTTPS, **CORS_ORIGIN**, proxy settings, registration, account security and backups are configured correctly. The production stack keeps the database/backend ports internal and includes privilege restrictions. For internet access and Cloudflare Tunnel configuration, follow the [Deployment Guide](docs/DEPLOYMENT.md).
 
-The Compose stack applies `no-new-privileges` and drops every Linux capability except the few its start-up needs. The nginx master process runs as root so it can bind the published ports and start workers under the nginx user; the backend switches to its unprivileged `appuser` before starting the application.
+**Without Docker:** a manual Node.js 26+/PostgreSQL 15 deployment is supported by the [Deployment Guide](docs/DEPLOYMENT.md#manual-deployment). It is an administrator-oriented setup, **not** yet a portable installer.
 
-### Updating an installation
+### Updating an existing SmugVTT instance
 
-SmugVTT does not automatically incorporate every upstream CozyVTT release. Upstream or local changes may affect schemas and saved data. Back up your installation and test important material on a disposable copy before updating.
+Back up the PostgreSQL database and **backend/uploads/** before changing source or images. Check the migration guidance and test an upgrade against a disposable copy when you have important campaign data. Then rebuild using the documented deployment method.
 
-**Local patch ZIPs discussed during development are not part of a fresh GitHub clone** unless their changes have subsequently been integrated and released.
+~~~bash
+git pull origin main
+docker compose up -d --build
+docker compose logs backend
+~~~
 
-## Documentation
+If you need to revert database migrations, restore the pre-upgrade backup rather than assuming an older app version can read new tables. **Do not merge CozyVTT 1.7 migrations or replace SmugVTT's Prisma schema without a separate compatibility review.** SmugVTT does not automatically follow upstream releases.
 
-- [Deployment Guide](docs/DEPLOYMENT.md) — hosting, configuration, hardening, and backups
-- [User Guide](docs/USER_GUIDE.md) — existing application functionality
-- [Development Guide](docs/DEVELOPMENT.md) — building and testing
-- [Branding Guide](docs/BRANDING.md) — SmugVTT's visual identity
-- [Contributing](docs/CONTRIBUTING.md) — contributions and issue reports
-- [Security Policy](SECURITY.md) — private vulnerability reporting
+## Safety, privacy and data ownership
 
-Focused bug reports and proposed improvements are welcome. Please use **fictional examples** and do not submit private character records, campaign material, credentials, or personal data.
+Self-hosters control their own instance, uploads and database. Public guest access should remain disabled unless the host has deliberately hardened the installation.
 
-## Documentation policy
+- Never commit **.env**, database dumps, uploads, chat transcripts, personal artwork, real campaign records or access tokens.
+- Review GM-only Scene/Canvas visibility using a separate player account before a live game.
+- The public examples intentionally use fictional, generic sample data; private development campaigns are not bundled as sample adventures.
+- Preserve backups before upgrades and protect them as carefully as the database.
+- The server operator may read messages and backups; stored whispers are not end-to-end encrypted.
+- A future hosted demo will need a separate database, restricted guests, automated reset and upload limits.
 
-**Every new SmugVTT-specific user-facing feature must be documented in this README and the changelog when its source is integrated.** Feature descriptions must distinguish available public releases from local prototypes and future plans. Branding updates alone are not gameplay features.
+## Roadmap and limitations
+
+**Current release:** v0.9.0 integrates the project's first public Map/Chat/Canvas/Scene-focused source baseline, optional squad tooling and reviewed CI repairs.
+
+**Next focus:** player-facing usability, Scene/Canvas permissions and persistence QA, clearer combat feedback, more complete rule-edge testing, and a small set of fictional showcase materials.
+
+**Planned, not shipped:** an isolated browser-accessible public demo, disposable guest campaigns, a Docker-free one-click Windows launcher, and more polished guided onboarding. These are separate projects, not prerequisites to running v0.9.0 yourself.
+
+Development changes should remain small, reviewable and independently testable. Passing CI means the automated checks passed; it does not replace user testing or guarantee compatibility with every local customization.
+
+## Documentation and contributions
+
+- [v0.9.0 release notes](docs/releases/v0.9.0.md) — detailed additions, repairs, verification, known limitations and upgrade guidance
+- [Deployment Guide](docs/DEPLOYMENT.md) — production, manual install, backups, hardening and proxies
+- [User Guide](docs/USER_GUIDE.md) — general app features
+- [DM Guide](docs/DM_GUIDE.md) and [Player Guide](docs/PLAYER_GUIDE.md) — tabletop instructions
+- [Development Guide](docs/DEVELOPMENT.md) — working on source and tests
+- [Branding Guide](docs/BRANDING.md) — fork identity and compatible branding
+- [Contributing](docs/CONTRIBUTING.md) — changes and issue reports
+- [Security Policy](SECURITY.md) — reporting vulnerabilities privately
+- [Changelog](CHANGELOG.md) — upstream history and fork releases
+
+Feedback from narrative-focused GMs, text-based roleplayers and tactical groups is welcome. When opening an issue, use **fictional examples only** and exclude secrets, personal data, private maps and chat history. Changes should include regression checks where practical.
 
 ## Credits and license
 
-SmugVTT is based on **[CozyVTT](https://github.com/CheekyChinchilla/CozyVTT)**. The original maintainers and contributors deserve full credit for the project's foundation and inherited functionality. SmugVTT is independent and is **not endorsed by CozyVTT**.
+SmugVTT is based on [CozyVTT](https://github.com/CheekyChinchilla/CozyVTT). Most inherited core features and much of the architecture originate with CozyVTT's maintainers and contributors, whose work is credited here. SmugVTT is maintained independently and is **not endorsed by CozyVTT**.
 
-The source remains licensed under the [GNU Affero General Public License v3.0](LICENSE). Original copyright notices and applicable third-party attributions are retained:
+SmugVTT remains licensed under the [GNU Affero General Public License v3.0](LICENSE). Existing original copyright notices and relevant third-party attributions are retained:
 
 - [Third-party licenses](THIRD_PARTY_LICENSES.md)
 - [Third-party notices](THIRD_PARTY_NOTICES.txt)
