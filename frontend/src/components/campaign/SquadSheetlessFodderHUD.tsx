@@ -1,3 +1,5 @@
+function newFodderClientId(): string { return `fodder-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`; }
+
 import { useEffect, useMemo, useState } from 'react';
 import { Shield, Swords, X } from 'lucide-react';
 import { api } from '@/services/api';
@@ -13,7 +15,7 @@ import {
   startBattle,
   startActivation,
   refreshUnit,
-  useRally,
+  useRally as performRally,
   endBattle,
 } from '@/components/character-sheets/squadCommand/battleState';
 import {
@@ -117,7 +119,7 @@ export default function SquadSheetlessFodderHUD({ token, campaignId, mapId, onCl
       const answer = await socket.sendChatMessage({
         content: `***${title}***\n${text}`,
         type: MessageType.DM,
-        clientId: `fodder-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        clientId: newFodderClientId(),
         speakerType: 'self',
         mode: 'ooc',
       });
@@ -125,7 +127,7 @@ export default function SquadSheetlessFodderHUD({ token, campaignId, mapId, onCl
     } catch { showToast('Combat result could not be posted to Chat', 'error'); }
   };
 
-  const useWeapon = async (weaponId: string) => {
+  const fireWeapon = async (weaponId: string) => {
     if (busy || !data) return;
     const target = validTargets.find((entry) => entry.id === targetId);
     if (!target) { setNotice('Select a target token first.'); return; }
@@ -219,7 +221,7 @@ export default function SquadSheetlessFodderHUD({ token, campaignId, mapId, onCl
           <button type="button" className="rounded border p-1.5" disabled={busy} onClick={() => void change(startBattle)}>Start Battle</button>
           <button type="button" className="rounded border p-1.5" disabled={busy} onClick={() => void change(startActivation)}>Activate</button>
           <button type="button" className="rounded border p-1.5" disabled={busy} onClick={() => void change(refreshUnit)}>Refresh</button>
-          <button type="button" className="rounded border p-1.5" disabled={busy || data.battle?.rallyUsed} onClick={() => void change((current) => useRally(current))}>Rally</button>
+          <button type="button" className="rounded border p-1.5" disabled={busy || data.battle?.rallyUsed} onClick={() => void change((current) => performRally(current))}>Rally</button>
           <button type="button" className="rounded border p-1.5" disabled={busy} onClick={() => void change(endBattle)}>End Battle</button>
           <button type="button" className="rounded border p-1.5" disabled={busy || !field?.overwatch.active} onClick={() => void change(cancelOverwatch)}>Cancel OW</button>
         </div>
@@ -251,7 +253,7 @@ export default function SquadSheetlessFodderHUD({ token, campaignId, mapId, onCl
             const reason = weaponUnavailableReason(data, weapon, { distance, actionMode: mode ?? 'none' });
             return <div key={weapon.id} className="mb-1 flex items-center gap-2 rounded bg-ink/5 p-1.5">
               <span className="min-w-0 flex-1 truncate" title={weapon.traits}>{weapon.name} · {weapon.damage} · AP {weapon.ap}{weapon.ammoMax ? ` · ${weapon.ammoCurrent ?? 0}/${weapon.ammoMax}` : ''}</span>
-              <button type="button" title={reason ?? 'Resolve against chosen target'} className="rounded border bg-paper px-2 py-1 disabled:opacity-40" disabled={busy || !targetId || !!reason} onClick={() => void useWeapon(weapon.id)}>Use</button>
+              <button type="button" title={reason ?? 'Resolve against chosen target'} className="rounded border bg-paper px-2 py-1 disabled:opacity-40" disabled={busy || !targetId || !!reason} onClick={() => void fireWeapon(weapon.id)}>Use</button>
               {weapon.ammoMax && <button type="button" className="rounded border bg-paper px-1.5 py-1" disabled={busy} onClick={() => void change((current) => reloadWeapon(current, weapon.id))}>Reload</button>}
               {weapon.canOverwatch && <button type="button" className="rounded border bg-paper px-1.5 py-1" disabled={busy} onClick={() => void change((current) => armOverwatch(current, weapon.id))}>OW</button>}
             </div>;

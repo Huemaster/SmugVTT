@@ -305,7 +305,7 @@ function applyDamageSource(
   arc: SquadCommandVehicleArc,
   rows: TwCombatRow[],
 ): SquadCommandCharacterData {
-  let target = normalizeSquadCommandData(targetInput);
+  const target = normalizeSquadCommandData(targetInput);
   const battle = target.battle ?? EMPTY_BATTLE_STATE;
   if (battle.battlefield.specialEffects?.resolveActive && raw > 0) {
     const reduced = Math.ceil(raw / 2);

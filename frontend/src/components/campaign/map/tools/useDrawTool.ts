@@ -262,7 +262,7 @@ export function useDrawTool(options: DrawToolOptions) {
         ? { key: previewKey(userId ?? 'me', previewId), kind: 'pen', color: look.color, width: look.width, audience: 'ALL', laser: true, points: [at], times: [now], lastAt: now }
         : null,
     };
-  }, [userId, audience]);
+  }, [userId, audience, isDM]);
 
   /** Tell the other screens a stroke has ended unstored. */
   const sendEnd = useCallback((s: { mapId: string; previewId: string; kind: DrawingKind }) => {
@@ -354,7 +354,7 @@ export function useDrawTool(options: DrawToolOptions) {
       ...(isDM && look.fill && look.zoneType ? { zoneType: look.zoneType, fillOpacity: look.fillOpacity } : {}),
     }, p.previewId);
     markDirty('overlay');
-  }, [drawings, markDirty, audience, stopPolygonTimer]);
+  }, [drawings, markDirty, audience, stopPolygonTimer, isDM]);
 
   const closeText = useCallback(() => {
     textRef.current = null;

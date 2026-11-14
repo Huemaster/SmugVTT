@@ -40,7 +40,7 @@ import {
   refreshUnit,
   startActivation,
   startBattle,
-  useRally,
+  useRally as performRally,
 } from '@/components/character-sheets/squadCommand/battleState';
 import {
   abilityUnavailableReason,
@@ -571,7 +571,7 @@ export default function CharacterQuickPanel() {
     }
   };
 
-  const useTwAbilityLive = async (abilityId: string) => {
+  const activateTwAbilityLive = async (abilityId: string) => {
     if (!twData || !canControl || !character) return;
     const ability = (twData.abilities ?? []).find((entry) => entry.id === abilityId);
     if (!ability) return;
@@ -762,7 +762,7 @@ export default function CharacterQuickPanel() {
                       <Button size="sm" variant="secondary" disabled={working || battle.actionsThisActivation > battle.pushesThisActivation || battle.actionsThisActivation >= 3} onClick={() => void saveTwBattle((data) => recordAction(data, false))}>Free Action</Button>
                       <Button size="sm" variant="secondary" disabled={working || battle.pushesThisActivation >= 2 || battle.actionsThisActivation >= 3 || (userRole === 'DM' && twCpCurrent <= 0)} onClick={() => void (async () => { const ok = await saveTwBattle((data) => recordAction(data, true)); if (ok && userRole === 'DM') setTwCpCurrent((v) => Math.max(0, v - 1)); })()}>Push</Button>
                       <Button size="sm" variant="secondary" disabled={working} onClick={() => void saveTwBattle(refreshUnit)}>Refresh</Button>
-                      <Button size="sm" variant="secondary" disabled={working || battle.rallyUsed || (twData.stats?.suppression ?? 0) === 0} onClick={() => void saveTwBattle((data) => useRally(data, false))}>Rally</Button>
+                      <Button size="sm" variant="secondary" disabled={working || battle.rallyUsed || (twData.stats?.suppression ?? 0) === 0} onClick={() => void saveTwBattle((data) => performRally(data, false))}>Rally</Button>
                       <Button size="sm" variant="secondary" disabled={working} onClick={() => { if (window.confirm('Reset per-battle uses and cooldowns? HP, Shield and ammo are preserved.')) void saveTwBattle(battleReset); }}>Battle Reset</Button>
                       <Button size="sm" variant="danger" disabled={working} onClick={() => void saveTwBattle(endBattle)}>End Battle</Button>
                     </>
@@ -836,7 +836,7 @@ export default function CharacterQuickPanel() {
                       type="button"
                       disabled={!!unavailableReason}
                       title={unavailableReason ?? `Use / reference ${ability.name}`}
-                      onClick={() => void useTwAbilityLive(ability.id)}
+                      onClick={() => void activateTwAbilityLive(ability.id)}
                       className="rounded-cozy border border-ink/10 bg-paper px-2.5 py-2 text-left text-sm text-ink transition-colors hover:bg-ink/5 disabled:cursor-not-allowed disabled:opacity-45"
                     >
                       <span className="flex items-center gap-2">

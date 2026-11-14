@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Copy, Pencil, Plus, Save, Search, Star, Trash2, X } from 'lucide-react';
 import { useCampaign } from '@/contexts/CampaignContext';
 import { useToast } from '@/contexts/ToastContext';
@@ -52,7 +52,7 @@ export default function GmNpcPanel() {
   const [selectedActions, setSelectedActions] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!campaignId || userRole !== 'DM') return;
     setLoading(true);
     try {
@@ -63,11 +63,11 @@ export default function GmNpcPanel() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [campaignId, userRole, showToast]);
 
   useEffect(() => {
     void load();
-  }, [campaignId, userRole]);
+  }, [load]);
 
   const filtered = useMemo(() => {
     const needle = search.trim().toLowerCase();

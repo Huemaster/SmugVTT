@@ -1,3 +1,5 @@
+function zonePingTimestamp(): number { return Date.now(); }
+
 // ============================================
 // Map Canvas Component
 // HTML Canvas-based map viewer with zoom/pan controls
@@ -876,9 +878,9 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
     // Camera focus is local to the GM. Never broadcast a private-area ping.
     const onScreen = { x: centre.x * mapControls.zoom + mapControls.panOffset.x, y: centre.y * mapControls.zoom + mapControls.panOffset.y };
     mapControls.panBy(canvasSize.width/2-onScreen.x,canvasSize.height/2-onScreen.y);
-    const id = `zone-activation-${Date.now()}`;
+    const now = zonePingTimestamp();
+    const id = `zone-activation-${now}`;
     const inside = tokensWithinZone(zone, tokens, currentMap.gridSize, currentMap.height);
-    const now = Date.now();
     const localPings = [
       { id, ...centre, name:'AoE', color:'#48bb78', startedAt:now },
       ...inside.slice(0,10).map((t,i) => ({id:`${id}-target-${i}`, ...tokenCentreOnMap(t,currentMap.gridSize,currentMap.height),name:t.name,color:'#48bb78',startedAt:now})),
@@ -2736,7 +2738,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
         circle(struckToken, '#f35b4b', 0.5 + Math.sin(progress * Math.PI * 5) * 0.06, progress < 0.6 ? 1 : (1 - progress) / 0.4);
       }
     });
-  }, [currentMap, mapShown, mapControls.zoom, mapControls.panOffset, dpr, campaign?.gameSystem, tokens, lightSources, selectedLightId, lightMode, wallSegments, wallColor, hoveredWallId, selectedWallIds, hoveredDoorId, wallMode, selectedEndpoint, wallInProgress, wallType, brushSize, splitHoverPoint, polygonPoints, showRuler, rulerColor, effectiveRulerOrigin, rulerEnd, rulerStartByTouch, showAoE, aoeConfig, aoeAnchor, aoeSnap, hoverCoords, fogMode, isDM, fogState, viewerRevealed, viewerOwn, previewing, ruleFor, ownTokenCells, explorationEnabled, exploringAs, exploredCells, exploredRaster, socket, fogDragCurrent, wallMarquee, pings, prefersReducedMotion, POLYGON_CLOSE_RADIUS, WALL_ERASE_RADIUS, addExplored, aoeAimRef, aoeAltHeldRef, findWallAtPoint, fogDragAnchorRef, revealOpacityRef, snapPoint, wallBrushPointsRef, wallDragEndpointRef, wallErasedIdsRef, mapDrawings.previews, mapDrawings.drawings, drawingsShownList, drawingCache, drawKind, zonesVisible, selectedZone, canvasSize.width, canvasSize.height, drawTool, paintStrokes, orbitalAimSourceId, orbitalShot, twTargetPickingOnMap, hoverToken, drawnIds, drawnTokens, zoneIndicators, characterHpCache]);
+  }, [currentMap, mapShown, mapControls.zoom, mapControls.panOffset, dpr, campaign?.gameSystem, tokens, lightSources, selectedLightId, lightMode, wallSegments, wallColor, hoveredWallId, selectedWallIds, hoveredDoorId, wallMode, selectedEndpoint, wallInProgress, wallType, brushSize, splitHoverPoint, polygonPoints, showRuler, rulerColor, effectiveRulerOrigin, rulerEnd, rulerStartByTouch, showAoE, aoeConfig, aoeAnchor, aoeSnap, hoverCoords, fogMode, isDM, fogState, viewerRevealed, viewerOwn, previewing, ruleFor, ownTokenCells, explorationEnabled, exploringAs, exploredCells, exploredRaster, socket, fogDragCurrent, wallMarquee, pings, prefersReducedMotion, POLYGON_CLOSE_RADIUS, WALL_ERASE_RADIUS, addExplored, aoeAimRef, aoeAltHeldRef, findWallAtPoint, fogDragAnchorRef, revealOpacityRef, snapPoint, wallBrushPointsRef, wallDragEndpointRef, wallErasedIdsRef, mapDrawings.previews, drawingsShownList, drawingCache, drawKind, zonesVisible, selectedZone, canvasSize.width, canvasSize.height, drawTool, paintStrokes, orbitalAimSourceId, orbitalShot, twTargetPickingOnMap, hoverToken, drawnIds, drawnTokens, zoneIndicators, characterHpCache]);
 
   // ── Layer draw dispatch + dirty-flag scheduling ──────────
   // A single rAF coalesces every repaint request; only the dirty layers

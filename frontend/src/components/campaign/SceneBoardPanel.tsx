@@ -150,7 +150,7 @@ export default function SceneBoardPanel() {
       if (Date.parse(line.createdAt) >= since) result.set(line.speakerKey, line);
     }
     return result;
-  }, [canvasBubblesEnabled, scene?.id, scene?.startedAt, scene?.createdAt, sceneDialogue]);
+  }, [canvasBubblesEnabled, scene, sceneDialogue]);
 
   const [selectionOptionsOpen, setSelectionOptionsOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ elementId: string; x: number; y: number } | null>(null);
@@ -220,42 +220,7 @@ export default function SceneBoardPanel() {
     };
   }, [contextMenu]);
 
-  useEffect(() => {
-    if (!isGm || selectedIds.length === 0) return;
 
-    const onKeyDown = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      if (
-        target instanceof HTMLInputElement ||
-        target instanceof HTMLTextAreaElement ||
-        target instanceof HTMLSelectElement ||
-        target?.isContentEditable
-      ) {
-        return;
-      }
-
-      if (event.key === 'Delete' || event.key === 'Backspace') {
-        const deletable = new Set(
-          board.elements.filter((element) => selectedIds.includes(element.id) && !element.locked).map((element) => element.id),
-        );
-        if (deletable.size === 0) return;
-        event.preventDefault();
-        commit({ ...board, elements: board.elements.filter((element) => !deletable.has(element.id)) });
-        setSelectedId(null);
-        setSelectedIds([]);
-        setContextMenu(null);
-        return;
-      }
-
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'd') {
-        event.preventDefault();
-        duplicateSelected();
-      }
-    };
-
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [board, isGm, selectedIds]);
 
 
 
@@ -307,13 +272,13 @@ export default function SceneBoardPanel() {
     });
   }, [board.presentation, board.view, followGmView, isGm]);
 
-  const commit = (next: SceneBoardState) => {
+  const commit = useCallback((next: SceneBoardState) => {
     if (!isGm) return;
     setHistory((current) => [...current.slice(-49), board]);
     setFuture([]);
     setBoard(next);
     setDirty(true);
-  };
+  }, [board, isGm]);
 
   const updateElement = (elementId: string, patch: Partial<SceneBoardElement>, track = true) => {
     const next = {
@@ -360,7 +325,7 @@ export default function SceneBoardPanel() {
     });
   };
 
-  const togglePresentation = () => {
+  const togglePresentation = useCallback(() => {
     if (!isGm) return;
     const viewport = viewportRef.current;
     const nextPresentation = !board.presentation;
@@ -372,7 +337,7 @@ export default function SceneBoardPanel() {
         : {}),
     });
     setContextMenu(null);
-  };
+  }, [board, commit, isGm, zoom]);
 
   // Presentation used to hide every editor control, trapping the GM until a
   // console event was dispatched. Esc always exits unless the user is editing
@@ -612,7 +577,7 @@ export default function SceneBoardPanel() {
     setSelectedIds([]);
   };
 
-  const duplicateSelected = () => {
+  const duplicateSelected = useCallback(() => {
     if (!isGm || selectedIds.length === 0) return;
     const originals = board.elements.filter((element) => selectedIds.includes(element.id));
     if (originals.length === 0) return;
@@ -630,7 +595,44 @@ export default function SceneBoardPanel() {
     const ids = copies.map((element) => element.id);
     setSelectedIds(ids);
     setSelectedId(ids[ids.length - 1] ?? null);
-  };
+  }, [board, commit, isGm, selectedIds]);
+
+  useEffect(() => {
+    if (!isGm || selectedIds.length === 0) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        target?.isContentEditable
+      ) {
+        return;
+      }
+
+      if (event.key === 'Delete' || event.key === 'Backspace') {
+        const deletable = new Set(
+          board.elements.filter((element) => selectedIds.includes(element.id) && !element.locked).map((element) => element.id),
+        );
+        if (deletable.size === 0) return;
+        event.preventDefault();
+        commit({ ...board, elements: board.elements.filter((element) => !deletable.has(element.id)) });
+        setSelectedId(null);
+        setSelectedIds([]);
+        setContextMenu(null);
+        return;
+      }
+
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'd') {
+        event.preventDefault();
+        duplicateSelected();
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [board, isGm, selectedIds, commit, duplicateSelected]);
 
   const moveLayer = (direction: 1 | -1) => {
     if (!selected || selected.locked) return;

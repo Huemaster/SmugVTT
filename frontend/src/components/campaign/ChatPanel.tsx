@@ -421,16 +421,7 @@ export default function ChatPanel() {
       speakerId: selectedIdentity.id,
       ...(selectedIdentity.frame ? { portraitFrame: selectedIdentity.frame } : {}),
     });
-  }, [
-    joinedEpoch,
-    selectedIdentity?.frame?.x,
-    selectedIdentity?.frame?.y,
-    selectedIdentity?.frame?.zoom,
-    selectedIdentity?.id,
-    selectedIdentity?.key,
-    selectedIdentity?.type,
-    socket,
-  ]);
+  }, [joinedEpoch, selectedIdentity, socket]);
 
   useEffect(() => {
     const rawSocket = socket.getSocket();
@@ -454,14 +445,7 @@ export default function ChatPanel() {
     }, 1800);
 
     return () => window.clearTimeout(stopTimer);
-  }, [
-    joinedEpoch,
-    messageInput,
-    selectedIdentity?.id,
-    selectedIdentity?.key,
-    selectedIdentity?.type,
-    socket,
-  ]);
+  }, [joinedEpoch, messageInput, selectedIdentity, socket]);
 
 
   useEffect(() => {

@@ -39,7 +39,7 @@ import {
   refreshUnit,
   startActivation,
   startBattle,
-  useRally,
+  useRally as performRally,
 } from './battleState';
 import {
   activateAbility,
@@ -272,7 +272,7 @@ export default function SquadCommandCharacterSheet({ character, mode, onSave, on
         <Button disabled={saving} variant="secondary" onClick={() => void applyLive(nextRound)}>Next Round</Button><Button disabled={saving} variant="secondary" onClick={() => void applyLive(startActivation)}>Activation</Button>
         <Button disabled={saving || battle.actionsThisActivation > battle.pushesThisActivation || battle.actionsThisActivation >= 3} variant="secondary" onClick={() => void applyLive((d) => recordAction(d, false))}>Free Action</Button>
         <Button disabled={saving || battle.pushesThisActivation >= 2 || battle.actionsThisActivation >= 3} variant="secondary" onClick={() => void applyLive((d) => recordAction(d, true))}>Push</Button>
-        <Button disabled={saving} variant="secondary" onClick={() => void applyLive(refreshUnit)}>Refresh</Button><Button disabled={saving || battle.rallyUsed || stats.suppression === 0} variant="secondary" onClick={() => void applyLive((d) => useRally(d, false))}>Rally</Button>
+        <Button disabled={saving} variant="secondary" onClick={() => void applyLive(refreshUnit)}>Refresh</Button><Button disabled={saving || battle.rallyUsed || stats.suppression === 0} variant="secondary" onClick={() => void applyLive((d) => performRally(d, false))}>Rally</Button>
         <Button disabled={saving} variant="secondary" onClick={() => { if (window.confirm('Reset per-battle uses/cooldowns? HP, Shield and ammo will NOT be restored.')) void applyLive(battleReset); }}>Battle Reset</Button>
         <Button disabled={saving} variant="danger" onClick={() => void applyLive(endBattle)}>End Battle</Button>
       </>}
