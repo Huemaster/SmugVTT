@@ -19,10 +19,12 @@
 // ============================================
 
 import { useEffect } from 'react';
+import { BookOpen, Images, UsersRound } from 'lucide-react';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGameStore } from '@/stores/gameStore';
 import { useCompactLayout } from '@/contexts/LayoutContext';
+import { useCampaign } from '@/contexts/CampaignContext';
 import { cn } from '@/utils/cn';
 import { SESSION_TAB_LOOKS, type SessionTab } from './sessionTabs';
 import ChatPanel from './ChatPanel';
@@ -32,6 +34,7 @@ import InitiativeTracker from './InitiativeTracker';
 import SessionControls from './SessionControls';
 import SessionHistory from './SessionHistory';
 import PersonalNotes from './PersonalNotes';
+import GmNpcPanel from './GmNpcPanel';
 import type { ChatMessageBroadcast } from '@/types';
 
 /**
@@ -60,8 +63,16 @@ function useUnreadChatCount() {
 
 export default function SessionPanels() {
   const activeTab = useGameStore((s) => s.sessionTab);
+  const setActiveTab = useGameStore((s) => s.setSessionTab);
   const compact = useCompactLayout();
+  const { userRole } = useCampaign();
   useUnreadChatCount();
+
+  // A stored GM-only tab must never leave a player on an invisible panel after
+  // a role change. Compact/mobile navigation does not advertise NPCs yet.
+  useEffect(() => {
+    if (activeTab === 'npcs' && userRole !== 'DM') setActiveTab('chat');
+  }, [activeTab, userRole, setActiveTab]);
 
   /** What a panel is: a tab panel named by its tab in the rail, or on the compact layout a group with its own name. */
   const panel = (tab: SessionTab) =>
@@ -85,6 +96,42 @@ export default function SessionPanels() {
         className={cn('absolute inset-0', pad, clipped, activeTab === 'chat' ? 'animate-fade-in' : 'invisible')}
       >
         <ChatPanel />
+      </div>
+
+
+      <div
+        id="session-tabpanel-journal"
+        {...panel('journal')}
+        className={cn('absolute inset-0 overflow-y-auto', pad, activeTab === 'journal' ? 'animate-fade-in' : 'invisible')}
+      >
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold text-ink">Journal &amp; Handouts</h2>
+          <button type="button" className="flex w-full items-center gap-2 rounded-cozy border border-ink/15 bg-paper px-3 py-2 text-sm text-ink hover:bg-ink/5"
+            onClick={() => window.dispatchEvent(new Event('smugvtt:open-documents'))}>
+            <BookOpen className="h-4 w-4" /> Browse campaign documents
+          </button>
+          <p className="text-xs text-ink-muted">Existing handout permissions and sharing are preserved.</p>
+          <p className="text-xs text-ink-muted">Personal notes remain under More tools → Notes.</p>
+        </div>
+      </div>
+
+      <div
+        id="session-tabpanel-media"
+        {...panel('media')}
+        className={cn('absolute inset-0 overflow-y-auto', pad, activeTab === 'media' ? 'animate-fade-in' : 'invisible')}
+      >
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold text-ink">Media &amp; Token Assets</h2>
+          <button type="button" className="flex w-full items-center gap-2 rounded-cozy border border-ink/15 bg-paper px-3 py-2 text-sm text-ink hover:bg-ink/5"
+            onClick={() => window.dispatchEvent(new Event('smugvtt:open-media'))}>
+            <Images className="h-4 w-4" /> Open token artwork and templates
+          </button>
+          {userRole === 'DM' && <button type="button" className="flex w-full items-center gap-2 rounded-cozy border border-ink/15 bg-paper px-3 py-2 text-sm text-ink hover:bg-ink/5"
+            onClick={() => window.dispatchEvent(new Event('smugvtt:open-token-manager'))}>
+            <UsersRound className="h-4 w-4" /> Manage map tokens
+          </button>}
+          <p className="text-xs text-ink-muted">Existing media pickers remain intact. This is a launch panel, not a replacement asset database.</p>
+        </div>
       </div>
 
       <div
@@ -131,6 +178,20 @@ export default function SessionPanels() {
         {/* Everyone: the notes the DM wrote when each session ended */}
         <SessionHistory />
       </div>
+
+      {userRole === 'DM' && (
+        <div
+          id="session-tabpanel-npcs"
+          {...panel('npcs')}
+          className={cn(
+            'absolute inset-0', pad, 'overflow-hidden',
+            activeTab === 'npcs' ? 'animate-fade-in' : 'invisible'
+          )}
+        >
+          <GmNpcPanel />
+        </div>
+      )}
+
     </>
   );
 }

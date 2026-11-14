@@ -280,13 +280,13 @@ export default function AdminPage() {
     fontId: string;
     customColors: AppearanceColors;
   }>({
-    themeId: 'smug-gold',
+    themeId: 'cozy-default',
     fontId: 'default',
     customColors: {
-      primary: '#D8A83E',
-      accent: '#D8A83E',
-      background: '#19191F',
-      text: '#F1E9DA',
+      primary: '#4A5D4E',
+      accent: '#D4A574',
+      background: '#FFF9E6',
+      text: '#1F2937',
     },
   });
   const [appearanceSaving, setAppearanceSaving] = useState(false);
@@ -485,13 +485,13 @@ export default function AdminPage() {
         requireAdminApproval: settings.requireAdminApproval,
       });
       setAppearanceForm({
-        themeId: settings.themeId || 'smug-gold',
+        themeId: settings.themeId || 'cozy-default',
         fontId: settings.fontId || 'default',
         customColors: (settings.customThemeColors as AppearanceColors | null) || {
-          primary: '#D8A83E',
-          accent: '#D8A83E',
-          background: '#19191F',
-          text: '#F1E9DA',
+          primary: '#4A5D4E',
+          accent: '#D4A574',
+          background: '#FFF9E6',
+          text: '#1F2937',
         },
       });
     }
@@ -2060,7 +2060,7 @@ export default function AdminPage() {
                     maxLength={100}
                     onChange={e => setSettingsForm(f => ({ ...f, instanceName: e.target.value }))}
                     className="input-cozy w-full"
-                    placeholder="SmugVTT"
+                    placeholder="CozyVTT"
                   />
                   <p className="text-xs text-warm-gray mt-1">
                     Shown in the browser tab and in the emails the instance sends.
@@ -2359,7 +2359,7 @@ export default function AdminPage() {
                   <Button
                     onClick={() => {
                     const defaultTheme = PRESET_THEMES[0];
-                    setAppearanceForm(f => ({ ...f, themeId: 'smug-gold', fontId: 'default' }));
+                    setAppearanceForm(f => ({ ...f, themeId: 'cozy-default', fontId: 'default' }));
                     applyThemeColors(defaultTheme.colors);
                     applyFont(FONT_OPTIONS[0]);
                     }}

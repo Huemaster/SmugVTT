@@ -68,6 +68,8 @@ import type {
   RosterMember,
   CampaignMembership,
 } from '@/types';
+import type { CampaignNpc } from '@/types/fork';
+import type { CampaignSceneBoard, SceneBoardState } from '@/types/sceneBoard';
 import { withKnownCreatureChoices, withKnownTemplateChoices } from '@/utils/knownChoices';
 import { saveBlob } from '@/utils/download';
 
@@ -623,6 +625,133 @@ class ApiClient {
     userId: string,
   ): Promise<{ message: string; memberships: import('@/types').CampaignMembership[] }> {
     const response = await this.client.put(`/api/campaigns/${campaignId}/dm`, { userId });
+    return response.data;
+  }
+
+
+  async setCampaignMemberGmAccess(
+    campaignId: string,
+    userId: string,
+    gmAccess: boolean,
+  ): Promise<{ message: string; membership: CampaignMembership }> {
+    const response = await this.client.put(
+      `/api/campaigns/${campaignId}/members/${userId}/gm-access`,
+      { gmAccess },
+    );
+    return response.data;
+  }
+
+  async listCampaignNpcs(campaignId: string): Promise<{ npcs: CampaignNpc[] }> {
+    const response = await this.client.get(`/api/campaigns/${campaignId}/fork/npcs`);
+    return response.data;
+  }
+
+  async createCampaignNpc(campaignId: string, data: { name: string }): Promise<{ npc: CampaignNpc }> {
+    const response = await this.client.post(`/api/campaigns/${campaignId}/fork/npcs`, data);
+    return response.data;
+  }
+
+  async updateCampaignNpc(
+    campaignId: string,
+    npcId: string,
+    data: Partial<Pick<CampaignNpc, 'name' | 'imageUrl' | 'data' | 'actions' | 'notes' | 'gmNotes' | 'revealed' | 'favorite' | 'controllerIds' | 'tags'>>,
+  ): Promise<{ npc: CampaignNpc }> {
+    const response = await this.client.patch(`/api/campaigns/${campaignId}/fork/npcs/${npcId}`, data);
+    return response.data;
+  }
+
+  async deleteCampaignNpc(campaignId: string, npcId: string): Promise<{ message: string }> {
+    const response = await this.client.delete(`/api/campaigns/${campaignId}/fork/npcs/${npcId}`);
+    return response.data;
+  }
+
+  async cloneCampaignNpc(campaignId: string, npcId: string): Promise<{ npc: CampaignNpc }> {
+    const response = await this.client.post(`/api/campaigns/${campaignId}/fork/npcs/${npcId}/clone`);
+    return response.data;
+  }
+
+  async performCampaignNpcAction(
+    campaignId: string,
+    npcId: string,
+    actionId: string,
+  ): Promise<{ message: unknown; event: unknown }> {
+    const response = await this.client.post(`/api/campaigns/${campaignId}/fork/npcs/${npcId}/act`, { actionId });
+    return response.data;
+  }
+
+
+
+  async listSceneBoards(campaignId: string): Promise<{ scenes: CampaignSceneBoard[] }> {
+    const response = await this.client.get(`/api/campaigns/${campaignId}/fork/scenes`);
+    return response.data;
+  }
+
+  async getActiveSceneBoard(campaignId: string): Promise<{ scene: CampaignSceneBoard | null }> {
+    const response = await this.client.get(`/api/campaigns/${campaignId}/fork/scenes/active`);
+    return response.data;
+  }
+
+  async createSceneBoard(
+    campaignId: string,
+    data: {
+      title: string;
+      location?: string | null;
+      timeLabel?: string | null;
+      revealed?: boolean;
+      boardVisibility?: 'gm' | 'shared';
+      active?: boolean;
+    },
+  ): Promise<{ scene: CampaignSceneBoard }> {
+    const response = await this.client.post(`/api/campaigns/${campaignId}/fork/scenes`, data);
+    return response.data;
+  }
+
+  async updateSceneBoard(
+    campaignId: string,
+    sceneId: string,
+    data: Partial<{
+      title: string;
+      location: string | null;
+      timeLabel: string | null;
+      revealed: boolean;
+      boardVisibility: 'gm' | 'shared';
+      active: boolean;
+      boardState: SceneBoardState;
+      summary: string | null;
+      gmNotes: string | null;
+    }>,
+  ): Promise<{ scene: CampaignSceneBoard }> {
+    const response = await this.client.patch(`/api/campaigns/${campaignId}/fork/scenes/${sceneId}`, data);
+    return response.data;
+  }
+
+  async deleteSceneBoard(campaignId: string, sceneId: string): Promise<{ message: string }> {
+    const response = await this.client.delete(`/api/campaigns/${campaignId}/fork/scenes/${sceneId}`);
+    return response.data;
+  }
+
+
+
+  async editForkChatMessage(campaignId: string, messageId: string, content: string): Promise<{ message: import('@/types').Message }> {
+    const response = await this.client.patch(`/api/campaigns/${campaignId}/fork/chat/${messageId}`, { content });
+    return response.data;
+  }
+
+  async deleteForkChatMessage(campaignId: string, messageId: string): Promise<{ message: import('@/types').Message }> {
+    const response = await this.client.delete(`/api/campaigns/${campaignId}/fork/chat/${messageId}`);
+    return response.data;
+  }
+
+  async restoreForkChatMessage(campaignId: string, messageId: string): Promise<{ message: import('@/types').Message }> {
+    const response = await this.client.post(`/api/campaigns/${campaignId}/fork/chat/${messageId}/restore`);
+    return response.data;
+  }
+
+  async getForkChatMessageRevisions(
+    campaignId: string,
+    messageId: string,
+  ): Promise<{ revisions: Array<{ id: string; messageId: string; editorId: string | null; content: string; createdAt: string }> }> {
+    const response = await this.client.get(`/api/campaigns/${campaignId}/fork/chat/${messageId}/revisions`);
     return response.data;
   }
 

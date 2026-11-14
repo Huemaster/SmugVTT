@@ -13,11 +13,13 @@ export * from './pathfinder2e';
 export * from './shadowrun6e';
 // Export all Call of Cthulhu 7e types
 export * from './callOfCthulhu7e';
+export * from './squadCommand';
 
 import type { DnD5eCharacterData } from './dnd5e';
 import type { PF2eCharacterData } from './pathfinder2e';
 import type { SR6CharacterData } from './shadowrun6e';
 import type { CoC7eCharacterData } from './callOfCthulhu7e';
+import type { SquadCommandCharacterData } from './squadCommand';
 
 import { GameSystem } from '../gameSystem';
 
@@ -31,6 +33,7 @@ export type CharacterDataBySystem = {
   [GameSystem.PATHFINDER_2E]: PF2eCharacterData;
   [GameSystem.SHADOWRUN_6E]: SR6CharacterData;
   [GameSystem.CALL_OF_CTHULHU_7E]: CoC7eCharacterData;
+  [GameSystem.SQUAD_COMMAND]: SquadCommandCharacterData;
 };
 
 /**
@@ -40,6 +43,7 @@ export type GameSystemCharacterData =
   | DnD5eCharacterData
   | PF2eCharacterData
   | SR6CharacterData
-  | CoC7eCharacterData;
+  | CoC7eCharacterData
+  | SquadCommandCharacterData;
 
 export type { SheetChrome } from './sheetChrome';

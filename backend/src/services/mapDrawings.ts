@@ -27,6 +27,8 @@ export interface DrawingSent {
   kind: string;
   color: string;
   fillColor: string | null;
+  zoneType?: string | null;
+  fillOpacity?: number | null;
   width: number;
   rotation: number;
   sortKey: number;
@@ -48,6 +50,13 @@ export interface DrawingAddedBroadcast {
   opId?: string;
   /** The preview the drawing ends. */
   previewId?: string;
+}
+
+/** `drawing:updated`, to readers of the existing zone. */
+export interface DrawingUpdatedBroadcast {
+  mapId: string;
+  drawing: DrawingSent;
+  opId?: string;
 }
 
 /** `drawing:removed`: to the readers who had the drawing. */
@@ -99,6 +108,8 @@ export function drawingSent(row: MapDrawing): DrawingSent {
     kind: row.kind,
     color: row.color,
     fillColor: row.fillColor,
+    zoneType: row.zoneType,
+    fillOpacity: row.fillOpacity,
     width: row.width,
     rotation: row.rotation,
     sortKey: row.sortKey,
@@ -123,6 +134,8 @@ export function drawingForArchive(row: MapDrawing, dmId: string | null) {
     kind: row.kind,
     color: row.color,
     fillColor: row.fillColor,
+    zoneType: row.zoneType,
+    fillOpacity: row.fillOpacity,
     width: row.width,
     rotation: row.rotation,
     sortKey: row.sortKey,

@@ -16,14 +16,19 @@ import { tabKeyTarget } from '@/utils/tabKeys';
 import SessionPanels from './SessionPanels';
 import { SESSION_TABS, SESSION_TAB_LOOKS, unreadBadge } from './sessionTabs';
 import { useTableSlot } from './tableHosts';
+import { useCampaign } from '@/contexts/CampaignContext';
 
-const TABS = SESSION_TABS.map((key) => ({ key, ...SESSION_TAB_LOOKS[key] }));
+const BASE_TABS = SESSION_TABS.map((key) => ({ key, ...SESSION_TAB_LOOKS[key] }));
 
 export default function SessionSidebar() {
   const activeTab = useGameStore((s) => s.sessionTab);
   const setActiveTab = useGameStore((s) => s.setSessionTab);
   const unreadChat = useGameStore((s) => s.unreadChat);
   const panelsSlot = useTableSlot('session');
+  const { userRole } = useCampaign();
+  const TABS = BASE_TABS;
+  const extra: Array<'initiative' | 'notes' | 'session' | 'npcs'> = userRole === 'DM' ? ['initiative', 'notes', 'session', 'npcs'] : ['initiative', 'notes', 'session'];
+
 
   // Roving-tabindex keyboard support: the arrows, Home and End move between
   // tabs (tabKeyTarget, which every tab row shares).
@@ -84,6 +89,20 @@ export default function SessionSidebar() {
           );
         })}
       </div>
+
+      {/* Legacy functional tools stay reachable but do not compete with the
+          four primary tabs. Nothing is removed from campaign data. */}
+      <details className="relative shrink-0 border-b border-moss-green/10 px-2 py-1 text-xs text-ink-secondary">
+        <summary className="cursor-pointer select-none font-medium hover:text-ink">More tools{(activeTab === 'initiative' || activeTab === 'notes' || activeTab === 'session' || activeTab === 'npcs') ? ` · ${SESSION_TAB_LOOKS[activeTab].label}` : ''}</summary>
+        <div className="flex flex-wrap gap-1 py-2" aria-label="Additional session tools">
+          {extra.map((key) => (
+            <button key={key} type="button" onClick={() => setActiveTab(key)}
+              className={`rounded-cozy px-2 py-1 text-xs ${activeTab === key ? 'bg-accent text-accent-text' : 'bg-ink/5 hover:bg-ink/10'}`}>
+              {SESSION_TAB_LOOKS[key].label}
+            </button>
+          ))}
+        </div>
+      </details>
 
       {/* Tab panels — stacked, all mounted, inactive ones invisible */}
       <div ref={panelsSlot.ref} className="relative flex-1 min-h-0">

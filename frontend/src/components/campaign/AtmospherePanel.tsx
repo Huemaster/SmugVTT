@@ -218,8 +218,8 @@ export default function AtmospherePanel({ isOpen, onClose }: AtmospherePanelProp
             <Cloud className="w-5 h-5 text-brand-ink" />
           </div>
           <div>
-            <SlideOverTitle className="text-lg font-bold text-brand-ink">Atmosphere</SlideOverTitle>
-            <p className="text-xs text-warm-gray">Visual effects + ambient audio</p>
+            <SlideOverTitle className="text-lg font-bold text-brand-ink">Atmosphere &amp; Jukebox</SlideOverTitle>
+            <p className="text-xs text-warm-gray">Visual effects + synchronized table music</p>
           </div>
         </div>
         <SlideOverClose
@@ -288,7 +288,7 @@ export default function AtmospherePanel({ isOpen, onClose }: AtmospherePanelProp
             ============================================ */}
         <section>
           <h3 className="text-sm font-semibold text-brand-ink uppercase tracking-wide mb-3">
-            Ambient Audio
+            Jukebox
           </h3>
 
           {/* Now Playing indicator */}
@@ -450,7 +450,7 @@ export default function AtmospherePanel({ isOpen, onClose }: AtmospherePanelProp
         {/* Info note */}
         <div className="p-3 rounded-lg bg-moss-green/5 border border-moss-green/15">
           <p className="text-xs text-stone-gray">
-            Effects and audio sync to all players in real time. Players can mute audio locally using their browser tab. Atmosphere state is restored when players rejoin.
+            Effects and Jukebox audio sync to the whole table in real time. Each player has a local Now Playing volume and mute control. State is restored when players rejoin.
           </p>
         </div>
 

@@ -62,8 +62,7 @@ const TEXT_TOKENS: TextToken[] = [
 
 describe('preset theme contrast', () => {
   it('ships the themes the picker expects', () => {
-    expect(PRESET_THEMES.length).toBeGreaterThanOrEqual(17);
-    expect(PRESET_THEMES[0].id).toBe('smug-gold');
+    expect(PRESET_THEMES.length).toBeGreaterThanOrEqual(16);
   });
 
   describe.each(PRESET_THEMES.map((t) => [t.name, t] as const))('%s', (_name, theme) => {

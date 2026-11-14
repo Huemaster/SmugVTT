@@ -30,7 +30,8 @@ import SheetMenuRows from './SheetMenuRows';
 export type MorePanel = Exclude<SessionTab, BarPanel>;
 
 /** More's session panels, in the rail's order. */
-export const MORE_PANELS: readonly MorePanel[] = SESSION_TABS.filter((tab): tab is MorePanel => !onTheBar(tab));
+type MoreSessionTab = Exclude<(typeof SESSION_TABS)[number], BarPanel>;
+export const MORE_PANELS: readonly MorePanel[] = SESSION_TABS.filter((tab): tab is MoreSessionTab => !onTheBar(tab));
 
 export interface MoreSheetProps {
   open: boolean;

@@ -31,6 +31,8 @@ import ActionSheet from '@/components/campaign/compact/ActionSheet';
 import ToolStrip, { CHIP, HEADER_BUTTON, squareButton } from '@/components/campaign/compact/ToolStrip';
 import type { MenuItem } from '@/components/ui/menu';
 import { DRAWING_LIMITS } from '@/constants/drawingLimits';
+import { ZONE_PRESETS } from './map/battlefieldZones';
+import ZoneEditorFields from './ZoneEditorFields';
 import { cn } from '@/utils/cn';
 import { DRAW_TOOL_KINDS } from './map/tools/useDrawTool';
 import {
@@ -39,7 +41,7 @@ import {
 } from './DrawControls';
 
 export default function DrawStrip({
-  kind, onKindChange, settings, onSettingsChange, isDM, onlyErase = false, polygonCorners, onPolygonDone, onPolygonCancel, clearable, onClear, members, onClearMember, onClose,
+  kind, onKindChange, settings, onSettingsChange, isDM, onlyErase = false, zonesVisible = true, onZonesVisibleChange, selectedZone, onUpdateZone, onDuplicateZone, onDeleteZone, onActivateZone, polygonCorners, onPolygonDone, onPolygonCancel, clearable, onClear, members, onClearMember, onClose,
 }: DrawControlsProps) {
   const [asking, setAsking] = useState<ClearAsking>(null);
   const [clearChoicesOpen, setClearChoicesOpen] = useState(false);
@@ -59,7 +61,7 @@ export default function DrawStrip({
 
   // The nine tools. With no scrollbar, an end with more tools past it fades
   // under a chevron (ScrollCue.tsx): at 360 px the row stops at Text label.
-  const tools = DRAW_TOOL_KINDS.filter((tool) => !onlyErase || tool === 'eraser').map((tool) => {
+  const tools = DRAW_TOOL_KINDS.filter((tool) => (!onlyErase || tool === 'eraser') && (isDM || tool !== 'zone-edit')).map((tool) => {
     const { label, icon: Icon } = TOOLS[tool];
     return (
       <button
@@ -133,7 +135,35 @@ export default function DrawStrip({
         <ClearDrawingsDialogs asking={asking} onAnswered={() => setAsking(null)} clearable={clearable} onClear={onClear} onClearMember={onClearMember} />
       </>}
     >
-      {kind !== 'eraser' && (
+      {isDM && !onlyErase && (
+        <section aria-label="Battlefield zones" className="flex flex-col gap-2 rounded-cozy border border-brand/25 p-2">
+          <div className="flex items-center justify-between gap-2 text-xs font-semibold">
+            <span>Battlefield Zones</span>
+            <button type="button" onClick={() => onZonesVisibleChange?.(!zonesVisible)} className={CHIP} aria-pressed={zonesVisible}>
+              {zonesVisible ? 'Hide zones' : 'Show zones'}
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {ZONE_PRESETS.map((zone) => <button key={zone.id} type="button" className={CHIP}
+              aria-pressed={settings.zoneType === zone.id && FILLABLE.has(kind)}
+              onClick={() => { onSettingsChange({ zoneType: zone.id, color: zone.color, width: 3, fill: true }); if (!FILLABLE.has(kind)) onKindChange('rect'); }}>
+              <span className="inline-block size-3 rounded-sm" style={{ backgroundColor: zone.color }} /> {zone.label}
+            </button>)}
+          </div>
+          {settings.zoneType && FILLABLE.has(kind) && <div className="flex flex-wrap gap-2 items-center">
+            <button type="button" className={CHIP} onClick={() => onKindChange('rect')}>Rectangle</button>
+            <button type="button" className={CHIP} onClick={() => onKindChange('ellipse')}>Ellipse</button>
+            <label className="flex min-w-32 grow flex-col text-xs">Opacity {settings.fillOpacity}%
+              <input type="range" min={10} max={70} step={5} aria-label="Zone fill opacity" value={settings.fillOpacity}
+                onChange={(e) => onSettingsChange({ fillOpacity: Number(e.target.value) })} className="accent-brand" />
+            </label>
+            <button type="button" className={CHIP} onClick={() => onSettingsChange({ zoneType: null, fill: false })}>Plain drawing</button>
+          </div>}
+        </section>
+      )}
+      {isDM && kind === 'zone-edit' && <ZoneEditorFields selectedZone={selectedZone ?? null}
+        onUpdate={onUpdateZone} onDuplicate={onDuplicateZone} onDelete={onDeleteZone} onActivate={onActivateZone} />}
+      {kind !== 'eraser' && kind !== 'zone-edit' && (
         <>
           <div className="flex items-center gap-3 pr-2">
             <button
@@ -212,7 +242,7 @@ export default function DrawStrip({
         </>
       )}
 
-      {(SHAPES.has(kind) || (isDM && kind !== 'eraser')) && (
+      {(SHAPES.has(kind) || (isDM && kind !== 'eraser' && kind !== 'zone-edit')) && (
         <div className="flex flex-wrap items-center gap-2 pr-2">
           {FILLABLE.has(kind) && (
             <label className={CHIP}>

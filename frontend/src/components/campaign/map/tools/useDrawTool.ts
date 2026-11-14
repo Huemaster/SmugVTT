@@ -37,9 +37,11 @@ import type { MapDrawings } from '../useMapDrawings';
 import { drawingAt, hitTolerance } from '../drawingHitTest';
 import { snapToGrid } from '../drawingGeometry';
 import { previewKey } from '../drawingPreviews';
+import { DEFAULT_ZONE_OPACITY, type ZoneType } from '../battlefieldZones';
+import { moveZone, resizeZone, zoneCornerAt, type ZoneCorner } from '../zoneEditing';
 
 /** What the Draw panel offers, in its order. */
-export const DRAW_TOOL_KINDS = ['pen', 'line', 'arrow', 'rect', 'ellipse', 'polygon', 'text', 'eraser', 'laser'] as const;
+export const DRAW_TOOL_KINDS = ['pen', 'line', 'arrow', 'rect', 'ellipse', 'polygon', 'text', 'eraser', 'laser', 'zone-edit'] as const;
 export type DrawToolKind = (typeof DRAW_TOOL_KINDS)[number];
 
 /** How the next drawing looks, and who it is for. */
@@ -53,6 +55,10 @@ export interface DrawSettings {
   snap: boolean;
   /** The DM's: the drawing is for the DM alone. */
   dmOnly: boolean;
+  /** GM-selected preset; null means an ordinary drawing. */
+  zoneType: ZoneType | null;
+  /** Percentage of fill for new zones, stored independently of ordinary markup. */
+  fillOpacity: number;
 }
 
 export const DEFAULT_DRAW_SETTINGS: DrawSettings = {
@@ -61,6 +67,8 @@ export const DEFAULT_DRAW_SETTINGS: DrawSettings = {
   fill: false,
   snap: false,
   dmOnly: false,
+  zoneType: null,
+  fillOpacity: DEFAULT_ZONE_OPACITY,
 };
 
 /** How far from the first corner, on screen, a tap closes a polygon. */
@@ -91,6 +99,8 @@ interface Stroke {
   color: string;
   width: number;
   fill: boolean;
+  zoneType: ZoneType | null;
+  fillOpacity: number;
   /** A pen's points, as drawn. */
   points: Pt[];
   /** A shape's two corners. */
@@ -111,13 +121,14 @@ export interface DrawToolOptions {
   settings: DrawSettings;
   mapId: string | undefined;
   gridSize: number;
+  canEditZones?: boolean;
   role: string | null | undefined;
   userId: string | undefined;
   /** The drawings the screen draws: the eraser finds only these. */
   drawnDrawings: () => readonly Drawing[];
   mapControls: MapControls;
   markDirty: (...layers: MapLayer[]) => void;
-  drawings: Pick<MapDrawings, 'add' | 'erase' | 'sendPreview' | 'showPreview' | 'dropPreview'>;
+  drawings: Pick<MapDrawings, 'add' | 'erase' | 'sendPreview' | 'showPreview' | 'dropPreview' | 'previewZone' | 'updateZone'>;
   /** Where the pointer is over the map, for a polygon's next side. */
   hoverAt: () => { x: number; y: number } | null;
   /** Tells the person why a press did nothing. */
@@ -133,9 +144,12 @@ export interface DrawTextBox {
 const round = (p: { x: number; y: number }): Pt => [Math.round(p.x), Math.round(p.y)];
 
 export function useDrawTool(options: DrawToolOptions) {
-  const { kind, setKind, settings, mapId, gridSize, role, userId, drawnDrawings, mapControls, markDirty, drawings, hoverAt, hint } = options;
+  const { kind, setKind, settings, mapId, gridSize, canEditZones = true, role, userId, drawnDrawings, mapControls, markDirty, drawings, hoverAt, hint } = options;
   const isDM = role === 'DM';
   const strokeRef = useRef<Stroke | null>(null);
+  const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
+  const zoneDragRef = useRef<{ original: Drawing; start: Pt; mode: 'move' | ZoneCorner; draft: Drawing } | null>(null);
+
   const timersRef = useRef<{ trailing: ReturnType<typeof setTimeout> | null; keepAlive: ReturnType<typeof setTimeout> | null }>({ trailing: null, keepAlive: null });
   /** A finger's drag the tool pans with (eraser, text, polygon). */
   const panningRef = useRef(false);
@@ -242,12 +256,13 @@ export function useDrawTool(options: DrawToolOptions) {
     const now = Date.now();
     return {
       mapId: forMap, kind: strokeKind, previewId, audience: audience(), color: look.color, width: look.width, fill: look.fill,
+      zoneType: isDM && FILLED.has(strokeKind) && look.fill ? look.zoneType : null, fillOpacity: look.fillOpacity,
       points: [at], start: at, end: at, unsent: [at], changed: true, lastFrameAt: 0,
       trail: strokeKind === 'laser'
         ? { key: previewKey(userId ?? 'me', previewId), kind: 'pen', color: look.color, width: look.width, audience: 'ALL', laser: true, points: [at], times: [now], lastAt: now }
         : null,
     };
-  }, [userId, audience]);
+  }, [userId, audience, isDM]);
 
   /** Tell the other screens a stroke has ended unstored. */
   const sendEnd = useCallback((s: { mapId: string; previewId: string; kind: DrawingKind }) => {
@@ -336,9 +351,10 @@ export function useDrawTool(options: DrawToolOptions) {
     drawings.add(p.mapId, {
       kind: 'polygon', color: look.color, width: look.width, audience: audience(), points: p.points,
       fillColor: look.fill ? look.color : null,
+      ...(isDM && look.fill && look.zoneType ? { zoneType: look.zoneType, fillOpacity: look.fillOpacity } : {}),
     }, p.previewId);
     markDirty('overlay');
-  }, [drawings, markDirty, audience, stopPolygonTimer]);
+  }, [drawings, markDirty, audience, stopPolygonTimer, isDM]);
 
   const closeText = useCallback(() => {
     textRef.current = null;
@@ -363,12 +379,19 @@ export function useDrawTool(options: DrawToolOptions) {
   }, []);
 
   /** Everything under way goes: a stroke, a polygon, a label's box. */
+  const cancelZoneDrag = useCallback(() => {
+    const drag = zoneDragRef.current;
+    zoneDragRef.current = null;
+    if (drag) drawings.previewZone(drag.original);
+  }, [drawings]);
+
   const endAll = useCallback(() => {
     dropStroke();
     dropPolygon();
     closeText();
     panningRef.current = false;
-  }, [dropStroke, dropPolygon, closeText]);
+    cancelZoneDrag();
+  }, [dropStroke, dropPolygon, closeText, cancelZoneDrag]);
 
   // Another tool, another map or none, or the map going (a layout switch):
   // nothing under way is kept.
@@ -377,6 +400,7 @@ export function useDrawTool(options: DrawToolOptions) {
     endAllRef.current = endAll;
   });
   useEffect(() => () => endAllRef.current(), [kind, mapId]);
+  useEffect(() => { setSelectedZoneId(null); }, [mapId]);
 
   // The window losing focus ends a press as the browser taking the pointer
   // does: its lift may never come back here.
@@ -411,6 +435,19 @@ export function useDrawTool(options: DrawToolOptions) {
       if (at.via === 'drag' && (kind === 'eraser' || kind === 'text' || kind === 'polygon')) {
         panningRef.current = true;
         mapControls.startDrag(at.e);
+        return true;
+      }
+      if (kind === 'zone-edit') {
+        if (!isDM || !canEditZones) return false;
+        const zones = drawnDrawings().filter(d => d.zoneType && !d.id.startsWith('pending:'));
+        const selected = zones.find(d => d.id === selectedZoneId);
+        const tolerance = hitTolerance(at.e.kind, mapControls.zoom);
+        const grabbed = selected && zoneCornerAt(at.mapPx, selected, tolerance);
+        const hit = grabbed ? selected : drawingAt(at.mapPx, zones, tolerance);
+        if (!hit) { setSelectedZoneId(null); return true; }
+        setSelectedZoneId(hit.id);
+        const mode = grabbed ?? 'move';
+        zoneDragRef.current = { original: hit, draft: hit, start: round(at.mapPx), mode };
         return true;
       }
       const point = round(at.mapPx);
@@ -459,6 +496,15 @@ export function useDrawTool(options: DrawToolOptions) {
       }
     },
     move(at: PointerAt) {
+      const zd=zoneDragRef.current;
+      if (zd) {
+        const next = zd.mode === 'move'
+          ? moveZone(zd.original, at.mapPx.x-zd.start[0], at.mapPx.y-zd.start[1])
+          : resizeZone(zd.original, zd.mode, at.mapPx);
+        zd.draft = next;
+        drawings.previewZone(next);
+        return true;
+      }
       if (panningRef.current) {
         mapControls.handleDrag(at.e);
         markDirty('terrain', 'tokens', 'overlay');
@@ -503,6 +549,12 @@ export function useDrawTool(options: DrawToolOptions) {
       return true;
     },
     up() {
+      const zd = zoneDragRef.current;
+      zoneDragRef.current = null;
+      if (zd) {
+        if (JSON.stringify(zd.original.points) !== JSON.stringify(zd.draft.points)) drawings.updateZone(zd.draft);
+        return;
+      }
       panningRef.current = false;
       const s = strokeRef.current;
       if (!s) return;
@@ -519,15 +571,19 @@ export function useDrawTool(options: DrawToolOptions) {
         drawings.add(s.mapId, {
           kind: s.kind, color: s.color, width: s.width, audience: s.audience, points: [s.start, s.end],
           ...(FILLED.has(s.kind) && s.fill ? { fillColor: s.color } : {}),
+          ...(s.zoneType ? { zoneType: s.zoneType, fillOpacity: s.fillOpacity } : {}),
         }, s.previewId);
       }
       markDirty('overlay');
     },
     cancel() {
+      cancelZoneDrag();
       panningRef.current = false;
       dropStroke();
     },
     escape() {
+      if (zoneDragRef.current) { cancelZoneDrag(); return true; }
+      if (kind === 'zone-edit' && selectedZoneId) { setSelectedZoneId(null); return true; }
       if (strokeRef.current) {
         dropStroke();
         return true;
@@ -574,6 +630,7 @@ export function useDrawTool(options: DrawToolOptions) {
   return {
     tool,
     inProgress,
+    selectedZoneId, setSelectedZoneId,
     /** The polygon's corners so far, for the panel's Done and Cancel. */
     polygonCorners: corners.length,
     finishPolygon,

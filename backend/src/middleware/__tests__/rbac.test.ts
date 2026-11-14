@@ -53,7 +53,7 @@ async function run(
   return { ...answer, req: request };
 }
 
-const membership = (role: CampaignRole): AuthenticatedRequest['campaignMembership'] => ({ role, characterIds: [], campaignId: 'c1' });
+const membership = (role: CampaignRole): AuthenticatedRequest['campaignMembership'] => ({ role, baseRole: role, gmAccess: false, characterIds: [], campaignId: 'c1' });
 
 beforeEach(() => mockFindUnique.mockReset());
 
@@ -101,7 +101,7 @@ describe('loadCampaignMembership', () => {
   });
 
   it('looks the membership up for the session\'s user, never one the request names', async () => {
-    mockFindUnique.mockResolvedValue({ role: 'PLAYER', characterIds: ['ch1'], campaignId: 'c1' });
+    mockFindUnique.mockResolvedValue({ role: 'PLAYER', gmAccess: false, characterIds: ['ch1'], campaignId: 'c1' });
     const answer = await run(loadCampaignMembership, {
       session: { userId: 'u1' },
       params: { campaignId: 'c1' },
@@ -109,7 +109,7 @@ describe('loadCampaignMembership', () => {
     });
     expect(mockFindUnique).toHaveBeenCalledWith({ where: { userId_campaignId: { userId: 'u1', campaignId: 'c1' } } });
     expect(answer.nexted).toBe(true);
-    expect(answer.req.campaignMembership).toEqual({ role: 'PLAYER', characterIds: ['ch1'], campaignId: 'c1' });
+    expect(answer.req.campaignMembership).toEqual({ role: 'PLAYER', baseRole: 'PLAYER', gmAccess: false, characterIds: ['ch1'], campaignId: 'c1' });
   });
 
   it('answers 500, and lets nothing through, when the lookup fails', async () => {

@@ -52,7 +52,7 @@ function Narrow() {
   );
 }
 
-const parts = { map: <Part name="Map" />, session: <Part name="Session" />, party: <Part name="Party" /> };
+const parts = { map: <Part name="Map" />, session: <Part name="Session" />, party: <Part name="Party" />, stage: <Part name="Stage" /> };
 
 function Table({ arrangement }: { arrangement: 'wide' | 'narrow' | 'none' }) {
   return (

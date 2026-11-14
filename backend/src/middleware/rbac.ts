@@ -20,7 +20,11 @@ import logger from '../utils/logger';
  */
 export interface AuthenticatedRequest<P = Record<string, string>> extends Request<P> {
   campaignMembership?: {
+    /** Effective campaign role. gmAccess members are DM for campaign tools. */
     role: CampaignRole;
+    /** Persisted seat role; remains PLAYER/SPECTATOR for a co-GM. */
+    baseRole: CampaignRole;
+    gmAccess: boolean;
     characterIds: string[];
     campaignId: string;
   };
@@ -85,7 +89,9 @@ export async function loadCampaignMembership(
 
     // Attach membership to request
     req.campaignMembership = {
-      role: membership.role,
+      role: membership.gmAccess && membership.role !== CampaignRole.DM ? CampaignRole.DM : membership.role,
+      baseRole: membership.role,
+      gmAccess: membership.gmAccess,
       characterIds: membership.characterIds,
       campaignId: membership.campaignId,
     };

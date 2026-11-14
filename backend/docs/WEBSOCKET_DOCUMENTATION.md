@@ -1303,6 +1303,7 @@ _Who may send it is read from the shared permission predicates each handler call
 | `character.hp.temporary` | DM, or the character's owner, never a spectator | CHARACTER.HP.TEMPORARY: the character takes `temporary` temporary hit points in place of any it has. |
 | `character.hp.update` | DM, or the character's owner, never a spectator | — |
 | `chat.message` | Any member | User sends chat message. |
+| `chat.typing` | Any member | — |
 | `dice.clearHistory` | DM only | DM clears dice roll history (DM-only). |
 | `dice.roll` | DM and players | User rolls dice Validates expression, calculates result, saves to database, and broadcasts. |
 | `drawing:add` | DM, or a player while **Players may draw** is on and the session is live | Draw on a map: the DM, or a player while Players may draw is on and the session is live. |
@@ -1310,6 +1311,7 @@ _Who may send it is read from the shared permission predicates each handler call
 | `drawing:clear_mine` | DM, or the drawing's player | Erase every drawing of the sender's on a map's markup layer, at any time; never a spectator. |
 | `drawing:preview` | DM, or a player while **Players may draw** is on and the session is live | One frame of a stroke on its way, or of the laser pointer, from someone who may draw there now; nothing is stored. |
 | `drawing:remove` | DM, or the drawing's player | Erase one drawing: the DM any, a player their own, at any time. |
+| `drawing:update` | Any member | GM-only edit for a stored battlefield zone. |
 | `drawings:request` | Any member | Any campaign member asks for a map's drawings, on (re)join and on opening a map. |
 | `exploration:request` | Any member | what this user has explored on a map. |
 | `exploration:reset` | DM only | DM forgets every player's explored areas on a map. |
@@ -1333,6 +1335,8 @@ _Who may send it is read from the shared permission predicates each handler call
 | `map.change` | DM only | DM switches to a different map. |
 | `map.ping` | Any member | user points at a location. |
 | `presence.request` | Any member | — |
+| `speaker.presence` | Any member | — |
+| `speaker.presence.request` | Any member | — |
 | `spirit_layer.style_change` | DM only | DM changes the realm atmosphere style. |
 | `spirit_layer.toggle` | DM only | DM toggles spirit layer visibility for the campaign. |
 | `spirit_layer.token.toggle` | DM only | DM toggles visibility of a specific token. |
@@ -1361,8 +1365,10 @@ _Sent to: map readers are every member while the map is the one the campaign is 
 | `campaign.settings.updated` | The campaign | `campaigns.ts` |
 | `character.hp.updated` | The campaign | `characters.ts` |
 | `character.updated` | Members the handler picks; the campaign | `utils.ts` |
-| `chat.message` | Members the handler picks | `chat.ts` |
+| `chat.message` | Members the handler picks; the campaign | `chat.ts` |
+| `chat.mutated` | One user's sockets; the campaign | `forkCampaign.ts` |
 | `chat.system` | The campaign | `utils.ts` |
+| `chat.typing` | Members the handler picks | `chat.ts` |
 | `connected` | The sender | `events.ts` |
 | `dice.historyCleared` | The campaign | `dice.ts` |
 | `dice.rolled` | Members the handler picks; the campaign; the sender | `dice.ts` |
@@ -1370,6 +1376,7 @@ _Sent to: map readers are every member while the map is the one the campaign is 
 | `drawing:added` | Map readers, as their role sees it | `drawings.ts` |
 | `drawing:previewed` | Members the handler picks | `drawings.ts` |
 | `drawing:removed` | Map readers, as their role sees it | `drawings.ts` |
+| `drawing:updated` | Map readers, as their role sees it | `drawings.ts` |
 | `drawings:cleared` | Map readers, as their role sees it | `drawings.ts` |
 | `drawings:state` | Map readers, as their role sees it; the sender | `drawings.ts` |
 | `exploration:state` | Map readers; members the handler picks; the sender | `exploration.ts` |
@@ -1392,6 +1399,8 @@ _Sent to: map readers are every member while the map is the one the campaign is 
 | `session.paused` | The campaign | `campaigns.ts` |
 | `session.resumed` | The campaign | `campaigns.ts` |
 | `session.started` | The campaign | `campaigns.ts` |
+| `speaker.presence` | Members the handler picks | `chat.ts` |
+| `speaker.presence.state` | The sender | `chat.ts` |
 | `spirit_layer.style_changed` | The campaign | `spirit.ts` |
 | `spirit_layer.toggled` | The campaign | `spirit.ts` |
 | `spirit_layer.token.toggled` | Members the handler picks | `spirit.ts` |

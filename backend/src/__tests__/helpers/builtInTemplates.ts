@@ -11,12 +11,14 @@ import { getDnD5eTemplates } from '../../utils/character-templates/dnd5e-templat
 import { getPF2eTemplates } from '../../utils/character-templates/pathfinder2e-templates';
 import { getSR6Templates } from '../../utils/character-templates/shadowrun6e-templates';
 import { getCoC7eTemplates } from '../../utils/character-templates/callOfCthulhu7e-templates';
+import { getSquadCommandTemplates } from '../../utils/character-templates/squadCommand-templates';
 
 const BUILT_IN: Record<GameSystem, () => CharacterTemplate[]> = {
   [GameSystem.DND_5E]: getDnD5eTemplates,
   [GameSystem.PATHFINDER_2E]: getPF2eTemplates,
   [GameSystem.SHADOWRUN_6E]: getSR6Templates,
   [GameSystem.CALL_OF_CTHULHU_7E]: getCoC7eTemplates,
+  [GameSystem.SQUAD_COMMAND]: getSquadCommandTemplates,
 };
 
 /** The built-in templates of one game system. */

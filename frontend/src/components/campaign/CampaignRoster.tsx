@@ -19,7 +19,7 @@ import { api } from '@/services/api';
 import { GAME_SYSTEM_SHORT_LABELS, GAME_SYSTEM_TINTS, isGameSystem } from '@/constants/game-systems';
 import { apiErrorMessage, errorSummary } from '@/utils/errors';
 import { canRollAsCharacter, canEditCharacter, canRemoveCharacterFromCampaign } from '@/services/permissions';
-import { Users, Crown, Gamepad2, Eye, Edit, X, Minus, Plus, Dices, MapPin, GripVertical, ShieldPlus } from 'lucide-react';
+import { Users, Crown, Gamepad2, Eye, Edit, X, Minus, Plus, Dices, MapPin, GripVertical, ShieldPlus, MessageCircle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { CharacterHpInfo } from '@/utils/characterHp';
 import CharacterSheetViewerModal from '../character/CharacterSheetViewerModal';
@@ -123,6 +123,9 @@ export default function CampaignRoster() {
 
   // Handle character click - fetch full character and open viewer
   const handleCharacterClick = async (characterId: string) => {
+    window.dispatchEvent(new CustomEvent('smugvtt:character-selected', {
+      detail: { characterId },
+    }));
     try {
       setViewerLoading(true);
       const { character } = await api.getCharacter(characterId);
@@ -252,6 +255,20 @@ export default function CampaignRoster() {
   const characterMenuItems = (menu: CharacterMenu, viewer: User, membership: CampaignMembership): FlatMenuItem[] => {
     const owner = { userId: menu.characterUserId };
     const items: FlatMenuItem[] = [{ kind: 'command', id: 'view-sheet', icon: Eye, label: 'View Character Sheet', run: handleViewCharacterSheet }];
+    if (menu.characterUserId !== viewer.id) {
+      items.push({
+        kind: 'command',
+        id: 'whisper',
+        icon: MessageCircle,
+        label: 'Whisper',
+        run: () => {
+          window.dispatchEvent(new CustomEvent('smugvtt:whisper', {
+            detail: { userId: menu.characterUserId },
+          }));
+          handleCloseContextMenu();
+        },
+      });
+    }
     // Rolling uses the sheet's modifiers, so it follows character
     // ownership, like Edit and Remove below — not `true`, which let
     // any member roll anyone's character.
@@ -507,7 +524,17 @@ function MemberCard({ member, getRoleIcon, onCharacterClick, onCharacterMenu, co
   return (
     <div className="p-2 rounded-lg bg-parchment/50 hover:bg-parchment transition-colors">
       {/* Member Info */}
-      <div className="flex items-center gap-2 mb-2">
+      <div
+        className="flex items-center gap-2 mb-2"
+        onContextMenu={(event) => {
+          if (member.userId === currentUserId) return;
+          event.preventDefault();
+          window.dispatchEvent(new CustomEvent('smugvtt:whisper', {
+            detail: { userId: member.userId },
+          }));
+        }}
+        title={member.userId === currentUserId ? undefined : 'Right-click to whisper'}
+      >
         {/* Presence badge on the role icon. This replaces the "X has joined /
             left the campaign" chat messages, which fired on every refresh and
             every brief disconnect.

@@ -357,55 +357,61 @@
        They keep their own prefix: a runtime variable named like a Tailwind
        key would replace it, and Tailwind would read channels as a color.  */
 
-    /* Primary brand: Smug Gold */
-    --rgb-brand: 216 168 62;
-    --rgb-brand-dark: 149 99 31;
+    /* Primary brand */
+    --rgb-brand: 74 93 78;
+    --rgb-brand-dark: 44 62 47;
 
     /* Accent / CTA */
-    --rgb-accent: 216 168 62;
-    --rgb-accent-hover: 241 190 91;
-    --rgb-accent-text: 25 25 31;
+    --rgb-accent: 212 165 116;
+    --rgb-accent-hover: 232 158 91;
+    --rgb-accent-text: 44 62 47;
 
     /* Backgrounds */
-    --rgb-bg-base: 25 25 31;
-    --rgb-bg-surface: 35 35 43;
-    --rgb-bg-surface-light: 47 47 56;
-    --rgb-bg-surface-dark: 20 20 27;
+    --rgb-bg-base: 255 249 230;
+    --rgb-bg-surface: 244 236 216;
+    --rgb-bg-surface-light: 251 247 238;
+    --rgb-bg-surface-dark: 224 212 184;
 
-    /* Text: secondary and muted are the default theme's derived values */
-    --rgb-ink: 241 233 218;
-    --rgb-ink-secondary: 210 204 193;
-    --rgb-ink-muted: 190 185 174;
+    /* Text (secondary and muted are the default theme's derived values) */
+    --rgb-ink: 31 41 55;
+    --rgb-ink-secondary: 101 91 85;
+    --rgb-ink-muted: 89 95 106;
 
-    /* Utility and spirit */
-    --rgb-paper: 43 43 52;
-    --rgb-danger: 233 100 93;
-    --rgb-spirit: 178 151 255;
+    /* Utility */
+    --rgb-paper: 254 254 254;
+    --rgb-danger: 192 57 43;
 
-    /* First-paint readable text values for Smug Gold */
-    --rgb-brand-ink: 228 195 121;
-    --rgb-brand-text: 66 66 66;
-    --rgb-brand-hover: 221 178 85;
-    --rgb-danger-fill: 225 44 35;
-    --rgb-accent-ink: 228 195 121;
-    --rgb-spirit-ink: 204 186 255;
-    --rgb-danger-ink: 242 161 155;
+    /* Game-specific (not theme-dependent) */
+    --rgb-spirit: 147 112 219;
+
+    /* ── Readable text variants and state colors ──
+       Overwritten per theme by applyThemeColors() → deriveReadableTokens();
+       these defaults match the Cozy Default palette so the app renders
+       correctly during the first paint, before a theme is applied. */
+    --rgb-brand-ink: 64 81 68;
+    --rgb-brand-text: 255 255 255;
+    --rgb-brand-hover: 65 82 69;
+    --rgb-danger-fill: 192 57 43;
+    --rgb-accent-ink: 129 86 41;
+    --rgb-spirit-ink: 100 50 200;
+    --rgb-danger-ink: 140 41 31;
     --rgb-success: 34 139 68;
-    --rgb-success-ink: 49 199 98;
+    --rgb-success-ink: 23 95 46;
     --rgb-warning: 191 129 20;
-    --rgb-warning-ink: 234 170 57;
+    --rgb-warning-ink: 117 80 13;
     --rgb-info: 37 99 190;
-    --rgb-info-ink: 125 169 230;
+    --rgb-info-ink: 29 76 147;
     --rgb-token-player: 59 130 246;
-    --rgb-token-player-ink: 139 179 250;
+    --rgb-token-player-ink: 9 77 188;
     --rgb-token-hostile: 239 68 68;
-    --rgb-token-hostile-ink: 246 147 147;
+    --rgb-token-hostile-ink: 166 14 14;
     --rgb-token-friendly: 45 212 191;
-    --rgb-token-friendly-ink: 100 223 207;
+    --rgb-token-friendly-ink: 21 107 96;
     --rgb-token-neutral: 251 191 36;
-    --rgb-token-neutral-ink: 252 201 71;
+    --rgb-token-neutral-ink: 127 91 3;
     --rgb-token-object: 120 113 108;
-    --rgb-token-object-ink: 177 172 168;
+    --rgb-token-object-ink: 89 82 79;
+
     /* The font defaults are in @theme above; applyFont (themes.ts) replaces them. */
   }
 

@@ -156,7 +156,7 @@ export function slashWhisperRefusal(read: Exclude<SlashWhisper, { kind: 'none' }
     case 'to':
       return 'Write your message after the name.';
     case 'several':
-      return `That name fits more than one person: ${read.labels.join(', ')}. Choose one in the To list.`;
+      return `That name fits more than one person: ${read.labels.join(', ')}. Use their full display name, or right-click the person or character and choose Whisper.`;
     case 'nobody':
       return read.typed ? `Nobody in this campaign is called "${read.typed}".` : 'Write a name after /w or /whisper, then your message.';
   }

@@ -21,6 +21,7 @@ import Pathfinder2eCharacterView from '../character-sheets/pathfinder2e/Pathfind
 import Shadowrun6eCharacterSheet from '../character-sheets/shadowrun6e/Shadowrun6eCharacterSheet';
 import CallOfCthulhu7eCharacterView from '../character-sheets/call-of-cthulhu-7e/CallOfCthulhu7eCharacterView';
 import { FlexibleCharacterSheetView } from '../character-sheets/flexible/FlexibleCharacterSheetView';
+import SquadCommandCharacterSheet from '../character-sheets/squadCommand/SquadCommandCharacterSheet';
 import { CharacterSheetErrorBoundary } from '../character-sheets/ErrorBoundary';
 import { RollModeControl } from '../character-sheets/RollModeControl';
 import { systemSupportsAdvantage, type RollMode } from '@/utils/rollModes';
@@ -205,6 +206,16 @@ export default function CharacterSheetViewerModal({
         return <Shadowrun6eCharacterSheet character={character} mode="view" />;
       case 'CALL_OF_CTHULHU_7E':
         return <CallOfCthulhu7eCharacterView character={character} onEdit={canEdit ? handleEdit : undefined} onRoll={rollHandler} />;
+      case 'SQUAD_COMMAND':
+        return <SquadCommandCharacterSheet
+          character={character}
+          mode="view"
+          onSave={canEdit ? async (data) => {
+            const result = await api.updateCharacter(character.id, { data, updatedAt: character.updatedAt });
+            setCharacter(result.character);
+            onCharacterChanged?.(result.character);
+          } : undefined}
+        />;
       default:
         return <FlexibleCharacterSheetView character={character} onEdit={canEdit ? handleEdit : undefined} />;
     }

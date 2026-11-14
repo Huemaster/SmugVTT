@@ -29,6 +29,8 @@ import { ArrowLeft, Loader2 } from 'lucide-react';
 import CampaignInfo from '@/components/campaign/CampaignInfo';
 import PreparingBanner from '@/components/campaign/PreparingBanner';
 import CampaignRoster from '@/components/campaign/CampaignRoster';
+import CharacterQuickPanel from '@/components/campaign/CharacterQuickPanel';
+import SquadFodderSpawnOverlay from '@/components/campaign/SquadFodderSpawnOverlay';
 // Lazy-loaded — MapCanvas is by far the largest component in the app; splitting
 // it into its own chunk keeps the CampaignPage shell fast to load and paints
 // the sidebars while the canvas code downloads.
@@ -38,6 +40,7 @@ import TokenManager from '@/components/campaign/TokenManager';
 import SpiritLayerControls from '@/components/campaign/SpiritLayerControls';
 import AtmospherePanel from '@/components/campaign/AtmospherePanel';
 import AtmospherePlayer from '@/components/campaign/AtmospherePlayer';
+import SmugJukeboxBar from '@/components/campaign/SmugJukeboxBar';
 import TableRefusals from '@/components/campaign/TableRefusals';
 import NpcQuickEditor from '@/components/campaign/NpcQuickEditor';
 import CreatureLibrary from '@/components/campaign/CreatureLibrary';
@@ -57,6 +60,8 @@ import Button from '@/components/ui/Button';
 import { useOnRejoin } from '@/hooks/useOnRejoin';
 import { useAccessRevoked } from '@/hooks/useAccessRevoked';
 
+import SceneBoardPanel from '@/components/campaign/SceneBoardPanel';
+import SceneStagePanel from '@/components/campaign/SceneStagePanel';
 // ============================================
 // Campaign Page Content (inside provider)
 // ============================================
@@ -130,6 +135,28 @@ function CampaignPageContent() {
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [isCreatureLibraryOpen, setIsCreatureLibraryOpen] = useState(false);
   const [isTokenTemplateLibraryOpen, setIsTokenTemplateLibraryOpen] = useState(false);
+  const [mainWorkspace, setMainWorkspace] = useState<'scene' | 'map' | 'chat'>(() => {
+    try {
+      const stored = window.localStorage.getItem('smugvtt:main-workspace');
+      return stored === 'map' || stored === 'chat' || stored === 'scene' ? stored : 'scene';
+    } catch { return 'scene'; }
+  });
+  const chooseWorkspace = (workspace: 'scene' | 'map' | 'chat') => {
+    setMainWorkspace(workspace);
+    if (workspace === 'chat') useGameStore.getState().setSessionTab('chat');
+    try { window.localStorage.setItem('smugvtt:main-workspace', workspace); } catch { /* optional */ }
+  };
+  const [scenePresenting, setScenePresenting] = useState(false);
+
+  useEffect(() => {
+    const onPresentationState = (event: Event) => {
+      const detail = (event as CustomEvent<{ active?: boolean }>).detail;
+      setScenePresenting(detail?.active === true);
+    };
+    window.addEventListener('smugvtt:scene-presentation-state', onPresentationState);
+    return () => window.removeEventListener('smugvtt:scene-presentation-state', onPresentationState);
+  }, []);
+
   // The token in the quick editor, with the map it was opened on, which its
   // saves name: the map on screen can change under it (the table moved from
   // elsewhere, the map being prepared deleted).
@@ -138,6 +165,22 @@ function CampaignPageContent() {
     if (viewedMap) setQuickEdit({ token, mapId: viewedMap.id });
   };
   const compact = useCompactLayout();
+  const visibleWorkspace = compact && mainWorkspace === 'chat' ? 'scene' : mainWorkspace;
+  // Journal/Media tabs use existing modal/library surfaces until native
+  // document and asset grids can be audited; no feature is deleted.
+  useEffect(() => {
+    const documents = () => setIsDocumentsOpen(true);
+    const media = () => setIsTokenTemplateLibraryOpen(true);
+    const tokenManager = () => setIsTokenManagerOpen(true);
+    window.addEventListener('smugvtt:open-documents', documents);
+    window.addEventListener('smugvtt:open-media', media);
+    window.addEventListener('smugvtt:open-token-manager', tokenManager);
+    return () => {
+      window.removeEventListener('smugvtt:open-documents', documents);
+      window.removeEventListener('smugvtt:open-media', media);
+      window.removeEventListener('smugvtt:open-token-manager', tokenManager);
+    };
+  }, []);
 
   // SessionToolbar reports which tool was clicked; the open/close state
   // for each slide-over stays here.
@@ -243,32 +286,93 @@ function CampaignPageContent() {
   // and moved into the slots of the arrangement on screen, so a change of
   // arrangement remounts none of them.
   const tableParts: Record<TablePart, ReactNode> = {
+    stage: <SceneStagePanel />,
     map: (
-      // The banner over a map the DM is preparing, then the map below it.
+      // Scene is SmugVTT's standard table surface; tactical Map is second.
+      // Both stay mounted so switching does not reset either workspace.
       <div className="flex h-full w-full flex-col">
-        <PreparingBanner />
-        <div className="min-h-0 flex-1">
-          <Suspense
-            fallback={
-              <div className="w-full h-full flex items-center justify-center" aria-live="polite" aria-label="Loading map">
-                <Loader2 className="w-8 h-8 text-brand-ink animate-spin" aria-hidden="true" />
-              </div>
-            }
+        <div className={`${compact ? 'flex' : 'hidden'} shrink-0 items-center justify-center gap-1 border-b border-ink/10 bg-paper/95 p-1.5`}>
+          <button
+            type="button"
+            aria-pressed={visibleWorkspace === 'scene'}
+            onClick={() => chooseWorkspace('scene')}
+            className={`rounded-cozy px-4 py-1.5 text-sm font-medium transition-colors ${
+              mainWorkspace === 'scene'
+                ? 'bg-accent text-accent-text'
+                : 'text-ink-secondary hover:bg-ink/5 hover:text-ink'
+            }`}
           >
-            <MapCanvas onEditToken={editToken} onShowShortcuts={() => setIsShortcutsOpen(true)} />
-          </Suspense>
+            Canvas
+          </button>
+          <button
+            type="button"
+            aria-pressed={visibleWorkspace === 'map'}
+            onClick={() => chooseWorkspace('map')}
+            className={`rounded-cozy px-4 py-1.5 text-sm font-medium transition-colors ${
+              mainWorkspace === 'map'
+                ? 'bg-accent text-accent-text'
+                : 'text-ink-secondary hover:bg-ink/5 hover:text-ink'
+            }`}
+          >
+            Map
+          </button>
+          {userRole === 'DM' && (
+            <button
+              type="button"
+              aria-pressed={scenePresenting}
+              title="Toggle Scene presentation mode"
+              onClick={() => window.dispatchEvent(new CustomEvent('smugvtt:scene-presentation-toggle'))}
+              className={`rounded-cozy px-2.5 py-1 text-xs font-medium transition-colors ${
+                scenePresenting
+                  ? 'bg-accent text-accent-text'
+                  : 'border border-ink/10 text-ink-secondary hover:bg-ink/5 hover:text-ink'
+              }`}
+            >
+              {scenePresenting ? 'Presenting' : 'Present'}
+            </button>
+          )}
+        </div>
+
+        <div className="relative min-h-0 flex-1">
+          <div className={`absolute inset-0 ${visibleWorkspace === 'scene' ? '' : 'invisible pointer-events-none'}`}>
+            <SceneBoardPanel />
+          </div>
+
+          <div className={`absolute inset-0 ${visibleWorkspace === 'map' ? '' : 'invisible pointer-events-none'}`}>
+            <div className="flex h-full w-full flex-col">
+              <PreparingBanner />
+              <div className="min-h-0 flex-1">
+                <Suspense
+                  fallback={
+                    <div className="w-full h-full flex items-center justify-center" aria-live="polite" aria-label="Loading map">
+                      <Loader2 className="w-8 h-8 text-brand-ink animate-spin" aria-hidden="true" />
+                    </div>
+                  }
+                >
+                  <MapCanvas onEditToken={editToken} onShowShortcuts={() => setIsShortcutsOpen(true)} />
+                </Suspense>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     ),
     session: <SessionPanels />,
     party: (
-      <div className="space-y-4">
-        <CampaignInfo onLeft={endTable} />
-        <CampaignRoster />
-        {/* Token Roster — DM only */}
-        {userRole === 'DM' && (
-          <TokenRoster onEditToken={editToken} />
-        )}
+      <div className="space-y-3">
+        <CharacterQuickPanel />
+        <details className="rounded-cozy border border-ink/10 bg-paper/70">
+          <summary className="cursor-pointer select-none px-3 py-2 text-sm font-semibold text-ink-secondary hover:text-ink">
+            Campaign &amp; Party
+          </summary>
+          <div className="space-y-4 border-t border-ink/10 p-3">
+            <CampaignInfo onLeft={endTable} />
+            <CampaignRoster />
+            {userRole === 'DM' && (
+              <TokenRoster onEditToken={editToken} />
+            )}
+          </div>
+        </details>
       </div>
     ),
   };
@@ -304,9 +408,12 @@ function CampaignPageContent() {
             onOpenTool={(key) => sessionPanelOpeners[key]()}
             onOpenDocuments={() => setIsDocumentsOpen(true)}
             onOpenShortcuts={() => setIsShortcutsOpen(true)}
+            workspace={mainWorkspace}
+            onWorkspaceChange={chooseWorkspace}
           />
         )}
       </TableHosts>
+      {mainWorkspace === 'map' && userRole === 'DM' && <SquadFodderSpawnOverlay />}
 
       {/* Map Manager slide-over panel (DM only) */}
       {userRole === 'DM' && (
@@ -396,6 +503,7 @@ function CampaignPageContent() {
 
       {/* Atmosphere Player — mounts for ALL users, manages ambient audio sync */}
       <AtmospherePlayer />
+      <SmugJukeboxBar />
 
       {/* What the server refuses, shown as a message */}
       <TableRefusals />

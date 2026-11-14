@@ -18,6 +18,7 @@ import CampaignImportDialog from '@/components/campaign/CampaignImportDialog';
 import InvitationModal from '@/components/campaign/InvitationModal';
 import CampaignCardSkeleton from '@/components/skeletons/CampaignCardSkeleton';
 import LeftCampaignNotes from '@/components/LeftCampaignNotes';
+import SquadFodderDashboardCard from '@/components/campaign/SquadFodderDashboardCard';
 import type { Campaign, CampaignInvitation } from '@/types';
 import { CampaignRole, PlatformRole } from '@/types';
 import Button from '@/components/ui/Button';
@@ -376,6 +377,7 @@ export default function DashboardPage() {
                 </div>
               </div>
             </section>
+            <SquadFodderDashboardCard />
           </div>
 
           {/* Pending Invitations Section */}

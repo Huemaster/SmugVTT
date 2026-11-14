@@ -133,6 +133,57 @@ async function canReadAssetFile(
 }
 
 /**
+ * SmugVTT Scene Board pictures are stored as MAP assets so they keep the
+ * normal large-image upload limit. CozyVTT normally hides MAP bytes from
+ * non-DMs unless the asset is being used by a tactical map. A revealed,
+ * shared Scene Board is another legitimate campaign use.
+ *
+ * This is deliberately stricter than "tagged scene-board": the asset must
+ * be referenced by a currently shared/revealed scene and by an element that
+ * is not individually hidden.
+ */
+function sharedSceneBoardNamesVisibleAsset(boardState: unknown, assetId: string): boolean {
+  if (!boardState || typeof boardState !== 'object' || Array.isArray(boardState)) return false;
+  const elements = (boardState as Record<string, unknown>).elements;
+  if (!Array.isArray(elements)) return false;
+
+  return elements.some((element) => {
+    if (!element || typeof element !== 'object' || Array.isArray(element)) return false;
+    const value = element as Record<string, unknown>;
+    return value.hidden !== true && value.imageAssetId === assetId;
+  });
+}
+
+async function canReadSharedSceneBoardMapAsset(
+  asset: { id: string; campaignId: string | null; tags: string[] },
+  req: AuthenticatedRequest,
+): Promise<boolean> {
+  if (!asset.campaignId || !asset.tags.includes('scene-board')) return false;
+
+  const userId = req.session.userId!;
+  const membership = await prisma.campaignMembership.findUnique({
+    where: { userId_campaignId: { userId, campaignId: asset.campaignId } },
+    select: { role: true },
+  });
+  if (!membership) return false;
+
+  // A DM already passes the ordinary asset permission, but this also keeps
+  // the helper correct if it is called independently later.
+  if (membership.role === 'DM') return true;
+
+  const scenes = await prisma.campaignScene.findMany({
+    where: {
+      campaignId: asset.campaignId,
+      revealed: true,
+      boardVisibility: 'shared',
+    },
+    select: { boardState: true },
+  });
+
+  return scenes.some((scene) => sharedSceneBoardNamesVisibleAsset(scene.boardState, asset.id));
+}
+
+/**
  * Set cache headers for a served asset and answer conditional requests.
  * Most asset files are stored under UUID filenames and never written over
  * (a re-upload creates a new asset row), so their asset-id URLs can be
@@ -1330,7 +1381,10 @@ router.get('/maps/:id', authenticated, async (req: AuthenticatedRequest, res: Re
     }
 
     // One the caller may not read is answered as if it were not there.
-    if (!(await canReadAssetFile(asset, req))) {
+    const mayReadMap =
+      await canReadAssetFile(asset, req) ||
+      await canReadSharedSceneBoardMapAsset(asset, req);
+    if (!mayReadMap) {
       return res.status(404).json({ error: 'Not Found', message: 'Map asset not found' });
     }
 
@@ -1414,7 +1468,13 @@ function serveThumbnail(type: 'MAP' | 'TOKEN', notFound: string, label: string) 
     try {
       const asset = await prisma.asset.findUnique({ where: { id: req.params.id, type } });
       // One the caller may not read is answered as if it were not there.
-      if (!asset || !(await canReadAssetFile(asset, req))) {
+      const mayRead =
+        !!asset &&
+        (
+          await canReadAssetFile(asset, req) ||
+          (type === 'MAP' && await canReadSharedSceneBoardMapAsset(asset, req))
+        );
+      if (!asset || !mayRead) {
         return res.status(404).json({ error: 'Not Found', message: notFound });
       }
       const thumbnail = asset.thumbnailPath ? storedFilePath(asset.thumbnailPath) : null;

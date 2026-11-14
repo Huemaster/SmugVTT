@@ -63,6 +63,12 @@ export function cleanLabel(text: string): string {
 
 /** The kinds that enclose an area, and so may be filled. */
 const FILLED_KINDS: readonly DrawingKind[] = ['rect', 'ellipse', 'polygon'];
+/** Only generic annotations; no campaign-specific mechanics are encoded. */
+export const BATTLEFIELD_ZONE_TYPES = [
+  'light-cover', 'heavy-cover', 'high-ground', 'low-ground',
+  'smoke', 'obscured', 'healing', 'hazard',
+] as const;
+export const BATTLEFIELD_ZONE_REFUSAL = 'Battlefield zones must be filled rectangles, ellipses or polygons';
 
 /** An x or a y: a whole number of map pixels within MAX_COORDINATE of the corner, as walls and lights are. */
 const wholeCoordinate = z
@@ -108,6 +114,8 @@ export const NewDrawingSchema = z
       audience: z.enum(DRAWING_AUDIENCES, { error: DRAWING_AUDIENCE_REFUSAL }).default('ALL'),
       color: ColorSchema,
       fillColor: ColorSchema.nullish().transform((fill) => fill ?? null),
+      zoneType: z.enum(BATTLEFIELD_ZONE_TYPES).nullish().transform((zone) => zone ?? null),
+      fillOpacity: z.number().int().min(10).max(70).nullish().transform((value) => value ?? null),
       width: z
         .number({ error: DRAWING_WIDTH_REFUSAL })
         .int({ error: DRAWING_WIDTH_REFUSAL })
@@ -154,6 +162,14 @@ export const NewDrawingSchema = z
     }
     if (drawing.fillColor !== null && !FILLED_KINDS.includes(drawing.kind)) {
       ctx.addIssue({ code: 'custom', message: DRAWING_FILL_REFUSAL, path: ['fillColor'] });
+      return;
+    }
+    if (drawing.zoneType !== null && (!FILLED_KINDS.includes(drawing.kind) || drawing.fillColor === null || drawing.fillOpacity === null)) {
+      ctx.addIssue({ code: 'custom', message: BATTLEFIELD_ZONE_REFUSAL, path: ['zoneType'] });
+      return;
+    }
+    if (drawing.zoneType === null && drawing.fillOpacity !== null) {
+      ctx.addIssue({ code: 'custom', message: 'Fill opacity is only available for battlefield zones', path: ['fillOpacity'] });
       return;
     }
     if (Buffer.byteLength(JSON.stringify(drawing)) > DRAWING_LIMITS.maxBytes) {
@@ -290,6 +306,13 @@ export const DrawingAddEventSchema = z.object(
   { mapId: MapIdSchema, drawing: NewDrawingSchema, previewId: LabelSchema },
   { error: 'Map not found' }
 );
+
+/** GM edits an existing zone in place. Only zone shapes may be updated; never ordinary drawings. */
+export const DrawingUpdateEventSchema = z.object({
+  mapId: MapIdSchema,
+  drawingId: z.uuid({ error: 'Drawing not found' }),
+  drawing: NewDrawingSchema,
+}, { error: 'Map not found' });
 
 /** `drawing:remove`: one drawing, by its id. */
 export const DrawingRemoveEventSchema = z.object(

@@ -27,6 +27,8 @@ import authRoutes from './routes/auth';
 import campaignRoutes from './routes/campaigns';
 import campaignMacroRoutes from './routes/campaignMacros';
 import campaignDocumentRoutes from './routes/campaignDocuments';
+import forkCampaignRoutes from './routes/forkCampaign';
+import forkSceneRoutes from './routes/forkScenes';
 import userRoutes from './routes/users';
 import characterRoutes from './routes/characters';
 import characterTemplateRoutes from './routes/characterTemplates';
@@ -235,6 +237,8 @@ export function createApp(options: AppOptions): express.Express {
   app.use('/api/campaigns', campaignRoutes);
   app.use('/api/campaigns', campaignMacroRoutes);
   app.use('/api/campaigns', campaignDocumentRoutes);
+  app.use('/api/campaigns', forkCampaignRoutes);
+  app.use('/api/campaigns', forkSceneRoutes);
 
   // Characters
   app.use('/api/characters', characterRoutes);

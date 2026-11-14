@@ -212,7 +212,7 @@ export async function authenticateCampaign(
           campaignId,
         },
       },
-      select: { role: true },
+      select: { role: true, gmAccess: true },
     });
 
     if (!membership) {
@@ -221,7 +221,7 @@ export async function authenticateCampaign(
 
     return {
       success: true,
-      role: membership.role,
+      role: membership.gmAccess && membership.role !== 'DM' ? 'DM' : membership.role,
     };
   } catch (error) {
     logger.error('WebSocket campaign authentication error', { err: error });

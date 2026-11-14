@@ -614,6 +614,8 @@ export interface CampaignMembership {
   userId: string;
   campaignId: string;
   role: CampaignRole;
+  /** Broad campaign-control capability without taking the actual DM seat. */
+  gmAccess?: boolean;
   characterIds: string[];
   joinedAt: string;
   user?: MemberUser;
@@ -830,6 +832,7 @@ export type CharacterData =
   | import('./game-systems').PF2eCharacterData
   | import('./game-systems').SR6CharacterData
   | import('./game-systems').CoC7eCharacterData
+  | import('./game-systems').SquadCommandCharacterData
   // A character with no game system stores a flexible sheet here. The union
   // omitted it, so `Character.data` never admitted a shape it demonstrably
   // holds — invisible while the flexible editor's props were `any`.
@@ -1052,6 +1055,9 @@ export interface Message {
   content: string;
   metadata: MessageMetadata | null;
   createdAt: string;
+  editedAt?: string | null;
+  deletedAt?: string | null;
+  deletedById?: string | null;
 }
 
 export interface MessageMetadata {
@@ -1296,6 +1302,8 @@ export interface CreateTokenRequest {
 }
 
 export interface UpdateTokenRequest {
+  /** GM-only: unlink a legacy sheet after its Squad Command state is copied onto the map token. */
+  characterId?: string | null;
   name?: string;
   imageUrl?: string;
   position?: Position;
@@ -1420,6 +1428,10 @@ export interface ChatMessageEvent {
   clientId?: string;
   /** Whisper the message to this member alone, by user id. */
   recipientId?: string;
+  speakerType?: 'self' | 'character' | 'npc' | 'narrator';
+  speakerId?: string;
+  mode?: 'ic' | 'ooc' | 'narrator';
+  portraitFrame?: { zoom: number; x: number; y: number };
 }
 
 /** The server's answer to a `chat.message` sent with an acknowledgement. */
@@ -1450,6 +1462,7 @@ export interface ChatMessageBroadcast {
   recipientName?: string;
   /** On the sender's own copy only: the `clientId` it was sent with. */
   clientId?: string;
+  metadata?: MessageMetadata;
 }
 
 // Session Events

@@ -200,7 +200,7 @@ export default function CharactersPage() {
                 onClick={() => navigate('/dashboard')}
                 className="p-2 rounded-lg bg-moss-green/10 hover:bg-moss-green/20 transition-colors"
               >
-                <img src={mascotUrl} alt="SmugVTT" className="w-10 h-10 object-contain" />
+                <img src={mascotUrl} alt="CozyVTT" className="w-10 h-10 object-contain" />
               </button>
               <div>
                 <h1 className="text-3xl font-bold text-brand-ink font-heading">

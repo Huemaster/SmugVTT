@@ -24,8 +24,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import type { DoneAck } from '@/types';
 import type {
-  Drawing, DrawingAddAck, DrawingAddEvent, DrawingRemoveEvent, DrawingClearMineEvent, DrawingClearEvent, DrawingPreviewEvent,
-  DrawingsRequestEvent, DrawingAddedBroadcast, DrawingRemovedBroadcast, DrawingsClearedBroadcast, DrawingPreviewedBroadcast,
+  Drawing, DrawingAddAck, DrawingAddEvent, DrawingUpdateEvent, DrawingRemoveEvent, DrawingClearMineEvent, DrawingClearEvent, DrawingPreviewEvent,
+  DrawingsRequestEvent, DrawingAddedBroadcast, DrawingUpdatedBroadcast, DrawingRemovedBroadcast, DrawingsClearedBroadcast, DrawingPreviewedBroadcast,
   DrawingsStateBroadcast, NewDrawing, DrawingPreview,
 } from '@/types/drawings';
 import { useGameStore, useDrawings } from '@/stores/gameStore';
@@ -40,12 +40,14 @@ import { watchLabelFonts } from './drawingGeometry';
 /** The slice of the socket client the drawings need; the real one is services/socket.ts. */
 export interface MapDrawingsSocket {
   addDrawing(data: DrawingAddEvent): Promise<DrawingAddAck>;
+  updateDrawing(data: DrawingUpdateEvent): Promise<DoneAck>;
   removeDrawing(data: DrawingRemoveEvent): Promise<DoneAck>;
   clearMyDrawings(data: DrawingClearMineEvent): Promise<DoneAck>;
   clearDrawings(data: DrawingClearEvent): Promise<DoneAck>;
   sendDrawingPreview(data: DrawingPreviewEvent): void;
   requestDrawings(data: DrawingsRequestEvent): void;
   onDrawingAdded(cb: (data: DrawingAddedBroadcast) => void): void;
+  onDrawingUpdated(cb: (data: DrawingUpdatedBroadcast) => void): void;
   onDrawingRemoved(cb: (data: DrawingRemovedBroadcast) => void): void;
   onDrawingsCleared(cb: (data: DrawingsClearedBroadcast) => void): void;
   onDrawingPreviewed(cb: (data: DrawingPreviewedBroadcast) => void): void;
@@ -72,6 +74,10 @@ export interface MapDrawings {
   previews: RefObject<Map<string, ActivePreview>>;
   /** Draw `drawing` on `mapId`; `previewId` is the stroke's preview it ends. */
   add(mapId: string, drawing: NewDrawing, previewId?: string): void;
+  /** Optimistic canvas preview while dragging a zone; database untouched. */
+  previewZone(drawing: Drawing): void;
+  /** Commit geometry/properties with the same saved ID and return rejection to the GM. */
+  updateZone(drawing: Drawing): void;
   erase(drawing: Drawing): void;
   /** This member's own drawings on the map on screen. */
   clearMine(): void;
@@ -142,6 +148,11 @@ export function useMapDrawings({ socket, mapId, joinedEpoch, role, userId, markD
         markDirty('overlay');
       }
     };
+    const handleUpdated = (data: DrawingUpdatedBroadcast) => {
+      if (!onScreen(data.mapId) || !drawingSentTo(latest.current.role ?? undefined, data.drawing)) return;
+      useGameStore.getState().putDrawing(data.drawing);
+      markDirty('overlay');
+    };
     const handleRemoved = (data: DrawingRemovedBroadcast) => {
       if (onScreen(data.mapId)) useGameStore.getState().removeDrawing(data.drawingId);
     };
@@ -158,12 +169,14 @@ export function useMapDrawings({ socket, mapId, joinedEpoch, role, userId, markD
     };
     socket.onDrawingsState(handleState);
     socket.onDrawingAdded(handleAdded);
+    socket.onDrawingUpdated(handleUpdated);
     socket.onDrawingRemoved(handleRemoved);
     socket.onDrawingsCleared(handleCleared);
     socket.onDrawingPreviewed(handlePreviewed);
     return () => {
       socket.off('drawings:state', handleState);
       socket.off('drawing:added', handleAdded);
+      socket.off('drawing:updated', handleUpdated);
       socket.off('drawing:removed', handleRemoved);
       socket.off('drawings:cleared', handleCleared);
       socket.off('drawing:previewed', handlePreviewed);
@@ -195,6 +208,8 @@ export function useMapDrawings({ socket, mapId, joinedEpoch, role, userId, markD
       kind: drawing.kind,
       color: drawing.color,
       fillColor: drawing.fillColor ?? null,
+      zoneType: drawing.zoneType ?? null,
+      fillOpacity: drawing.fillOpacity ?? null,
       width: drawing.width,
       rotation: drawing.rotation ?? 0,
       sortKey: drawing.sortKey ?? 0,
@@ -222,6 +237,29 @@ export function useMapDrawings({ socket, mapId, joinedEpoch, role, userId, markD
       latest.current.onRefused(answer.error);
     });
   }, [socket]);
+
+  const previewZone = useCallback((drawing: Drawing) => {
+    if (latest.current.role !== 'DM' || !drawing.zoneType || drawing.id.startsWith('pending:')) return;
+    useGameStore.getState().putDrawing(drawing);
+    markDirty('overlay');
+  }, [markDirty]);
+
+  const updateZone = useCallback((drawing: Drawing) => {
+    const forMap = latest.current.mapId;
+    if (!socket || !forMap || latest.current.role !== 'DM' || !drawing.zoneType || drawing.id.startsWith('pending:')) return;
+    previewZone(drawing);
+    const event: DrawingUpdateEvent = { mapId: forMap, drawingId: drawing.id, drawing: {
+      kind: drawing.kind as NewDrawing['kind'], layer: 'MARKUP', audience: drawing.audience,
+      color: drawing.color, fillColor: drawing.fillColor, zoneType: drawing.zoneType,
+      fillOpacity: drawing.fillOpacity, width: drawing.width, rotation: drawing.rotation,
+      sortKey: drawing.sortKey, points: drawing.points, text: drawing.text,
+    } };
+    void socket.updateDrawing(event).then((answer) => {
+      if (answer.ok) return;
+      askAgain(forMap);
+      latest.current.onRefused(answer.error);
+    });
+  }, [socket, askAgain, previewZone]);
 
   const erase = useCallback((drawing: Drawing) => {
     const forMap = latest.current.mapId;
@@ -286,7 +324,7 @@ export function useMapDrawings({ socket, mapId, joinedEpoch, role, userId, markD
   }, [markDirty]);
 
   return useMemo(
-    () => ({ drawings, previews, add, erase, clearMine, clearAll, clearMember, sendPreview, showPreview, dropPreview }),
-    [drawings, add, erase, clearMine, clearAll, clearMember, sendPreview, showPreview, dropPreview],
+    () => ({ drawings, previews, add, previewZone, updateZone, erase, clearMine, clearAll, clearMember, sendPreview, showPreview, dropPreview }),
+    [drawings, add, previewZone, updateZone, erase, clearMine, clearAll, clearMember, sendPreview, showPreview, dropPreview],
   );
 }

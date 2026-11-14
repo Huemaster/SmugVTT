@@ -13,6 +13,7 @@ export const GAME_SYSTEM_LABELS: Record<GameSystem, string> = {
   [GameSystem.PATHFINDER_2E]: 'Pathfinder 2nd Edition',
   [GameSystem.SHADOWRUN_6E]: 'Shadowrun 6th Edition',
   [GameSystem.CALL_OF_CTHULHU_7E]: 'Call of Cthulhu 7th Edition',
+  [GameSystem.SQUAD_COMMAND]: 'Squad Command',
 };
 
 /**
@@ -23,6 +24,7 @@ export const GAME_SYSTEM_SHORT_LABELS: Record<GameSystem, string> = {
   [GameSystem.PATHFINDER_2E]: 'PF2e',
   [GameSystem.SHADOWRUN_6E]: 'SR6',
   [GameSystem.CALL_OF_CTHULHU_7E]: 'CoC 7e',
+  [GameSystem.SQUAD_COMMAND]: 'SC',
 };
 
 /**
@@ -40,6 +42,7 @@ export const GAME_SYSTEM_TINTS: Record<GameSystem, { bg: string; text: string; b
   [GameSystem.PATHFINDER_2E]: { bg: 'bg-info/10', text: 'text-info-ink', border: 'border-info/30' },
   [GameSystem.SHADOWRUN_6E]: { bg: 'bg-spirit/10', text: 'text-spirit-ink', border: 'border-spirit/30' },
   [GameSystem.CALL_OF_CTHULHU_7E]: { bg: 'bg-success/10', text: 'text-success-ink', border: 'border-success/30' },
+  [GameSystem.SQUAD_COMMAND]: { bg: 'bg-brand/10', text: 'text-brand-ink', border: 'border-brand/30' },
 };
 
 export const GAME_SYSTEM_DESCRIPTIONS: Record<GameSystem, string> = {
@@ -51,6 +54,8 @@ export const GAME_SYSTEM_DESCRIPTIONS: Record<GameSystem, string> = {
     'Cyberpunk meets fantasy in a dystopian future with magic, technology, and corporate intrigue.',
   [GameSystem.CALL_OF_CTHULHU_7E]:
     'Investigate cosmic horror in the style of H.P. Lovecraft. Sanity-testing mystery and dread.',
+  [GameSystem.SQUAD_COMMAND]:
+    'Squadron Command for Squad Command: faction troops, commanders, vehicles, Shields, armor and Suppression.',
 };
 
 /**
@@ -88,6 +93,12 @@ export const GAME_SYSTEM_OPTIONS: GameSystemOption[] = [
     label: GAME_SYSTEM_LABELS[GameSystem.CALL_OF_CTHULHU_7E],
     shortLabel: GAME_SYSTEM_SHORT_LABELS[GameSystem.CALL_OF_CTHULHU_7E],
     description: GAME_SYSTEM_DESCRIPTIONS[GameSystem.CALL_OF_CTHULHU_7E],
+  },
+  {
+    value: GameSystem.SQUAD_COMMAND,
+    label: GAME_SYSTEM_LABELS[GameSystem.SQUAD_COMMAND],
+    shortLabel: GAME_SYSTEM_SHORT_LABELS[GameSystem.SQUAD_COMMAND],
+    description: GAME_SYSTEM_DESCRIPTIONS[GameSystem.SQUAD_COMMAND],
   },
 ];
 

@@ -50,7 +50,7 @@ describe('the MapDrawing table', () => {
     const { owner, map } = await campaignWithMap();
     const drawing = await line(map.id, owner.id);
     expect(drawing).toMatchObject({
-      audience: 'ALL', layer: 'MARKUP', fillColor: null, pattern: null, stamp: null,
+      audience: 'ALL', layer: 'MARKUP', fillColor: null, zoneType: null, fillOpacity: null, pattern: null, stamp: null,
       rotation: 0, sortKey: 0, text: null, points: [[0, 0], [100, 50]],
     });
     expect(drawing.createdAt).toBeInstanceOf(Date);

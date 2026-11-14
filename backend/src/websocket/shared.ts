@@ -286,6 +286,10 @@ export const SOCKET_CEILINGS = {
     windows: [{ limit: 20, windowMs: SECOND }, { limit: 300, windowMs: MINUTE }],
     refusal: 'Too many drawings at once. Wait a moment, then draw again.',
   },
+  'drawing:update': {
+    windows: [{ limit: 20, windowMs: SECOND }],
+    refusal: 'Too many zone edits at once. Wait a moment, then try again.',
+  },
   'drawing:remove': {
     windows: [{ limit: 20, windowMs: SECOND }],
     refusal: 'Too many drawings erased at once. Wait a moment, then try again.',

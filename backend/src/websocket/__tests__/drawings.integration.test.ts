@@ -139,7 +139,7 @@ describe('drawing:add', () => {
       expect(event).toEqual({
         mapId: shownId, opId: 'op-1', previewId: 'stroke-1',
         drawing: {
-          id, authorId: ids.dm, audience: 'ALL', layer: 'MARKUP', kind: 'line', color: '#3d8bd9', fillColor: null,
+          id, authorId: ids.dm, audience: 'ALL', layer: 'MARKUP', kind: 'line', color: '#3d8bd9', fillColor: null, zoneType: null, fillOpacity: null,
           width: 4, rotation: 0, sortKey: 0, points: [[10, 10], [200, 120]], text: null, createdAt: expect.any(String),
         },
       });
@@ -402,6 +402,54 @@ describe('drawing:add', () => {
     it('says nothing of how many drawings a share holds', () => {
       for (const message of Object.values(MARKUP_SHARE_FULL)) expect(message).not.toMatch(/\d/);
     });
+  });
+});
+
+describe('drawing:update — GM zone editing', () => {
+  const zone = (extra: Record<string, unknown> = {}) => ({
+    kind: 'rect', color: '#e7ad42', fillColor: '#e7ad42', zoneType: 'light-cover', fillOpacity: 30,
+    width: 3, points: [[100, 100], [220, 180]], audience: 'ALL', ...extra,
+  });
+
+  it('keeps zone identity, persists moved geometry, and notifies readers', async () => {
+    const table = await seat();
+    const added = await ask(table.dm, 'drawing:add', { mapId: shownId, drawing: zone() });
+    const id = idOf(added);
+    const heard = waitForEvent<{ drawing: { id: string; points: number[][] } }>(table.p1, 'drawing:updated');
+    const edited = await ask(table.dm, 'drawing:update', {
+      mapId: shownId, drawingId: id, drawing: zone({ points: [[130, 110], [250, 190]] }),
+    });
+    expect(edited.ok).toBe(true);
+    expect((await heard).drawing).toMatchObject({ id, points: [[130, 110], [250, 190]] });
+    const row = await prisma.mapDrawing.findUniqueOrThrow({ where: { id } });
+    expect(row).toMatchObject({ authorId: ids.dm, zoneType: 'light-cover', fillOpacity: 30, points: [[130, 110], [250, 190]] });
+    expect(await prisma.mapDrawing.count({ where: { mapId: shownId } })).toBe(1);
+    leave(table);
+  });
+
+  it('rejects players, ordinary drawings, changed audience and foreign maps', async () => {
+    const table = await seat();
+    const id = idOf(await ask(table.dm, 'drawing:add', { mapId: shownId, drawing: zone() }));
+    const payload = { mapId: shownId, drawingId: id, drawing: zone({ color: '#ffffff', fillColor: '#ffffff' }) };
+    expect(errorOf(await ask(table.p1, 'drawing:update', payload))).toMatch(/Only the GM/);
+    expect(errorOf(await ask(table.dm, 'drawing:update', { ...payload, drawing: zone({ audience: 'DM' }) }))).toMatch(/visibility/);
+    expect(errorOf(await ask(table.dm, 'drawing:update', { ...payload, mapId: foreignId }))).toBe('Map not found');
+    const normal = idOf(await ask(table.dm, 'drawing:add', { mapId: shownId, drawing: line() }));
+    expect(errorOf(await ask(table.dm, 'drawing:update', { ...payload, drawingId: normal }))).toBe('Drawing not found');
+    expect(errorOf(await ask(table.dm, 'drawing:update', { ...payload, drawing: zone({ kind: 'line' }) }))).toBeTruthy();
+    expect((await prisma.mapDrawing.findUniqueOrThrow({ where: { id } })).color).toBe('#e7ad42');
+    leave(table);
+  });
+
+  it('keeps GM-only zone edits secret from players', async () => {
+    const table = await seat();
+    const id = idOf(await ask(table.dm, 'drawing:add', { mapId: shownId, drawing: zone({ audience: 'DM' }) }));
+    const quiet = expectNoEvent(table.p1, 'drawing:updated', 500);
+    const heard = waitForEvent(table.dm, 'drawing:updated');
+    expect((await ask(table.dm, 'drawing:update', { mapId: shownId, drawingId: id, drawing: zone({ audience: 'DM', fillOpacity: 50 }) })).ok).toBe(true);
+    await heard;
+    await quiet;
+    leave(table);
   });
 });
 

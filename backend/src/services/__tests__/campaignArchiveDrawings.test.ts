@@ -142,7 +142,7 @@ const importedDrawings = async (campaignId: string) => {
 };
 
 const kept = (d: Record<string, unknown>) => ({
-  audience: d.audience, layer: d.layer, kind: d.kind, color: d.color, fillColor: d.fillColor, width: d.width,
+  audience: d.audience, layer: d.layer, kind: d.kind, color: d.color, fillColor: d.fillColor, zoneType: d.zoneType, fillOpacity: d.fillOpacity, width: d.width,
   rotation: d.rotation, sortKey: d.sortKey, points: d.points, text: d.text,
 });
 

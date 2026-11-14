@@ -24,6 +24,10 @@ import {
   type CoC7eCharacterData,
 } from './callOfCthulhu7e.schema';
 import {
+  squadCommandCharacterDataSchema,
+  type SquadCommandCharacterData,
+} from './squadCommand.schema';
+import {
   flexibleCharacterDataSchema,
   type FlexibleCharacterData,
 } from './flexible.schema';
@@ -34,6 +38,7 @@ export {
   pathfinder2eCharacterDataSchema,
   shadowrun6eCharacterDataSchema,
   callOfCthulhu7eCharacterDataSchema,
+  squadCommandCharacterDataSchema,
   flexibleCharacterDataSchema,
 };
 
@@ -43,6 +48,7 @@ export type {
   PF2eCharacterData,
   SR6CharacterData,
   CoC7eCharacterData,
+  SquadCommandCharacterData,
   FlexibleCharacterData,
 };
 
@@ -67,6 +73,7 @@ export function validateCharacterData(
   | PF2eCharacterData
   | SR6CharacterData
   | CoC7eCharacterData
+  | SquadCommandCharacterData
 > {
   try {
     switch (gameSystem) {
@@ -84,6 +91,10 @@ export function validateCharacterData(
       }
       case GameSystem.CALL_OF_CTHULHU_7E: {
         const validated = callOfCthulhu7eCharacterDataSchema.parse(data);
+        return { success: true, data: validated };
+      }
+      case GameSystem.SQUAD_COMMAND: {
+        const validated = squadCommandCharacterDataSchema.parse(data);
         return { success: true, data: validated };
       }
       default: {
@@ -143,7 +154,8 @@ export function getBlankCharacterTemplate(
   | DnD5eCharacterData
   | PF2eCharacterData
   | SR6CharacterData
-  | CoC7eCharacterData {
+  | CoC7eCharacterData
+  | SquadCommandCharacterData {
   const result = validateCharacterData(gameSystem, structuredClone(getBlankTemplate(gameSystem).data));
   if (!result.success) throw new Error(`The ${gameSystem} blank template does not pass its own schema`);
   return result.data;
@@ -165,6 +177,7 @@ const SHEET_NAME_FIELD: Record<GameSystem, string> = {
   [GameSystem.PATHFINDER_2E]: 'characterName',
   [GameSystem.SHADOWRUN_6E]: 'characterName',
   [GameSystem.CALL_OF_CTHULHU_7E]: 'investigatorName',
+  [GameSystem.SQUAD_COMMAND]: 'characterName',
 };
 
 /** The sheet field holding the owner's display name, the same in every system. */

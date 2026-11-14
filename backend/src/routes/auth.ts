@@ -1201,8 +1201,8 @@ router.get('/appearance', async (_req: Request, res: Response) => {
     return res.status(200).json(appearance);
   } catch {
     return res.status(200).json({
-      instanceName: 'SmugVTT',
-      themeId: 'smug-gold',
+      instanceName: 'CozyVTT',
+      themeId: 'cozy-default',
       customThemeColors: null,
       fontId: 'default',
       customLogoUrl: null,

@@ -76,6 +76,12 @@ export default function CampaignSettingsModal({
   const { showToast } = useToast();
   const { user } = useAuth();
   const mayDelete = isCampaignOwner(campaign, user?.id) || user?.platformRole === 'ADMIN';
+  const ownMembership = campaign?.memberships?.find((membership) => membership.userId === user?.id);
+  // A co-GM has effective DM powers, but cannot grant the capability to others.
+  const canManageGmAccess =
+    ownMembership?.role === CampaignRole.DM ||
+    isCampaignOwner(campaign, user?.id) ||
+    user?.platformRole === 'ADMIN';
 
   // ── Tab ─────────────────────────────────────
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
@@ -102,6 +108,7 @@ export default function CampaignSettingsModal({
   const removingRole = memberToRemove ? CAMPAIGN_ROLE_LABEL[memberToRemove.role] : CAMPAIGN_ROLE_LABEL[CampaignRole.PLAYER];
   const [memberToPromote, setMemberToPromote] = useState<CampaignMembership | null>(null);
   const [promotingMemberId, setPromotingMemberId] = useState<string | null>(null);
+  const [gmAccessSavingId, setGmAccessSavingId] = useState<string | null>(null);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteKey, setInviteKey] = useState(0);
   // The invitations that still stand, for the DM to see and withdraw.
@@ -216,6 +223,32 @@ export default function CampaignSettingsModal({
       setSavingChat(false);
     }
   };
+
+
+  const handleGmAccessToggle = async (membership: CampaignMembership) => {
+    const next = !membership.gmAccess;
+    if (next) {
+      const name = membership.user?.displayName ?? 'this member';
+      const confirmed = window.confirm(
+        `Grant ${name} co-GM access?\n\n` +
+        'Co-GMs receive broad campaign-control powers: GM tools, maps, NPCs, encounters, and other campaign management. ' +
+        'They do NOT become the sitting DM, cannot grant co-GM access, and receive no instance/server administration.'
+      );
+      if (!confirmed) return;
+    }
+
+    setGmAccessSavingId(membership.userId);
+    try {
+      await api.setCampaignMemberGmAccess(campaign.id, membership.userId, next);
+      await refreshCampaign();
+      showToast(next ? 'Co-GM access enabled' : 'Co-GM access disabled', 'success');
+    } catch (err) {
+      showToast(apiErrorMessage(err) ?? 'Failed to change co-GM access', 'error');
+    } finally {
+      setGmAccessSavingId(null);
+    }
+  };
+
 
   const handleRemoveMemberClick = (membership: CampaignMembership) => {
     setMemberToRemove(membership);
@@ -620,6 +653,7 @@ export default function CampaignSettingsModal({
                   const isSelf = membership.userId === user?.id;
                   const isDm = membership.role === 'DM';
                   const isRemoving = removingMemberId === membership.userId;
+                  const isGmAccessSaving = gmAccessSavingId === membership.userId;
 
                   return (
                     <div
@@ -663,9 +697,29 @@ export default function CampaignSettingsModal({
                           )}
                         </span>
 
-                        {/* Hand over the game. Offered on anyone who is
-                            not already the DM, including a spectator. */}
-                        {!isDm && (
+
+                        {membership.gmAccess && !isDm && (
+                          <span className="text-xs font-medium px-2 py-0.5 rounded-full border bg-spirit-purple/10 text-spirit-ink border-spirit-purple/20">
+                            Co-GM
+                          </span>
+                        )}
+                        {canManageGmAccess && !isDm && (
+                          <label
+                            className="flex items-center gap-1.5 text-xs text-stone-gray cursor-pointer"
+                            title="Broad campaign-control access without transferring the DM seat"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={membership.gmAccess ?? false}
+                              disabled={isGmAccessSaving}
+                              onChange={() => void handleGmAccessToggle(membership)}
+                            />
+                            {isGmAccessSaving ? 'Saving…' : 'Co-GM'}
+                          </label>
+                        )}
+
+                        {/* Hand over the game. Only the real DM/owner/admin may transfer the seat. */}
+                        {canManageGmAccess && !isDm && (
                           <button
                             type="button"
                             onClick={() => setMemberToPromote(membership)}

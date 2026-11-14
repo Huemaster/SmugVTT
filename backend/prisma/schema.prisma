@@ -71,6 +71,7 @@ enum GameSystem {
   PATHFINDER_2E
   SHADOWRUN_6E
   CALL_OF_CTHULHU_7E
+  SQUAD_COMMAND @map("TITANIA_WARS")
 }
 
 enum InvitationStatus {
@@ -260,6 +261,13 @@ model Campaign {
   personalNotes      PersonalNote[]
   diceMacros         DiceMacro[]
   documentLinks      CampaignDocument[]
+  // Generic fork resources. Hidden resources are served only by GM-gated routes.
+  forkNpcs            CampaignNpc[]
+  forkScenes          CampaignScene[]
+  forkEntries         CampaignEntry[]
+  forkEncounters      Encounter[]
+  forkTransactions    ActionTransaction[]
+  forkEvents          CampaignEvent[]
 
   @@index([ownerId])
   @@index([status])
@@ -276,6 +284,10 @@ model CampaignMembership {
 
   // Role
   role CampaignRole
+  // Broad campaign-control capability without taking the actual DM seat.
+  // REST/socket middleware treats this membership as effective DM, but
+  // transfer/ownership/instance administration remain separate.
+  gmAccess Boolean @default(false)
 
   // Character Assignment
   characterIds String[] // Array of character IDs this user controls
@@ -568,6 +580,10 @@ model MapDrawing {
   color     String
   /// The fill, #rrggbb; null for none
   fillColor String?
+  /// Generic GM battlefield zone category; null for ordinary drawings.
+  zoneType  String?
+  /// Per-zone fill opacity in percent (10–70); null for ordinary drawings.
+  fillOpacity Int?
   /// A texture name; null for a flat fill. Not accepted yet
   pattern   String?
   /// A glyph name, for a stamp. Not accepted yet
@@ -709,6 +725,15 @@ model Message {
   content  String      @db.Text
   metadata Json? // For system messages, dice rolls, etc.
 
+  // Edit/delete audit foundation. Deletes are soft so they can be restored.
+  editedAt    DateTime?
+  deletedAt   DateTime?
+  deletedById String?
+
+  revisions MessageRevision[]
+  reactions MessageReaction[]
+  bookmarks MessageBookmark[]
+
   // Metadata
   createdAt DateTime @default(now())
 
@@ -842,6 +867,186 @@ model TokenTemplate {
 
   @@index([campaignId])
   @@index([name])
+}
+
+
+// ============================================
+// GENERIC FORK FOUNDATION
+// GENERIC_FORK_FOUNDATION_V0_1
+// ============================================
+
+model CampaignNpc {
+  id         String   @id @default(uuid())
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  name       String
+  imageUrl   String?
+  gameSystem GameSystem?
+  data       Json     @default("{}")
+  actions    Json     @default("[]")
+
+  notes      String?  @db.Text
+  gmNotes    String?  @db.Text
+  revealed   Boolean  @default(false)
+  favorite   Boolean  @default(false)
+  controllerIds String[] @default([])
+  tags          String[] @default([])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([campaignId, name])
+  @@index([campaignId, favorite])
+}
+
+model MessageRevision {
+  id        String   @id @default(uuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  editorId  String?
+  content   String   @db.Text
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([messageId, createdAt])
+}
+
+model MessageReaction {
+  id        String   @id @default(uuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
+}
+
+model MessageBookmark {
+  id        String   @id @default(uuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  category  String   @default("important")
+  createdAt DateTime @default(now())
+
+  @@unique([messageId, userId, category])
+  @@index([messageId])
+}
+
+model CampaignScene {
+  id         String   @id @default(uuid())
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  title          String
+  location       String?
+  timeLabel      String?
+  imageUrl       String?
+  participantIds String[] @default([])
+  summary        String?  @db.Text
+  gmNotes        String?  @db.Text
+  revealed       Boolean  @default(false)
+  active          Boolean  @default(false)
+  boardVisibility String   @default("gm")
+  boardState      Json     @default("{\"background\":\"#f4efe6\",\"elements\":[]}")
+  boardVersion    Int      @default(1)
+  startedAt      DateTime?
+  endedAt        DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([campaignId, createdAt])
+  @@index([campaignId, active])
+}
+
+model CampaignEntry {
+  id         String   @id @default(uuid())
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  // lore, location, handout, quest, thread, timeline, relationship, journal, etc.
+  kind       String
+  title      String
+  content    String?  @db.Text
+  gmNotes    String?  @db.Text
+  imageUrl   String?
+  tags       String[] @default([])
+  revealed   Boolean  @default(false)
+  pinned     Boolean  @default(false)
+  sortOrder  Int      @default(0)
+  relatedIds Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([campaignId, kind])
+}
+
+model Encounter {
+  id         String   @id @default(uuid())
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  name       String
+  active     Boolean  @default(false)
+  notes      String?  @db.Text
+  members    EncounterMember[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([campaignId, active])
+}
+
+model EncounterMember {
+  id          String    @id @default(uuid())
+  encounterId String
+  encounter   Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+
+  actorType String
+  actorId   String
+  sortOrder Int       @default(0)
+  state     Json?
+
+  @@index([encounterId, sortOrder])
+}
+
+model ActionTransaction {
+  id         String   @id @default(uuid())
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  actorType  String
+  actorId    String?
+  actionId   String?
+  actionName String
+  targetIds  String[] @default([])
+  beforeState Json?
+  afterState  Json?
+  undoneAt   DateTime?
+  undoneById String?
+  createdAt  DateTime @default(now())
+
+  @@index([campaignId, createdAt])
+}
+
+model CampaignEvent {
+  id         String   @id @default(uuid())
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  sessionId  String?
+  category   String
+  summary    String   @db.Text
+  payload    Json?
+  visibility String   @default("gm")
+  createdAt  DateTime @default(now())
+
+  @@index([campaignId, createdAt])
 }
 
 // ============================================

@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: CozyVTT Backend Route Reference
+  title: SmugVTT Backend Route Reference
   description: |
     The HTTP routes CozyVTT's own web client calls, described for people working
     on CozyVTT itself.
@@ -305,6 +305,437 @@ tags:
     description: Shared starter character sheets any signed-in user can copy
 
 paths:
+  # SmugVTT Scene, chat history and GM library endpoints
+
+  /api/campaigns/{campaignId}/members/{userId}/gm-access:
+    put:
+      tags: [SmugVTT]
+      summary: Assign or revoke co-GM permissions
+      description: Requires an authorized DM, owner or platform administrator; does not change the saved membership role.
+      operationId: smugSetCoGmAccess
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: userId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              required: [gmAccess]
+              properties:
+                gmAccess: { type: boolean }
+      responses:
+        '200':
+          description: Request succeeded
+        '400':
+          description: Invalid request data
+        '403':
+          description: Insufficient campaign permissions
+        '404':
+          description: Campaign resource not found
+
+  /api/campaigns/{campaignId}/fork/npcs:
+    get:
+      tags: [SmugVTT]
+      summary: List GM-managed NPCs
+      description: Lists campaign NPC library records for an authorized GM.
+      operationId: smugListNpcs
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Request succeeded
+        '400':
+          description: Invalid request data
+        '403':
+          description: Insufficient campaign permissions
+        '404':
+          description: Campaign resource not found
+    post:
+      tags: [SmugVTT]
+      summary: Create a campaign NPC
+      description: Creates a GM-owned NPC entry with optional actions, portrait, visibility and controller settings.
+      operationId: smugCreateNpc
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '201':
+          description: Request succeeded
+        '400':
+          description: Invalid request data
+        '403':
+          description: Insufficient campaign permissions
+        '404':
+          description: Campaign resource not found
+
+  /api/campaigns/{campaignId}/fork/npcs/{npcId}:
+    patch:
+      tags: [SmugVTT]
+      summary: Update a campaign NPC
+      description: Updates an existing GM-owned NPC entry.
+      operationId: smugUpdateNpc
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: npcId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Request succeeded
+        '400':
+          description: Invalid request data
+        '403':
+          description: Insufficient campaign permissions
+        '404':
+          description: Campaign resource not found
+    delete:
+      tags: [SmugVTT]
+      summary: Delete a campaign NPC
+      description: Deletes an NPC entry from the GM library.
+      operationId: smugDeleteNpc
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: npcId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Request succeeded
+        '400':
+          description: Invalid request data
+        '403':
+          description: Insufficient campaign permissions
+        '404':
+          description: Campaign resource not found
+
+  /api/campaigns/{campaignId}/fork/npcs/{npcId}/clone:
+    post:
+      tags: [SmugVTT]
+      summary: Duplicate an NPC
+      description: Clones an NPC record in the same campaign.
+      operationId: smugCloneNpc
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: npcId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '201':
+          description: Request succeeded
+        '400':
+          description: Invalid request data
+        '403':
+          description: Insufficient campaign permissions
+        '404':
+          description: Campaign resource not found
+
+  /api/campaigns/{campaignId}/fork/npcs/{npcId}/act:
+    post:
+      tags: [SmugVTT]
+      summary: Perform an NPC action
+      description: Executes a validated NPC action under GM permissions.
+      operationId: smugNpcAct
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: npcId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Request succeeded
+        '400':
+          description: Invalid request data
+        '403':
+          description: Insufficient campaign permissions
+        '404':
+          description: Campaign resource not found
+
+  /api/campaigns/{campaignId}/fork/chat/{messageId}:
+    patch:
+      tags: [SmugVTT]
+      summary: Edit a chat message
+      description: Edits an authorized chat message and records its revision history.
+      operationId: smugEditMessage
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: messageId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Request succeeded
+        '400':
+          description: Invalid request data
+        '403':
+          description: Insufficient campaign permissions
+        '404':
+          description: Campaign resource not found
+    delete:
+      tags: [SmugVTT]
+      summary: Soft-delete a chat message
+      description: Marks a message deleted while retaining its audit and recovery information.
+      operationId: smugSoftDeleteMessage
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: messageId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Request succeeded
+        '400':
+          description: Invalid request data
+        '403':
+          description: Insufficient campaign permissions
+        '404':
+          description: Campaign resource not found
+
+  /api/campaigns/{campaignId}/fork/chat/{messageId}/restore:
+    post:
+      tags: [SmugVTT]
+      summary: Restore a chat message
+      description: Restores a previously soft-deleted message when authorized.
+      operationId: smugRestoreMessage
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: messageId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Request succeeded
+        '400':
+          description: Invalid request data
+        '403':
+          description: Insufficient campaign permissions
+        '404':
+          description: Campaign resource not found
+
+  /api/campaigns/{campaignId}/fork/chat/{messageId}/revisions:
+    get:
+      tags: [SmugVTT]
+      summary: Read chat message history
+      description: Retrieves visible revisions of a chat message.
+      operationId: smugGetMessageRevisions
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: messageId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Request succeeded
+        '400':
+          description: Invalid request data
+        '403':
+          description: Insufficient campaign permissions
+        '404':
+          description: Campaign resource not found
+
+  /api/campaigns/{campaignId}/fork/scenes:
+    get:
+      tags: [SmugVTT]
+      summary: List campaign scenes
+      description: Returns GM scenes or only explicitly revealed and shared scenes for players; GM notes are excluded for players.
+      operationId: smugListScenes
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Request succeeded
+        '400':
+          description: Invalid request data
+        '403':
+          description: Insufficient campaign permissions
+        '404':
+          description: Campaign resource not found
+    post:
+      tags: [SmugVTT]
+      summary: Create a Scene board
+      description: Creates a scene and optionally makes it the active campaign scene.
+      operationId: smugCreateScene
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '201':
+          description: Request succeeded
+        '400':
+          description: Invalid request data
+        '403':
+          description: Insufficient campaign permissions
+        '404':
+          description: Campaign resource not found
+
+  /api/campaigns/{campaignId}/fork/scenes/active:
+    get:
+      tags: [SmugVTT]
+      summary: Get active Scene board
+      description: Returns the active Scene board, excluding hidden GM-only boards for players.
+      operationId: smugGetActiveScene
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Request succeeded
+        '400':
+          description: Invalid request data
+        '403':
+          description: Insufficient campaign permissions
+        '404':
+          description: Campaign resource not found
+
+  /api/campaigns/{campaignId}/fork/scenes/{sceneId}:
+    patch:
+      tags: [SmugVTT]
+      summary: Update Scene board
+      description: Updates a GM-owned scene and its board, visibility and active state.
+      operationId: smugUpdateScene
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: sceneId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Request succeeded
+        '400':
+          description: Invalid request data
+        '403':
+          description: Insufficient campaign permissions
+        '404':
+          description: Campaign resource not found
+    delete:
+      tags: [SmugVTT]
+      summary: Delete Scene board
+      description: Deletes a scene belonging to the campaign.
+      operationId: smugDeleteScene
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: sceneId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Request succeeded
+        '400':
+          description: Invalid request data
+        '403':
+          description: Insufficient campaign permissions
+        '404':
+          description: Campaign resource not found
+
   /health:
     get:
       tags:
