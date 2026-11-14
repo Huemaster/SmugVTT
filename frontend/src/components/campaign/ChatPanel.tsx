@@ -1414,7 +1414,7 @@ export default function ChatPanel() {
 
   const speakAsOverlay = typeof document !== 'undefined'
     ? createPortal(
-        <div className="pointer-events-none fixed bottom-3 left-3 z-[1200] flex max-w-[calc(100vw-1.5rem)] items-end gap-2 overflow-x-auto">
+        <div className="pointer-events-none fixed bottom-20 left-3 z-[1200] flex max-w-[calc(100vw-1.5rem)] items-end gap-2 overflow-x-auto lg:bottom-3">
           {visibleSpeakerPresence.map((entry) => {
             const collapsed = collapsedSpeakerIds.has(entry.userId);
             const frame = entry.speaker.frame ?? { zoom: 1, x: 50, y: 50 };
