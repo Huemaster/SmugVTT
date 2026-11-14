@@ -370,7 +370,7 @@ export default function SquadFodderDashboardCard() {
                   </button>
                 </div>
                 <div className="mt-2 flex justify-end">
-                  <button type="button" disabled={busy} onClick={() => void remove(template)} className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-500/10 disabled:opacity-50">
+                  <button type="button" disabled={busy} onClick={() => void remove(template)} className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-danger-ink hover:bg-danger-fill/10 disabled:opacity-50">
                     <Trash2 className="h-4 w-4" /> Delete Template
                   </button>
                 </div>

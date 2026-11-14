@@ -436,11 +436,22 @@ function broadcastForkChatMutation(
   message: ForkChatAccess['message'],
   payload: Record<string, unknown>,
 ): void {
-  if (message.recipientId) {
-    if (message.userId) broadcastToUser(message.userId, 'chat.mutated', payload);
-    broadcastToUser(message.recipientId, 'chat.mutated', payload);
-  } else {
-    broadcastToCampaign(message.campaignId, 'chat.mutated', payload);
+  // The database mutation has already committed. A missing or temporarily
+  // unavailable Socket.IO instance must not turn a successful REST write into
+  // a misleading 500 (or prompt clients to repeat the write).
+  try {
+    if (message.recipientId) {
+      if (message.userId) broadcastToUser(message.userId, 'chat.mutated', payload);
+      broadcastToUser(message.recipientId, 'chat.mutated', payload);
+    } else {
+      broadcastToCampaign(message.campaignId, 'chat.mutated', payload);
+    }
+  } catch (error) {
+    // Never log the payload: it may contain private whisper content.
+    logger.warn('chat.mutated broadcast failed; saved change stands', {
+      err: error,
+      campaignId: message.campaignId,
+    });
   }
 }
 

@@ -7,7 +7,7 @@ through the `pg` driver (`src/config/prismaClient.ts`).
 
 ## Models
 
-The schema is in [`schema.prisma`](./schema.prisma) — 24 models grouped by domain:
+The schema is in [`schema.prisma`](./schema.prisma) — 34 models grouped by domain:
 
 **User & auth**
 - `User` — accounts with optional MFA, which an administrator must turn on within 7 days
@@ -19,6 +19,13 @@ The schema is in [`schema.prisma`](./schema.prisma) — 24 models grouped by dom
 - `CampaignMembership` — join table with role (DM/PLAYER/SPECTATOR)
 - `CampaignInvitation` — pending/accepted/declined invites
 - `Session` — live game sessions with full state snapshots
+- `CampaignScene` — staged scenes with shared or GM-only board state
+- `CampaignEntry` — campaign journal, lore, handouts and related records
+- `Encounter` — an encounter and its active state
+- `EncounterMember` — actors and state attached to an encounter
+- `ActionTransaction` — reversible combat action state and affected actors
+- `CampaignEvent` — campaign timeline records with visibility controls
+- `CampaignNpc` — prepared NPCs and their GM notes, actions and reveal state
 
 **Game content**
 - `Character` — flexible JSON-backed character sheets, optionally bound to a campaign + game system
@@ -58,6 +65,9 @@ The schema is in [`schema.prisma`](./schema.prisma) — 24 models grouped by dom
 **Assets & messages**
 - `Asset` — file metadata (the actual files live in `backend/uploads/`); scoped GLOBAL / USER / CAMPAIGN. When the uploader's account is deleted, `uploadedById` becomes null on the uploads that stay (those in a campaign or the global library, and personal ones still in use or shared into a campaign); the avatar and every other personal upload are deleted, row and file (`services/accountDeletion.ts`). `picturesReadAt` is when a document's text was last read for `DocumentPicture`; it is null on every other asset, and on a document stored before those rows were kept until a request has read it
 - `Message` — chat history (player, DM, system, dice rolls, character actions, whispers). A `WHISPER` is for one member, named in `recipientId`; when that account is deleted the column becomes null and the whisper stays
+- `MessageRevision` — previous message content saved when a message is edited
+- `MessageReaction` — a member's reaction to a message
+- `MessageBookmark` — a member's saved message marker
 - `DiceRoll` — historical dice rolls with breakdowns; `userId` becomes null when the roller's account is deleted, and the roll stays
 
 **Platform**
@@ -71,7 +81,7 @@ The schema is in [`schema.prisma`](./schema.prisma) — 24 models grouped by dom
 | `PlatformRole` | `ADMIN`, `USER` |
 | `CampaignStatus` | `PREPARATION`, `ACTIVE`, `PAUSED`, `INACTIVE`, `COMPLETED`, `ARCHIVED` |
 | `CampaignRole` | `DM`, `PLAYER`, `SPECTATOR` |
-| `GameSystem` | `DND_5E`, `PATHFINDER_2E`, `SHADOWRUN_6E`, `CALL_OF_CTHULHU_7E` |
+| `GameSystem` | `DND_5E`, `PATHFINDER_2E`, `SHADOWRUN_6E`, `CALL_OF_CTHULHU_7E`, `SQUAD_COMMAND` |
 | `AssetType` | `MAP`, `TOKEN`, `AUDIO`, `AVATAR`, `DOCUMENT`, `OTHER` |
 | `AssetScope` | `GLOBAL`, `USER`, `CAMPAIGN` |
 | `MessageType` | `PLAYER`, `DM`, `SYSTEM`, `DICE_ROLL`, `CHARACTER_ACTION`, `WHISPER` |

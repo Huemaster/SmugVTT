@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@/test/renderWithToast';
 import AtmospherePanel from '../AtmospherePanel';
 import type { Asset } from '@/types';
 import { AssetType, AssetScope } from '@/types';
@@ -144,7 +144,7 @@ describe('the Atmosphere panel as a dialog', () => {
   it('is announced by name, and Escape and its Close button close it', async () => {
     const onClose = vi.fn();
     render(<AtmospherePanel isOpen onClose={onClose} />);
-    const dialog = screen.getByRole('dialog', { name: 'Atmosphere' });
+    const dialog = screen.getByRole('dialog', { name: 'Atmosphere & Jukebox' });
     await waitFor(() => expect(listAssets).toHaveBeenCalled());
 
     fireEvent.keyDown(dialog, { key: 'Escape' });

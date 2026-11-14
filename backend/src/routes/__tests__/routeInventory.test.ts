@@ -23,6 +23,22 @@ const SRC = path.resolve(__dirname, '../..');
 
 /** Route, and a test file under backend/src that sends a request to it. */
 const TESTED: Record<string, string> = {
+  'PUT /api/campaigns/:campaignId/members/:userId/gm-access': 'routes/__tests__/forkEndpointCoverage.e2e.test.ts',
+  'GET /api/campaigns/:campaignId/fork/npcs': 'routes/__tests__/forkEndpointCoverage.e2e.test.ts',
+  'POST /api/campaigns/:campaignId/fork/npcs': 'routes/__tests__/forkEndpointCoverage.e2e.test.ts',
+  'PATCH /api/campaigns/:campaignId/fork/npcs/:npcId': 'routes/__tests__/forkEndpointCoverage.e2e.test.ts',
+  'DELETE /api/campaigns/:campaignId/fork/npcs/:npcId': 'routes/__tests__/forkEndpointCoverage.e2e.test.ts',
+  'POST /api/campaigns/:campaignId/fork/npcs/:npcId/clone': 'routes/__tests__/forkEndpointCoverage.e2e.test.ts',
+  'POST /api/campaigns/:campaignId/fork/npcs/:npcId/act': 'routes/__tests__/forkEndpointCoverage.e2e.test.ts',
+  'PATCH /api/campaigns/:campaignId/fork/chat/:messageId': 'routes/__tests__/forkEndpointCoverage.e2e.test.ts',
+  'DELETE /api/campaigns/:campaignId/fork/chat/:messageId': 'routes/__tests__/forkEndpointCoverage.e2e.test.ts',
+  'POST /api/campaigns/:campaignId/fork/chat/:messageId/restore': 'routes/__tests__/forkEndpointCoverage.e2e.test.ts',
+  'GET /api/campaigns/:campaignId/fork/chat/:messageId/revisions': 'routes/__tests__/forkEndpointCoverage.e2e.test.ts',
+  'GET /api/campaigns/:campaignId/fork/scenes': 'routes/__tests__/forkEndpointCoverage.e2e.test.ts',
+  'GET /api/campaigns/:campaignId/fork/scenes/active': 'routes/__tests__/forkEndpointCoverage.e2e.test.ts',
+  'POST /api/campaigns/:campaignId/fork/scenes': 'routes/__tests__/forkEndpointCoverage.e2e.test.ts',
+  'PATCH /api/campaigns/:campaignId/fork/scenes/:sceneId': 'routes/__tests__/forkEndpointCoverage.e2e.test.ts',
+  'DELETE /api/campaigns/:campaignId/fork/scenes/:sceneId': 'routes/__tests__/forkEndpointCoverage.e2e.test.ts',
   'GET /health': 'routes/__tests__/auth.e2e.test.ts',
   'GET /api/config': 'routes/__tests__/uploadLimitsConfig.e2e.test.ts',
   'POST /api/auth/register': 'routes/__tests__/registrationApproval.e2e.test.ts',

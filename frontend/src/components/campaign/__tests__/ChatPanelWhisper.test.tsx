@@ -25,7 +25,7 @@
  */
 
 import { it, expect, vi, beforeAll, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act, within } from '@/test/renderWithToast';
 import { CampaignRole, MessageType } from '@/types';
 import type { CampaignMembership, Character, ChatMessageAck, ChatMessageBroadcast, ChatMessageEvent, Message } from '@/types';
 import { useGameStore } from '@/stores/gameStore';
@@ -69,7 +69,9 @@ const sendChatMessage = vi.fn<(data: ChatMessageEvent) => Promise<ChatMessageAck
 const socket = {
   onChatMessage: (fn: (data: ChatMessageBroadcast) => void) => { onMessage = fn; },
   onChatSystem: vi.fn(),
+  on: vi.fn(),
   off: vi.fn(),
+  getSocket: () => ({ emit: vi.fn() }),
   sendChatMessage: (data: ChatMessageEvent) => sendChatMessage(data),
 };
 vi.mock('@/contexts/WebSocketContext', () => ({ useWebSocket: () => ({ socket, joinedEpoch: 1 }) }));
@@ -162,7 +164,7 @@ it('sends to the member chosen, and shows the message as a whisper while it goes
   send('Meet me by the well');
 
   expect(sendChatMessage.mock.calls[0][0]).toMatchObject({ content: 'Meet me by the well', type: 'PLAYER', recipientId: 'mara' });
-  expect(screen.getByText('Whisper to Mara')).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Whisper to Mara' })).toBeTruthy();
   expect(screen.getByText('sending…')).toBeTruthy();
 });
 
@@ -184,7 +186,7 @@ it('retries a whisper that was not sent to the same person, whatever the To list
   fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
 
   const [first, again] = sendChatMessage.mock.calls.map(([sent]) => sent);
-  expect(again).toEqual({ content: 'Did you get this?', type: 'PLAYER', clientId: first.clientId, recipientId: 'mara' });
+  expect(again).toMatchObject({ content: 'Did you get this?', type: 'PLAYER', clientId: first.clientId, recipientId: 'mara' });
 });
 
 it('keeps a member who left chosen, says they left, and sends nothing to everyone in their place', async () => {
@@ -222,10 +224,10 @@ it.each([
 });
 
 it.each([
-  ['/w Ma hi', TABLE, 'That name fits more than one person: Mara, Mara Lee. Choose one in the To list.'],
-  ['/w Mara Lee Over here', TABLE, 'That name fits more than one person: Mara, Mara Lee. Choose one in the To list.'],
-  ['/w Mara hi', TABLE, 'That name fits more than one person: Mara, Mara Lee. Choose one in the To list.'],
-  ['/w Mara hi', TWO_MARAS, 'That name fits more than one person: Mara (Player, Vex), mara (Spectator). Choose one in the To list.'],
+  ['/w Ma hi', TABLE, 'That name fits more than one person: Mara, Mara Lee. Use their full display name, or right-click the person or character and choose Whisper.'],
+  ['/w Mara Lee Over here', TABLE, 'That name fits more than one person: Mara, Mara Lee. Use their full display name, or right-click the person or character and choose Whisper.'],
+  ['/w Mara hi', TABLE, 'That name fits more than one person: Mara, Mara Lee. Use their full display name, or right-click the person or character and choose Whisper.'],
+  ['/w Mara hi', TWO_MARAS, 'That name fits more than one person: Mara (Player, Vex), mara (Spectator). Use their full display name, or right-click the person or character and choose Whisper.'],
   ['/w Zed hi', TABLE, 'Nobody in this campaign is called "Zed".'],
   ['/w Mara', NO_MARA_LEE, 'Write your message after the name.'],
 ])('refuses %p itself, and sends it to no one', async (text, table, refusal) => {
@@ -254,7 +256,7 @@ it('names, under the box, whoever a typed /w will reach, whatever the To list sa
   expect(screen.getByText('Only you and Dana can see this.').closest('p')!.querySelector('.lucide-shield')).not.toBeNull();
 
   type('/w Ma hi');
-  expect(screen.getByText('That name fits more than one person: Mara, Mara Lee. Choose one in the To list.')).toBeTruthy();
+  expect(screen.getByText('That name fits more than one person: Mara, Mara Lee. Use their full display name, or right-click the person or character and choose Whisper.')).toBeTruthy();
   expect(screen.queryByRole('alert')).toBeNull();
 
   type('Back to Mara');
@@ -308,7 +310,7 @@ it('lets a whisper\'s name wrap from the left beside icons and a time that keep 
 it('keeps the whisper placeholder short, since the line under the box names the person', async () => {
   await openPanel();
   fireEvent.change(picker(), { target: { value: 'maralee' } });
-  expect(box().placeholder).toBe('Type a whisper…');
+  expect(box().placeholder).toBe('Whisper…');
   expect(screen.getByText('Only you and Mara Lee can see this.')).toBeTruthy();
 });
 

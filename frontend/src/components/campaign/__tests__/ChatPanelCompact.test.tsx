@@ -13,7 +13,7 @@
  */
 
 import { it, expect, vi } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@/test/renderWithToast';
 import { MessageType, type MessageHistoryPage } from '@/types';
 import { LayoutProvider } from '@/contexts/LayoutContext';
 
@@ -23,11 +23,14 @@ vi.mock('@/contexts/CampaignContext', () => ({
   useCampaign: () => ({ userRole: seat.role, campaign: { id: 'campaign-1', status: 'ACTIVE', memberships: [], characters: [], chatCooldownEnabled: false } }),
 }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'me', displayName: 'Me' } }) }));
-const socket = { onChatMessage: vi.fn(), onChatSystem: vi.fn(), off: vi.fn(), sendChatMessage: vi.fn() };
+const socket = { getSocket: () => null, onChatMessage: vi.fn(), onChatSystem: vi.fn(), on: vi.fn(), off: vi.fn(), sendChatMessage: vi.fn() };
 vi.mock('@/contexts/WebSocketContext', () => ({ useWebSocket: () => ({ socket, joinedEpoch: 1 }) }));
 const history = vi.hoisted(() => ({ page: { messages: [], pagination: { limit: 50, hasMore: false, nextCursor: null } } as MessageHistoryPage }));
 vi.mock('@/services/message.service', () => ({ getMessages: async () => history.page }));
-vi.mock('@/services/api', () => ({ api: {}, default: {} }));
+vi.mock('@/services/api', () => {
+  const api = { listCampaignNpcs: vi.fn().mockResolvedValue({ npcs: [] }) };
+  return { api, default: api };
+});
 
 import ChatPanel from '../ChatPanel';
 
@@ -46,17 +49,18 @@ it('gives the log the room on the compact layout: the heading for screen readers
   expect(classes(screen.getByText('Press Enter to send, Shift+Enter for new line'))).toContain('sr-only');
   expect(box).toHaveAccessibleDescription('Press Enter to send, Shift+Enter for new line');
   // One line holds the short form, beside To and Send in a sheet 352 px wide.
-  expect(box).toHaveAttribute('placeholder', 'Message…');
+  expect(box).toHaveAttribute('placeholder', 'Message…  /w name · /r 1d20');
   // The To list is a finger's height, on one row with the box and Send, and
   // wide enough to show Everyone whole (about 111 px with its arrow at 16 px
   // text). The three keep their sides narrow, so in the 352 px sheet of a
   // phone on its side the box still holds its placeholder on one line.
   const toList = screen.getByRole('combobox', { name: 'To' });
-  expect(classes(toList)).toEqual(expect.arrayContaining(['min-h-11', 'w-32', 'px-2.5']));
+  expect(classes(toList)).toEqual(expect.arrayContaining(['pointer-coarse:min-h-11', 'min-w-0', 'flex-1']));
   expect(classes(box)).toContain('px-2.5');
   expect(classes(screen.getByRole('button', { name: 'Send message' }))).toContain('px-3');
-  expect(toList.parentElement).toBe(box.parentElement);
-  expect(box.parentElement).toContainElement(screen.getByRole('button', { name: 'Send message' }));
+  expect(toList.parentElement).toHaveTextContent('To');
+  expect(toList.parentElement).not.toBe(box.parentElement);
+  expect(box.closest('form')).toContainElement(screen.getByRole('button', { name: 'Send message' }));
 });
 
 it('puts the count and the DM\'s eraser at the top of the log on the compact layout, beside Load More', async () => {
@@ -102,7 +106,7 @@ it('is as it was on the desktop', async () => {
   expect(box).toHaveAttribute('rows', '2');
   expect(classes(box)).toContain('min-h-[60px]');
   expect(classes(screen.getByText('Press Enter to send, Shift+Enter for new line'))).not.toContain('sr-only');
-  expect(box).toHaveAttribute('placeholder', 'Type a message…');
+  expect(box).toHaveAttribute('placeholder', 'Message…  /w name · /r 1d20');
   expect(classes(screen.getByRole('combobox', { name: 'To' }))).not.toContain('min-h-11');
   expect(classes(screen.getByRole('log', { name: 'Chat messages' }))).toEqual(expect.arrayContaining(['p-4', 'space-y-3']));
   expect(classes(screen.getByRole('heading', { name: 'Chat' }).parentElement!)).toContain('p-4');

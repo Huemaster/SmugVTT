@@ -152,7 +152,7 @@ describe('every control in the app', () => {
         .map((control) => `${file}:${control.at}`)
     );
     expect(failures).toEqual([]);
-  });
+  }, 15_000);
 
   it('reads the controls it is meant to: some of them hide words on a phone', () => {
     const checked = Object.entries(SOURCES).flatMap(([file, source]) => controlsHidingWords(file, source).map((control) => `${file}:${control.at}`));

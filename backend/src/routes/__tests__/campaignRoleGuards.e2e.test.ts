@@ -23,6 +23,15 @@ import { requireDM, requireCampaignMember, requireDMOrPlayer } from '../../middl
 
 /** Routes only the campaign's DM may use. */
 const DM_ONLY = [
+  'GET /api/campaigns/:campaignId/fork/npcs',
+  'POST /api/campaigns/:campaignId/fork/npcs',
+  'PATCH /api/campaigns/:campaignId/fork/npcs/:npcId',
+  'DELETE /api/campaigns/:campaignId/fork/npcs/:npcId',
+  'POST /api/campaigns/:campaignId/fork/npcs/:npcId/clone',
+  'POST /api/campaigns/:campaignId/fork/npcs/:npcId/act',
+  'POST /api/campaigns/:campaignId/fork/scenes',
+  'PATCH /api/campaigns/:campaignId/fork/scenes/:sceneId',
+  'DELETE /api/campaigns/:campaignId/fork/scenes/:sceneId',
   'PUT /api/campaigns/:campaignId',
   'PUT /api/campaigns/:campaignId/vibe',
   'GET /api/campaigns/:campaignId/invitable-users',
@@ -79,6 +88,8 @@ const DM_ONLY = [
 
 /** Routes any member of the campaign may use, spectators included. */
 const ANY_MEMBER = [
+  'GET /api/campaigns/:campaignId/fork/scenes',
+  'GET /api/campaigns/:campaignId/fork/scenes/active',
   'GET /api/campaigns/:campaignId',
   'GET /api/campaigns/:campaignId/characters',
   'GET /api/campaigns/:campaignId/messages',
@@ -185,6 +196,11 @@ it('has the guards written down here', () => {
 it('has every campaign route guarded, or listed as deciding in its own handler', () => {
   // These answer for themselves, and their refusals are tested where named.
   const ownChecks: Record<string, string> = {
+    'PUT /api/campaigns/:campaignId/members/:userId/gm-access': 'forkEndpointCoverage.e2e.test.ts',
+    'PATCH /api/campaigns/:campaignId/fork/chat/:messageId': 'forkEndpointCoverage.e2e.test.ts',
+    'DELETE /api/campaigns/:campaignId/fork/chat/:messageId': 'forkEndpointCoverage.e2e.test.ts',
+    'POST /api/campaigns/:campaignId/fork/chat/:messageId/restore': 'forkEndpointCoverage.e2e.test.ts',
+    'GET /api/campaigns/:campaignId/fork/chat/:messageId/revisions': 'forkEndpointCoverage.e2e.test.ts',
     'DELETE /api/campaigns/:campaignId': 'this file, below',
     'PUT /api/campaigns/:campaignId/dm': 'dmTransfer.e2e.test.ts',
     // A removed member reading their own notes and macros: no membership by

@@ -10,6 +10,18 @@ import { configure } from '@testing-library/react';
 // ceiling: a passing test still finishes as soon as its condition holds.
 configure({ asyncUtilTimeout: 3000 });
 
+// Layout effects observe panel and viewport size in browsers. jsdom does not
+// implement ResizeObserver; the tests that need measurements install their
+// own observer and the rest only need lifecycle-safe observation.
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  class ResizeObserverStub implements ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  Object.defineProperty(globalThis, 'ResizeObserver', { configurable: true, value: ResizeObserverStub });
+}
+
 // jsdom has no pointer capture, and MapCanvas asks for it on every touch and
 // pen press. Stubbed once, on Element, so a test can spy on it;
 // hasPointerCapture answers from what was asked.

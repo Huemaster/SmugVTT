@@ -30,9 +30,14 @@ export interface ChatMessageBroadcast {
   /** On a whisper: the one member it is for, beside its sender, and their name. */
   recipientId?: string;
   recipientName?: string;
-  metadata?: Record<string, unknown>;
   /** On the sender's own copy only: the `clientId` it was sent with. */
   clientId?: string;
+  metadata?: MessageMetadata;
+}
+
+/** Free-form message context read as unknown values by clients. */
+export interface MessageMetadata {
+  [key: string]: unknown;
 }
 
 export interface SpeakerPresenceBroadcast {

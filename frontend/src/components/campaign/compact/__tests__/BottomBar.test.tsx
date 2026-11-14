@@ -96,8 +96,8 @@ describe('the bottom bar', () => {
 // MORE_PANELS is every session panel the bar has no button for, so a new
 // panel goes into More by itself; this says so when one does.
 describe('the session panels on the compact layout', () => {
-  it('put Notes and Session in More, and no other', () => {
-    expect(MORE_PANELS).toEqual(['notes', 'session']);
+  it('puts Journal, Media, Notes and Session in More', () => {
+    expect(MORE_PANELS).toEqual(['journal', 'media', 'notes', 'session']);
   });
 });
 

@@ -442,10 +442,9 @@ describe('a move refused onto a creature under fog', () => {
     fire('fog:cells', { mapId: 'map-a', revealedCells: revealed });
     await nextFrame();
     const at = (x: number, y: number) => ({ clientX: x * 50 + 10, clientY: (19 - y) * 50 + 10 });
-    for (const point of [at(0, 19), at(3, 19)]) {
-      mouse.down(surface(), point);
-      mouse.up(surface(), point);
-    }
+    mouse.down(surface(), at(0, 19));
+    mouse.move(surface(), at(3, 19), 1);
+    mouse.up(surface(), at(3, 19));
   }
 
   // The refusal named any creature on the square, one the player's fog

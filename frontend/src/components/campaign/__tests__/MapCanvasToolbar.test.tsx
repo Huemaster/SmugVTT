@@ -431,11 +431,10 @@ describe('what sits under the toolbar', () => {
   }
 
   const aoePanel = () => screen.getByText('AoE Shape').parentElement!;
-  const putBackBar = () => screen.getByRole('button', { name: 'Put back' }).parentElement!;
   const toolStack = () => screen.getByTitle(/Drag to move the panels/).parentElement!;
   const openAoE = () => fireEvent.click(screen.getByRole('button', { name: 'AoE Shape — area of effect overlay' }));
 
-  /** The DM holds the goblin with a tap of a finger, so the Put back bar shows. */
+  /** A tap selects the goblin without opening a Put back bar. */
   function holdByTap() {
     act(() => { useGameStore.getState().setTokens([token('tok-goblin', 'Goblin', 10, 5)]); });
     const finger = contact('touch', 1);
@@ -458,13 +457,13 @@ describe('what sits under the toolbar', () => {
     expect(toolStack().style.top).toBe('3.5rem');
   });
 
-  // A pen's hold on such a screen shows Put back at its own place.
-  it('keeps Put back in its place under one row of a mouse’s buttons', () => {
+  // Selecting a token by tap leaves the toolbar layout unchanged.
+  it('does not show Put back after a tap selects a token', () => {
     render(<MapCanvas />);
     holdByTap();
     layOut(754, [[25, 25, 148, 34], [181, 25, 127, 34], [316, 25, 169, 34], [493, 25, 43, 34]]);
 
-    expect(putBackBar().style.top).toBe('');
+    expect(screen.queryByRole('button', { name: 'Put back' })).toBeNull();
   });
 
   // A map 420 wide, as a Galaxy Tab S9's in landscape between the side
@@ -479,19 +478,15 @@ describe('what sits under the toolbar', () => {
     expect(toolStack().style.top).toBe('118px');
   });
 
-  // Both started at the band's foot, Put back over the AoE panel's top
-  // right, its shape buttons among what it covered.
-  it('starts the AoE panel under Put back while a token is held, and back under the toolbar after', () => {
+  // Selecting a token does not create a held-token bar above the AoE panel.
+  it('keeps the AoE panel under the toolbar after a tap selects a token', () => {
     render(<MapCanvas />);
     holdByTap();
     openAoE();
     layOut(420, [[25, 25, 148, 34], [181, 25, 127, 34], [25, 67, 169, 34], [202, 67, 43, 34]], 62);
 
-    expect(putBackBar().style.top).toBe('118px');
-    expect(aoePanel().style.top).toBe('188px');
-
-    fireEvent.click(screen.getByRole('button', { name: 'Put back' }));
     expect(aoePanel().style.top).toBe('118px');
+    expect(screen.queryByRole('button', { name: 'Put back' })).toBeNull();
   });
 
   // Moved down, the panel ran past the map's foot on a short tablet, and the
@@ -515,9 +510,9 @@ describe('what sits under the toolbar', () => {
     openAoE();
     layOut(590, [[25, 25, 152, 44], [185, 25, 157, 44], [350, 25, 157, 44], [515, 25, 53, 44]], 62);
 
-    expect(putBackBar().style.top).toBe('86px');
-    expect(aoePanel().style.top).toBe('156px');
+    expect(aoePanel().style.top).toBe('86px');
     expect(toolStack().style.top).toBe('86px');
+    expect(screen.queryByRole('button', { name: 'Put back' })).toBeNull();
   });
 
   it('leaves the stack in its corner on a touch screen where the buttons end before it', () => {

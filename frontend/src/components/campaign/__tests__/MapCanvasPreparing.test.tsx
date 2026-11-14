@@ -244,17 +244,22 @@ const EDITS: Array<[string, string, () => void]> = [
     fireEvent.click(screen.getByLabelText('Fog reveal box'));
     drag(px(60, 60), px(160, 110));
   }],
-  ['picking up a token', 'token.move.start', () => { show(token('tok-lich', 0, 19)); click(square(0, 19)); }],
+  ['starting a token drag', 'token.move.start', () => {
+    show(token('tok-lich', 0, 19));
+    mouse.down(surface(), square(0, 19));
+    mouse.move(surface(), square(1, 19), 1);
+  }],
   ['carrying a token', 'token.move', () => {
     show(token('tok-lich', 0, 19));
-    click(square(0, 19));
-    mouse.move(surface(), square(3, 19), 0);
+    mouse.down(surface(), square(0, 19));
+    mouse.move(surface(), square(1, 19), 1);
+    mouse.move(surface(), square(3, 19), 1);
   }],
   ['putting a token down', 'token.move.end', () => {
     show(token('tok-lich', 0, 19));
-    click(square(0, 19));
-    mouse.move(surface(), square(3, 19), 0);
-    click(square(3, 19));
+    mouse.down(surface(), square(0, 19));
+    mouse.move(surface(), square(1, 19), 1);
+    mouse.up(surface(), square(3, 19));
   }],
 ];
 

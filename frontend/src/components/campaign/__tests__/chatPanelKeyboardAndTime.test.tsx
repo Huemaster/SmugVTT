@@ -13,7 +13,7 @@
  */
 
 import { it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor } from '@/test/renderWithToast';
 import type { ChatMessageAck, ChatMessageEvent, Message } from '@/types';
 
 vi.mock('framer-motion', () => ({
@@ -35,6 +35,7 @@ const rollDice = vi.fn();
 vi.mock('@/contexts/WebSocketContext', () => ({
   useWebSocket: () => ({
     socket: {
+      getSocket: () => null,
       onChatMessage: vi.fn(), onChatSystem: vi.fn(), off: vi.fn(), on: vi.fn(),
       onDiceRolled: vi.fn(), onDiceRolledSecret: vi.fn(), onDiceHistoryCleared: vi.fn(),
       isConnected: () => true, sendChatMessage: (d: ChatMessageEvent) => sendChatMessage(d), rollDice: (...a: unknown[]) => rollDice(...a),

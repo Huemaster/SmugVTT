@@ -194,7 +194,7 @@ export default function SquadSheetlessFodderHUD({ token, campaignId, mapId, onCl
         <button type="button" onClick={onClose} aria-label="Close Fodder HUD" title="Close Fodder HUD"><X className="h-4 w-4" /></button>
       </header>
       <div className="space-y-2 overflow-y-auto p-3 text-xs">
-        {notice && <div role="alert" className="rounded border border-red-400/40 bg-red-200/10 p-2 text-red-700">{notice}</div>}
+        {notice && <div role="alert" className="rounded border border-danger/40 bg-danger/20/10 p-2 text-danger-ink">{notice}</div>}
         <div className="grid grid-cols-3 gap-1.5">
           {([
             ['HP', stats?.hpCurrent ?? 0, stats?.hpMax ?? 0, 'hpCurrent'],

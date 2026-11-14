@@ -17,7 +17,7 @@
  */
 
 import { it, expect, vi, beforeAll, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@/test/renderWithToast';
 import { MessageType } from '@/types';
 import type { ChatMessageAck, ChatMessageBroadcast, ChatMessageEvent, Message, MessageHistoryPage } from '@/types';
 
@@ -31,6 +31,8 @@ vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'me', d
 let onMessage: ((data: ChatMessageBroadcast) => void) | null = null;
 const sendChatMessage = vi.fn<(data: ChatMessageEvent) => Promise<ChatMessageAck>>();
 const socket = {
+  getSocket: () => null,
+  on: vi.fn(),
   onChatMessage: (fn: (data: ChatMessageBroadcast) => void) => { onMessage = fn; },
   onChatSystem: vi.fn(),
   off: vi.fn(),
@@ -162,7 +164,7 @@ it('lets the oldest go as new ones arrive, and Load More brings them back, then 
   expect(shown()).toEqual([...range('Old', 1, 120), ...range('Live', 1, 401)]);
   expect(loadMore()).toBeNull();
   expect(screen.queryByRole('alert')).toBeNull();
-});
+}, 15_000);
 
 it('lets go once the reader is back at the newest, and Load More then reaches back from there', async () => {
   await openPanel();

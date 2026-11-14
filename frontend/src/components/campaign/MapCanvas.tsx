@@ -4752,7 +4752,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
         <aside className="pointer-events-none max-w-[20rem] rounded-cozy border border-ink/20 bg-parchment/95 p-2 text-xs text-ink shadow-xl" aria-label="Battlefield zone information">
           <strong>{zoneName(hoveredZone)}</strong>
           <p className="mt-1">{zoneExplanation(hoveredZone.zoneType)}</p>
-          {hoveredZone.audience === 'DM' && <p className="mt-1 text-amber-600">GM-only — players cannot see this zone</p>}
+          {hoveredZone.audience === 'DM' && <p className="mt-1 text-warning-ink">GM-only — players cannot see this zone</p>}
         </aside>
       )}
       {/* The selected token's details, in the same place, after a tap: a
@@ -4796,10 +4796,19 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
               onChange={e=>setZoneHealAmount(Math.max(1,Math.min(100,Number(e.target.value)||1)))} className="w-20 rounded border border-ink/20 bg-paper px-2 py-1"/>
             HP
           </label> : <p className="mt-3 text-sm">Hazard effects are GM-adjudicated until a damage/condition rule is configured. This prompt does not change HP.</p>}
-          {zoneActivationError && <p role="alert" className="mt-3 text-xs text-red-600">{zoneActivationError}</p>}
+          {zoneActivationError && <p role="alert" className="mt-3 text-xs text-danger-ink">{zoneActivationError}</p>}
           <div className="mt-4 flex justify-end gap-2">
             <button type="button" disabled={zoneApplying} onClick={()=>{setZoneActivationId(null);setZoneActivationError('');}} className="rounded border border-ink/30 px-4 py-2">No / Cancel</button>
-            {activeAoE.zoneType==='healing' && <button type="button" disabled={zoneApplying || zoneActivationAttempted || inAoE.length===0} onClick={()=>void confirmZoneHealing()} className="rounded bg-green-700 px-4 py-2 text-white disabled:opacity-50">{zoneApplying?'Applying…':'Yes, heal once'}</button>}
+            {activeAoE.zoneType === 'healing' && (
+              <button
+                type="button"
+                disabled={zoneApplying || zoneActivationAttempted || inAoE.length === 0}
+                onClick={() => void confirmZoneHealing()}
+                className="rounded bg-success/15 text-success-ink px-4 py-2 disabled:opacity-50"
+              >
+                {zoneApplying ? 'Applying…' : 'Yes, heal once'}
+              </button>
+            )}
           </div>
         </section>
       </div>}

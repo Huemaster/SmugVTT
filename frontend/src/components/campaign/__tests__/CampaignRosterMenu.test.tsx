@@ -78,6 +78,7 @@ async function rightClick(name: string) {
 
 const EVERY_ITEM = [
   '[eye] View Character Sheet',
+  '[message-circle] Whisper',
   '[dices] Roll...',
   '[square-pen] Edit Character Sheet',
   '[map-pin] Add to Map',
@@ -106,7 +107,7 @@ describe("a roster character's menu", () => {
     render(<CampaignRoster />);
     await rightClick("Ash's hero");
 
-    expect(characterMenuRows()).toEqual(EVERY_ITEM.filter((r) => !r.includes('Add to Map')));
+    expect(characterMenuRows()).toEqual(EVERY_ITEM.filter((r) => !r.includes('Add to Map') && !r.includes('Whisper')));
   });
 
   it("offers a player the sheet alone on another player's character", async () => {
@@ -114,7 +115,7 @@ describe("a roster character's menu", () => {
     render(<CampaignRoster />);
     await rightClick("Bea's hero");
 
-    expect(characterMenuRows()).toEqual(['[eye] View Character Sheet']);
+    expect(characterMenuRows()).toEqual(['[eye] View Character Sheet', '[message-circle] Whisper']);
   });
 
   it('offers a spectator the sheet and Remove from Campaign on their own character, and the sheet alone on another', async () => {
@@ -125,7 +126,7 @@ describe("a roster character's menu", () => {
     fireEvent.mouseDown(document.body);
 
     await rightClick("Bea's hero");
-    expect(characterMenuRows()).toEqual(['[eye] View Character Sheet']);
+    expect(characterMenuRows()).toEqual(['[eye] View Character Sheet', '[message-circle] Whisper']);
   });
 });
 
@@ -171,7 +172,7 @@ describe("a roster character's menu on the compact layout", () => {
 
     const sheet = screen.getByRole('dialog', { name: "Ash's hero" });
     expect(within(sheet).getAllByRole('button').map((b) => b.textContent)).toEqual([
-      'View Character Sheet', 'Roll...', 'Edit Character Sheet', 'Add to Map', 'Remove from Campaign', 'Cancel',
+      'View Character Sheet', 'Whisper', 'Roll...', 'Edit Character Sheet', 'Add to Map', 'Remove from Campaign', 'Cancel',
     ]);
     expect(openCharacterMenu()).toBeNull();
   });
@@ -195,7 +196,7 @@ describe('Temporary HP... on a roster character', () => {
     h.api.getCampaignCharacters.mockResolvedValue({ roster: inSystem('DND_5E') });
     render(<CampaignRoster />);
     await rightClick("Ash's hero");
-    expect(characterMenuRows().slice(0, 3)).toEqual(['[eye] View Character Sheet', '[dices] Roll...', TEMPORARY_HP]);
+    expect(characterMenuRows().slice(0, 4)).toEqual(['[eye] View Character Sheet', '[message-circle] Whisper', '[dices] Roll...', TEMPORARY_HP]);
   });
 
   it("is not offered on another player's character, nor in Call of Cthulhu", async () => {

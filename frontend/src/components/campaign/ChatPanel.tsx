@@ -1348,6 +1348,15 @@ export default function ChatPanel() {
     />
   );
 
+  const groupedWhisperOptions = [
+    {
+      label: onlineUserIds.has(dmUserId ?? '') ? 'DM' : 'DM, not in session',
+      targets: others.filter((target) => target.userId === dmUserId),
+    },
+    { label: 'In session', targets: others.filter((target) => target.userId !== dmUserId && onlineUserIds.has(target.userId)) },
+    { label: 'Not in session', targets: others.filter((target) => target.userId !== dmUserId && !onlineUserIds.has(target.userId)) },
+  ].filter((group) => group.targets.length > 0);
+
   /* remove To Everyone selector declarations */
   const messageBox = (
     <div key="box" className="min-w-0 flex-1">
@@ -1667,7 +1676,7 @@ export default function ChatPanel() {
             <div className="flex items-center justify-between gap-2 rounded-cozy bg-accent/10 px-2 py-1 text-xs text-accent-ink">
               <span className="min-w-0 truncate">
                 <Lock className="mr-1 inline h-3 w-3" aria-hidden="true" />
-                Whisper to {recipientName ?? recipient.name}
+                Private chat with {recipientName ?? recipient.name}
               </span>
               <button
                 type="button"
@@ -1684,6 +1693,30 @@ export default function ChatPanel() {
             {messageBox}
             {sendButton}
           </div>
+          <label className="flex items-center gap-2 text-xs text-ink-muted">
+            <span>To</span>
+            <select
+              aria-label="To"
+              value={recipient?.id ?? ''}
+              onChange={(event) => {
+                const selected = targets.get(event.currentTarget.value);
+                setRecipient(selected ? { id: selected.userId, name: selected.displayName } : null);
+              }}
+              className="input-cozy min-w-0 pointer-coarse:min-h-11 flex-1 py-1 text-xs"
+            >
+              <option value="">Everyone</option>
+              {recipientGone && recipient && (
+                <option value={recipient.id}>{recipient.name} (no longer in the campaign)</option>
+              )}
+              {groupedWhisperOptions.map((group) => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.targets.map((target) => (
+                    <option key={target.userId} value={target.userId}>{target.label}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </label>
           {speakAsOverlay}
 
           {goesTo && (

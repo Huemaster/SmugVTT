@@ -71,13 +71,13 @@ export default function SmugTokenDetailsCard({ token, square, hp, imageSrc, mayM
             )}
             {zoneEffects && zoneEffects.zoneIds.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1" aria-label="Battlefield area effects">
-                {zoneEffects.cover === 2 ? <span className="rounded-cozy border border-orange-500/40 bg-orange-500/20 px-1.5 py-0.5 text-[11px] font-semibold text-brand-ink" title="Heavy Cover: +2 Cover AV (strongest cover only)">Heavy Cover · +2 AV</span>
-                  : zoneEffects.cover === 1 ? <span className="rounded-cozy border border-amber-500/40 bg-amber-500/20 px-1.5 py-0.5 text-[11px] font-semibold text-brand-ink" title="Light Cover: +1 Cover AV">Light Cover · +1 AV</span> : null}
-                {zoneEffects.obscured && <span className="rounded-cozy bg-stone-500/15 px-1.5 py-0.5 text-[11px] font-medium text-brand-ink">Smoke / Obscured</span>}
-                {zoneEffects.highGround && <span className="rounded-cozy bg-blue-500/15 px-1.5 py-0.5 text-[11px] font-medium text-brand-ink">High Ground</span>}
-                {zoneEffects.lowGround && <span className="rounded-cozy bg-violet-500/15 px-1.5 py-0.5 text-[11px] font-medium text-brand-ink">Low Ground</span>}
-                {zoneEffects.inHealing && <span className="rounded-cozy bg-green-500/15 px-1.5 py-0.5 text-[11px] font-medium text-brand-ink">Healing AoE · GM approval</span>}
-                {zoneEffects.inHazard && <span className="rounded-cozy bg-red-500/15 px-1.5 py-0.5 text-[11px] font-medium text-brand-ink">Hazard · GM-controlled</span>}
+                {zoneEffects.cover === 2 ? <span className="rounded-cozy border border-warning/40 bg-warning/20 px-1.5 py-0.5 text-[11px] font-semibold text-brand-ink" title="Heavy Cover: +2 Cover AV (strongest cover only)">Heavy Cover · +2 AV</span>
+                  : zoneEffects.cover === 1 ? <span className="rounded-cozy border border-warning/40 bg-warning/20 px-1.5 py-0.5 text-[11px] font-semibold text-brand-ink" title="Light Cover: +1 Cover AV">Light Cover · +1 AV</span> : null}
+                {zoneEffects.obscured && <span className="rounded-cozy bg-ink-muted/15 px-1.5 py-0.5 text-[11px] font-medium text-brand-ink">Smoke / Obscured</span>}
+                {zoneEffects.highGround && <span className="rounded-cozy bg-info/15 px-1.5 py-0.5 text-[11px] font-medium text-brand-ink">High Ground</span>}
+                {zoneEffects.lowGround && <span className="rounded-cozy bg-spirit/15 px-1.5 py-0.5 text-[11px] font-medium text-brand-ink">Low Ground</span>}
+                {zoneEffects.inHealing && <span className="rounded-cozy bg-success/15 px-1.5 py-0.5 text-[11px] font-medium text-brand-ink">Healing AoE · GM approval</span>}
+                {zoneEffects.inHazard && <span className="rounded-cozy bg-danger-fill/15 px-1.5 py-0.5 text-[11px] font-medium text-brand-ink">Hazard · GM-controlled</span>}
               </div>
             )}
             {(effects.length > 0 || extraConditions.length > 0) && (

@@ -4,11 +4,12 @@
  */
 
 import { it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@/test/renderWithToast';
 import { MessageType } from '@/types';
 import type { ChatMessageBroadcast } from '@/types';
 
 const nothing = vi.hoisted(() => () => ({ default: () => null }));
+vi.mock('@/contexts/CampaignContext', () => ({ useCampaign: () => ({ userRole: 'DM' }) }));
 const listeners = new Set<(data: ChatMessageBroadcast) => void>();
 const socket = {
   onChatMessage: (fn: (data: ChatMessageBroadcast) => void) => { listeners.add(fn); },
@@ -39,7 +40,7 @@ beforeEach(() => {
 
 it('opens on the tab that was open, with the unread count so far', () => {
   const first = render(<SessionSidebar />);
-  fireEvent.click(screen.getByRole('tab', { name: 'Initiative' }));
+  fireEvent.click(screen.getByRole('tab', { name: 'Dice' }));
   deliver(said('m-1'));
   deliver(said('m-2'));
   first.unmount();
@@ -47,7 +48,7 @@ it('opens on the tab that was open, with the unread count so far', () => {
 
   render(<SessionSidebar />);
 
-  expect(screen.getByRole('tab', { name: 'Initiative' }).getAttribute('aria-selected')).toBe('true');
+  expect(screen.getByRole('tab', { name: 'Dice' }).getAttribute('aria-selected')).toBe('true');
   expect(screen.getByLabelText('2 unread messages')).toBeTruthy();
   expect(listeners.size).toBe(1);
 });

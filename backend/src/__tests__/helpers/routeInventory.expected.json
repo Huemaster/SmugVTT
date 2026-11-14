@@ -828,6 +828,156 @@
       ]
     },
     {
+      "method": "PUT",
+      "path": "/api/campaigns/:campaignId/members/:userId/gm-access",
+      "handlers": [
+        "requireAuth",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/campaigns/:campaignId/fork/npcs",
+      "handlers": [
+        "requireAuth",
+        "loadCampaignMembership",
+        "requireDM",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/campaigns/:campaignId/fork/npcs",
+      "handlers": [
+        "requireAuth",
+        "loadCampaignMembership",
+        "requireDM",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/campaigns/:campaignId/fork/npcs/:npcId",
+      "handlers": [
+        "requireAuth",
+        "loadCampaignMembership",
+        "requireDM",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/campaigns/:campaignId/fork/npcs/:npcId",
+      "handlers": [
+        "requireAuth",
+        "loadCampaignMembership",
+        "requireDM",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/campaigns/:campaignId/fork/npcs/:npcId/clone",
+      "handlers": [
+        "requireAuth",
+        "loadCampaignMembership",
+        "requireDM",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/campaigns/:campaignId/fork/npcs/:npcId/act",
+      "handlers": [
+        "requireAuth",
+        "loadCampaignMembership",
+        "requireDM",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/campaigns/:campaignId/fork/chat/:messageId",
+      "handlers": [
+        "requireAuth",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/campaigns/:campaignId/fork/chat/:messageId",
+      "handlers": [
+        "requireAuth",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/campaigns/:campaignId/fork/chat/:messageId/restore",
+      "handlers": [
+        "requireAuth",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/campaigns/:campaignId/fork/chat/:messageId/revisions",
+      "handlers": [
+        "requireAuth",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/campaigns/:campaignId/fork/scenes",
+      "handlers": [
+        "requireAuth",
+        "loadCampaignMembership",
+        "requireCampaignMember",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/campaigns/:campaignId/fork/scenes/active",
+      "handlers": [
+        "requireAuth",
+        "loadCampaignMembership",
+        "requireCampaignMember",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/campaigns/:campaignId/fork/scenes",
+      "handlers": [
+        "requireAuth",
+        "loadCampaignMembership",
+        "requireDM",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/campaigns/:campaignId/fork/scenes/:sceneId",
+      "handlers": [
+        "requireAuth",
+        "loadCampaignMembership",
+        "requireDM",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/campaigns/:campaignId/fork/scenes/:sceneId",
+      "handlers": [
+        "requireAuth",
+        "loadCampaignMembership",
+        "requireDM",
+        "<anonymous>"
+      ]
+    },
+    {
       "method": "POST",
       "path": "/api/characters",
       "handlers": [
@@ -1633,6 +1783,16 @@
     {
       "name": "router",
       "path": "/api/admin",
+      "route": false
+    },
+    {
+      "name": "router",
+      "path": "/api/campaigns",
+      "route": false
+    },
+    {
+      "name": "router",
+      "path": "/api/campaigns",
       "route": false
     },
     {

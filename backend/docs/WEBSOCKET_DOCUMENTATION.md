@@ -792,6 +792,7 @@ Three things decide what a player's map shows, and each has one source of truth.
 | `drawing:remove` | 20 a second | `error` once; through the acknowledgement when there is one |
 | `drawing:clear_mine` | 5 every ten seconds | `error` once; through the acknowledgement when there is one |
 | `drawing:clear` | 5 every ten seconds, a budget of its own | `error` once; through the acknowledgement when there is one |
+| `drawing:update` | 20 a second | dropped silently |
 | `token.move` (drag frames) | 150 a second; the server also passes on at most one frame per 16 ms per socket | dropped silently |
 | `dice.roll` | 50 a second and 200 a minute; a spectator's roll is counted, then refused before its fields are read. A player's `initiative.roll` counts against the same budget, before anything in it is checked | `error` once, starting "Rate limit exceeded"; a roll sent with an acknowledgement is refused through it, every time, which the web client's dice panel waits out |
 | Wall and light edits (`wall:add`, `wall:remove`, `wall:update`, `walls:replace`, `light:add`, `light:remove`, `light:update`, `lights:replace`) | 40 a second between them; a player's edit is counted before it is refused as the DM's, so a player is told "Only DMs can …" at most 40 times a second | dropped silently; a `wall:add`, `walls:replace` or `light:add` sent with an acknowledgement is refused through it, every time |
@@ -867,6 +868,8 @@ A drawing is a stroke, a shape or a text label on a map, stored as one row and s
 | `points` | `[[x, y], ...]` in whole map pixels from the map's top-left corner, as walls and lights are: within 250,000 of the corner either way, and no more than 500 of the map's squares past its edges (`A drawing reaches too far outside the map. …`). A `pen` has 2 to 2,000 points, a `polygon` 3 to 2,000 corners, a `line`, an `arrow`, a `rect` and an `ellipse` exactly 2, and a `text` label exactly 1 |
 | `color` | `#rrggbb` |
 | `fillColor` | `#rrggbb`, or `null`, the default; only a `rect`, an `ellipse` or a `polygon` may be filled |
+| `zoneType` | Optional generic zone label: `light-cover`, `heavy-cover`, `high-ground`, `low-ground`, `smoke`, `obscured`, `healing` or `hazard`; only for a filled shape |
+| `fillOpacity` | 10 to 70 percent for a battlefield zone; omitted or `null` for an ordinary drawing |
 | `width` | a whole number of map pixels, 1 to 64 |
 | `text` | a `text` label's words: 1 to 200 characters once control characters and direction marks are removed and the ends trimmed; left out, or `null`, for every other kind |
 | `audience` | `ALL`, the default, or `DM`; a player's drawing is stored as `ALL` whatever they send |

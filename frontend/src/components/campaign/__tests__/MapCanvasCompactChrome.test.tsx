@@ -486,15 +486,14 @@ describe('what sits under the band', () => {
     expect(screen.getByText('AoE Shape', { selector: 'p' }).parentElement!.style.top).toBe('62px');
   });
 
-  // A finger's hold shows Put back, which goes under the band, not over
-  // its buttons, at the top of the map and so clear of the bar at its foot.
-  it('starts Put back under the band', () => {
+  // A tap selects only; no temporary held-token control should appear.
+  it('does not show Put back after a tap selects the token', () => {
     render(<MapCanvas />);
     act(() => { useGameStore.getState().setTokens([token('tok-goblin', 'Goblin', 10, 5)]); });
     tap(1, square(10, 5));
     layOut();
 
-    expect(screen.getByRole('button', { name: 'Put back' }).parentElement!.style.top).toBe('62px');
+    expect(screen.queryByRole('button', { name: 'Put back' })).toBeNull();
   });
 
   it('starts the DM’s tool stack under the band, which spans the map', () => {
@@ -519,7 +518,7 @@ describe('the dock at the map’s foot', () => {
     tap(1, square(4, 15));
 
     expect(dock()).toContainElement(card());
-    expect(classesOf(card())).toEqual(expect.arrayContaining(['relative', 'w-full', 'sm:w-88']));
+    expect(classesOf(card())).toEqual(expect.arrayContaining(['relative', 'w-full', 'sm:w-[25rem]']));
     expect(classesOf(card())).not.toContain('absolute');
     expect(classesOf(dock())).toEqual(expect.arrayContaining(['absolute', 'inset-0', 'justify-end', 'pointer-events-none']));
     // Still closed by its own button, which takes the press.
@@ -593,7 +592,8 @@ describe('the dock at the map’s foot', () => {
     h.set({ currentMap: mapWith({ fogEnabled: true }) });
     render(<MapCanvasOnly />);
     expect(document.querySelector('[data-map-dock]')).toBeNull();
-    expect(classesOf(previewButton().parentElement!)).toEqual(expect.arrayContaining(['absolute', 'bottom-20', 'right-2', 'z-30']));
+    expect(classesOf(previewButton().parentElement!)).toEqual(expect.arrayContaining(['absolute', 'bottom-20', 'z-30', 'flex', 'items-center', 'gap-1']));
+    expect((previewButton().parentElement as HTMLElement).style.right).toBe('var(--smug-map-right-inset, 8px)');
   });
 });
 

@@ -44,7 +44,7 @@ function groups(): Array<[string, string[]]> {
   ]);
 }
 
-const AT_THE_TABLE: [string, string[]] = ['At the table', ['Notes', 'Session', 'Documents', 'Shortcuts']];
+const AT_THE_TABLE: [string, string[]] = ['At the table', ['Journal', 'Media', 'Notes', 'Session', 'NPCs', 'Documents', 'Shortcuts']];
 
 describe('More', () => {
   it('is a modal sheet at full height, named More', () => {
@@ -64,13 +64,13 @@ describe('More', () => {
   it('offers a player the table alone', () => {
     seat.role = 'PLAYER';
     more();
-    expect(groups()).toEqual([AT_THE_TABLE]);
+    expect(groups()).toEqual([['At the table', ['Journal', 'Media', 'Notes', 'Session', 'Documents', 'Shortcuts']]]);
   });
 
   it('offers an owner who is not the DM Owner Settings, as the desktop header does', () => {
     seat.role = 'PLAYER';
     more({ isOwner: true });
-    expect(groups()).toEqual([AT_THE_TABLE, ['Owner', ['Owner Settings']]]);
+    expect(groups()).toEqual([['At the table', ['Journal', 'Media', 'Notes', 'Session', 'Documents', 'Shortcuts']], ['Owner', ['Owner Settings']]]);
   });
 
   it('offers a DM who owns the campaign Campaign Settings, and no Owner Settings', () => {
@@ -80,8 +80,11 @@ describe('More', () => {
   });
 
   it.each([
+    ['Journal', 'onOpenPanel', ['journal']],
+    ['Media', 'onOpenPanel', ['media']],
     ['Notes', 'onOpenPanel', ['notes']],
     ['Session', 'onOpenPanel', ['session']],
+    ['NPCs', 'onOpenPanel', ['npcs']],
     ['Documents', 'onOpenDocuments', []],
     ['Shortcuts', 'onOpenShortcuts', []],
     ['Map Library', 'onOpenTool', ['maps']],

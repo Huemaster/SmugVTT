@@ -9,9 +9,10 @@
  */
 
 import { it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent } from '@/test/renderWithToast';
 
 const nothing = vi.hoisted(() => () => ({ default: () => null }));
+vi.mock('@/contexts/CampaignContext', () => ({ useCampaign: () => ({ userRole: 'DM' }) }));
 vi.mock('@/contexts/WebSocketContext', () => ({ useWebSocket: () => ({ socket: null }) }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'me' } }) }));
 vi.mock('../ChatPanel', nothing);
@@ -29,14 +30,12 @@ const label = (name: string) => screen.getByRole('tab', { name }).querySelector(
 it('names every tab, and shows only the open tab\'s label in a narrow rail', () => {
   render(<SessionSidebar />);
 
-  for (const name of ['Chat', 'Dice', 'Initiative', 'Notes', 'Session']) {
+  for (const name of ['Chat', 'Journal', 'Media', 'Dice']) {
     expect(screen.getByRole('tab', { name }).getAttribute('title')).toBe(name);
   }
   expect(label('Chat').className).not.toMatch(/sr-only/);
-  expect(label('Session').className).toMatch(/(^|\s)sr-only(\s|$)/);
-
-  fireEvent.click(screen.getByRole('tab', { name: 'Session' }));
-
-  expect(label('Session').className).not.toMatch(/sr-only/);
-  expect(label('Chat').className).toMatch(/(^|\s)sr-only(\s|$)/);
+  expect(screen.queryByRole('tab', { name: 'Session' })).toBeNull();
+  fireEvent.click(screen.getByText('More tools'));
+  expect(screen.getByRole('button', { name: 'Session' })).toBeInTheDocument();
+  expect(label('Chat').className).not.toMatch(/sr-only/);
 });

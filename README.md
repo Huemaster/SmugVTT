@@ -61,7 +61,7 @@ These items describe work developed in the local fork. Individual features may s
 
 - **Full-bleed map workspace** with panels intended to dock or overlay without unnecessarily shrinking the play area.
 - **Three-pillar interface experiments:** more flexible access to Chat, Journal/handouts, Media Library, and Dice.
-- **Token interaction refinements:** click to select, drag to move, keyboard nudging, and clearer selection/deletion behavior.
+- **Token interaction refinements:** click to select, click-drag-release to move, keyboard nudging, and clearer selection/deletion behavior.
 - **Map-focused quick access:** compact token details and action panels intended to reduce constant switching between character sheets.
 
 #### Roleplay-first chat and Scenes
@@ -125,6 +125,8 @@ Beyond individual passes, the goal is a **customizable, system-agnostic core** w
 
 SmugVTT is self-hosted. The public repository uses Docker Compose. A manual install requires **Node.js 26+** (Docker supplies its own Node.js runtime).
 
+- Node.js 26+
+
 Install Docker, Git, and a modern browser, then clone the **public foundation**:
 
 ```bash
@@ -152,6 +154,8 @@ docker compose logs backend
 Open **http://localhost** and follow initial setup. The backend logs provide the one-time setup token.
 
 **Before exposing your instance to the internet**, read the [Deployment Guide](docs/DEPLOYMENT.md) for HTTPS, `CORS_ORIGIN`, proxies, account security, and backups. Never commit `.env` files, private campaigns, chat logs, character records, or database exports.
+
+The Compose stack applies `no-new-privileges` and drops every Linux capability except the few its start-up needs. The nginx master process runs as root so it can bind the published ports and start workers under the nginx user; the backend switches to its unprivileged `appuser` before starting the application.
 
 ### Updating an installation
 

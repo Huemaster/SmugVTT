@@ -116,7 +116,7 @@ describe('a sheet at half height', () => {
     tab.focus();
     rerender(<Sheet open />);
     await nextFrame();
-    expect(screen.getByRole('heading', { name: 'Chat' })).toHaveFocus();
+    expect(screen.getByText('Chat', { selector: 'h2' })).toHaveFocus();
 
     rerender(<Sheet open={false} />);
     expect(tab).toHaveFocus();
