@@ -1,5 +1,5 @@
 /**
- * CozyVTT added to a phone's or a tablet's home screen opens as an app of
+ * SmugVTT added to a phone's or a tablet's home screen opens as an app of
  * its own: full screen, at the dashboard, with its name and icon. The
  * manifest is all it takes; there is no service worker, so nothing is kept
  * offline and every page is the server's latest.
@@ -19,8 +19,8 @@ const manifest = JSON.parse(manifestText) as {
 };
 
 describe('the home-screen app', () => {
-  it('opens full screen at the dashboard, named CozyVTT, in the app\'s colours', () => {
-    expect(manifest).toMatchObject({ name: 'CozyVTT', short_name: 'CozyVTT', start_url: '/dashboard', scope: '/', display: 'standalone' });
+  it('opens full screen at the dashboard, named SmugVTT, in the app\'s colours', () => {
+    expect(manifest).toMatchObject({ name: 'SmugVTT', short_name: 'SmugVTT', start_url: '/dashboard', scope: '/', display: 'standalone' });
     const themeColour = /<meta name="theme-color" content="([^"]+)"/.exec(indexHtml)?.[1];
     expect(manifest.theme_color).toBe(themeColour);
   });
