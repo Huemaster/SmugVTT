@@ -1,23 +1,36 @@
 # Changelog
 
-## SmugVTT development integration — unreleased (November 2026)
+## [SmugVTT v0.9.0] — 2026-11-14
 
-The entries below describe changes developed in local patch builds. **They are not yet a public source release**; the GitHub default branch is a foundation until the reviewed source is integrated.
+**First integrated public source release.** The fork now publishes its Map, Chat, Canvas, Scene, battlefield-overlay and optional Squad Command code as a reviewed source baseline. See [full v0.9.0 release notes](docs/releases/v0.9.0.md) and the [README](README.md).
 
-### Added in local development
-- Three-pillar Map / Chat / Canvas interface and roleplay Scene staging, portrait dialogue, and in-character speech presentation.
-- Battlefield overlay toolkit: colored cover, elevation, smoke, obscuration, healing, and hazard zones; editable shapes, texture fills, per-player artwork visibility, and hover explanations.
-- Position-aware cover in optional squad combat, plus a one-shot GM-confirmed healing AoE (not healing over time).
-- Sheetless spawned units and guarded legacy-sheet cleanup controls.
-- Targeting, combat hover status, token effects, ability controls, and restoration of Chat in Map mode.
-- Persistent chat deletion fix and Fodder recovery/condition regression repairs under testing.
+### Integrated and added
+- A flexible campaign layout for Map, Chat, Journal, Media, Dice and Canvas workspaces, plus a stored Scene/Stage presentation flow.
+- Character-oriented in-character dialogue, portrait presentation and Scene views of canonical chat.
+- Optional Squad Command character/unit/HUD integrations, generic NPC tooling, sheetless units, targeting and zone information.
+- Battlefield zones and editable tactical overlays for context such as cover, elevation, obscuration and area effects.
+- Scene, NPC, co-GM and chat moderation endpoints with new authorization and regression coverage.
 
-### Public integration policy
-- Introduce this ruleset to the public as **Squad Command** with four generic faction labels and only two example units/two example weapons. Do not ship private campaign catalogs or histories.
-- Every feature unique to SmugVTT should be documented in both this changelog and the project README when published.
-- Do not mark the above features released until the source, tests, compatibility, and privacy review are complete.
+### Changed
+- **Click/tap selects; press-drag-release moves tokens.** Keyboard and touch interactions and Escape cancellation have regression tests.
+- Compact mobile/desktop navigation, PWA branding and theme colors now use SmugVTT's integrated interface terminology.
+- Public documentation now separates released functionality from incomplete advanced features and future work.
 
+### Fixed and verified
+- Consolidated frontend and backend test repairs and matched guides/API/route/schema documentation to the source.
+- Repaired chat recipient selection and post-save broadcast response handling; preserved whisper privacy and non-author denial checks.
+- Reviewed 16 additional backend route entries and two application router layers.
+- Completed all five CI jobs on PR #10: frontend, PostgreSQL/backend, docs, production advisory checks, and production Docker/browser smoke tests.
 
+### Upgrade notes and limitations
+- Back up PostgreSQL and uploads before upgrading from a local development snapshot. Test player/GM permissions with separate accounts.
+- This is a self-hosted **source release**: no hosted public demo or Docker-free installer is bundled.
+- Optional combat edge cases and some advanced Scene/Canvas workflows remain active development.
+- SmugVTT is independent of CozyVTT and does not automatically import later upstream database/API migrations. Preserve all upstream/third-party notices and AGPL-3.0 licensing.
+
+---
+
+## Upstream CozyVTT history (retained for attribution)
 
 All notable changes to CozyVTT will be documented in this file.
 
