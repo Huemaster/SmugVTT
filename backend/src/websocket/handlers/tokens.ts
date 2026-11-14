@@ -313,7 +313,7 @@ export function registerTokenHandlers(io: Server, socket: AuthenticatedSocket): 
    * TOKEN.MOVE.START - User begins dragging a token
    * Validates permission and broadcasts to campaign
    */
-  socket.on('token.move.start', async (data: { tokenId: string; mapId: string }) => {
+  socket.on('token.move.start', async (data: { tokenId: unknown; mapId: unknown }) => {
     try {
       if (!socket.campaignId) {
         socket.emit('error', { message: 'Not authenticated to a campaign' });
@@ -328,7 +328,7 @@ export function registerTokenHandlers(io: Server, socket: AuthenticatedSocket): 
 
       const { tokenId, mapId } = data;
 
-      if (!tokenId || !mapId) {
+      if (typeof tokenId !== 'string' || !tokenId || typeof mapId !== 'string' || !mapId) {
         socket.emit('error', { message: 'tokenId and mapId required' });
         return;
       }
@@ -393,7 +393,7 @@ export function registerTokenHandlers(io: Server, socket: AuthenticatedSocket): 
    * TOKEN.MOVE - Position updates during drag (throttled to 60/s)
    * Validates coordinates and broadcasts to campaign
    */
-  const handleTokenMove = throttle(async (socket: AuthenticatedSocket, data: { tokenId: string; mapId: string; x: number; y: number }) => {
+  const handleTokenMove = throttle(async (socket: AuthenticatedSocket, data: { tokenId: unknown; mapId: unknown; x: number; y: number }) => {
     try {
       if (!socket.campaignId) {
         return; // Silently ignore if not authenticated
@@ -408,7 +408,7 @@ export function registerTokenHandlers(io: Server, socket: AuthenticatedSocket): 
 
       const { tokenId, mapId, x, y } = data;
 
-      if (!tokenId || !mapId || typeof x !== 'number' || typeof y !== 'number') {
+      if (typeof tokenId !== 'string' || !tokenId || typeof mapId !== 'string' || !mapId || typeof x !== 'number' || typeof y !== 'number') {
         return; // Silently ignore invalid data during rapid updates
       }
 
@@ -470,7 +470,7 @@ export function registerTokenHandlers(io: Server, socket: AuthenticatedSocket): 
     }
   }, 16); // 16ms = ~60fps (1000ms / 60fps = 16.67ms)
 
-  socket.on('token.move', (data: { tokenId: string; mapId: string; x: number; y: number }) => {
+  socket.on('token.move', (data: { tokenId: unknown; mapId: unknown; x: number; y: number }) => {
     handleTokenMove(socket, data);
   });
 
@@ -478,7 +478,7 @@ export function registerTokenHandlers(io: Server, socket: AuthenticatedSocket): 
    * TOKEN.MOVE.END - User finishes dragging (final position)
    * Updates database and broadcasts to campaign
    */
-  socket.on('token.move.end', async (data: { tokenId: string; mapId: string; x: number; y: number }) => {
+  socket.on('token.move.end', async (data: { tokenId: unknown; mapId: unknown; x: number; y: number }) => {
     try {
       if (!socket.campaignId) {
         socket.emit('error', { message: 'Not authenticated to a campaign' });
@@ -495,7 +495,7 @@ export function registerTokenHandlers(io: Server, socket: AuthenticatedSocket): 
 
       // Whole squares, as the client always sends: other clients draw a
       // fraction half a square from where sight and stored position count it.
-      if (!tokenId || !mapId || !Number.isInteger(dropX) || !Number.isInteger(dropY)) {
+      if (typeof tokenId !== 'string' || !tokenId || typeof mapId !== 'string' || !mapId || !Number.isInteger(dropX) || !Number.isInteger(dropY)) {
         socket.emit('error', { message: 'Invalid token move data' });
         return;
       }
