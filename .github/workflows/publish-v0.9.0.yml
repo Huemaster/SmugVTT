@@ -1,0 +1,67 @@
+# One-time source release publication for the first integrated SmugVTT build.
+# Only CI-successful PUSH commits on the default main branch may be released.
+# No PR content is executed here, and this job does not alter the main branch.
+name: Publish SmugVTT v0.9.0
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out the exact CI-verified main commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+
+      - name: Publish source release only for current, fully verified main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERIFIED_SHA: ${{ github.event.workflow_run.head_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          test "$(git rev-parse HEAD)" = "$VERIFIED_SHA"
+          test -s docs/releases/v0.9.0.md
+
+          # Do not tag an outdated commit if main advanced during the CI run.
+          CURRENT_MAIN="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
+          if [ "$CURRENT_MAIN" != "$VERIFIED_SHA" ]; then
+            echo "::notice::main moved after CI; only its newest successful push may publish."
+            exit 0
+          fi
+
+          # Idempotent, and refuse to overwrite any manually created tag.
+          if gh release view v0.9.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "SmugVTT v0.9.0 release already exists; no changes."
+            exit 0
+          fi
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/v0.9.0" >/dev/null 2>&1; then
+            echo "::error::Tag v0.9.0 already exists without a release; refusing to retarget it."
+            exit 1
+          fi
+
+          # GitHub automatically adds source .zip and .tar.gz; no bundled EXE,
+          # uploaded user assets, database, credentials or unverified binaries.
+          gh release create v0.9.0 \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$VERIFIED_SHA" \
+            --title "SmugVTT v0.9.0 — Three Pillars. One Tabletop." \
+            --notes-file docs/releases/v0.9.0.md \
+            --latest
+
+          echo "Published verified SmugVTT v0.9.0 source release at $VERIFIED_SHA."
