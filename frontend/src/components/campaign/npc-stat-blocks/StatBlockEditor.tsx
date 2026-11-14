@@ -15,6 +15,8 @@ import { creatureModel, scoreLabel } from './creatureModel';
 import { changeAbilitiesOrRating } from './statBlockProficiency';
 import { readAttributeModifiers, setAttributeModifier } from './pf2eStatBlock';
 import { STAT_BLOCK_LIMITS } from '@/constants/statBlockLimits';
+import NumberField from '@/components/ui/NumberField';
+import { SCORE_BOX_CLASS } from './scoreBox';
 
 interface StatBlockEditorProps {
   statBlock: NpcStatBlock;
@@ -208,7 +210,7 @@ export default function StatBlockEditor({
                   const parsed = parseInt(e.target.value, 10);
                   onChange(setAttributeModifier(statBlock, ab, Number.isFinite(parsed) ? parsed : 0));
                 }}
-                className="input-cozy input-cozy-number w-full text-xs text-center"
+                className={SCORE_BOX_CLASS}
               />
             </div>
           ))}
@@ -219,17 +221,16 @@ export default function StatBlockEditor({
           {ABILITY_KEYS.map((ab) => (
             <div key={ab} className="text-center">
               <label className="text-[9px] font-bold text-brand-ink uppercase block mb-0.5">{scoreLabel(gameSystem, ab)}</label>
-              <input
-                type="number"
+              <NumberField
                 aria-label={scoreLabel(gameSystem, ab)}
                 value={statBlock.abilities[ab]}
-                onChange={(e) => {
-                  const value = parseInt(e.target.value, 10) || 10;
+                fallback={null}
+                onChange={(value) => {
                   // Only D&D 5e works anything out from a score.
                   if (model === 'derived') updateAbility(ab, value);
                   else update({ abilities: { ...statBlock.abilities, [ab]: value } });
                 }}
-                className="input-cozy input-cozy-number w-full text-xs text-center"
+                className={SCORE_BOX_CLASS}
               />
             </div>
           ))}
