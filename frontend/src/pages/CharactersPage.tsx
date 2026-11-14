@@ -236,7 +236,7 @@ export default function CharactersPage() {
               <Button
                 onClick={handleLogout}
                 variant="danger" className="flex items-center gap-2"
-                aria-label="Log out of CozyVTT"
+                aria-label="Log out of SmugVTT"
               >
                 <LogOut className="w-4 h-4" aria-hidden="true" />
                 <span className="hidden sm:inline">Logout</span>

@@ -75,7 +75,7 @@ export async function resolveChatIdentity(input: {
   mode?: ForkChatMode;
 }): Promise<{ speaker: ResolvedChatSpeaker; chatMode: ForkChatMode }> {
   const speakerType = input.speakerType ?? 'self';
-  let chatMode: ForkChatMode = input.mode ?? (speakerType === 'self' ? 'ooc' : 'ic');
+  const chatMode: ForkChatMode = input.mode ?? (speakerType === 'self' ? 'ooc' : 'ic');
 
   if (chatMode === 'narrator' && input.role !== CampaignRole.DM) {
     throw new ChatIdentityError('Only the GM can use Narrator mode');
