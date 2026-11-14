@@ -1,0 +1,45 @@
+name: CI failure intake
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+# No checkout, execution of PR code, or repository write credentials.
+permissions:
+  actions: read
+  contents: read
+  issues: write
+
+concurrency:
+  group: ci-failure-intake
+  cancel-in-progress: false
+
+jobs:
+  record:
+    if: >-
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Create or update the failure-tracking issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          title="CI failure on main (automated repair intake)"
+          note="$(printf 'Latest failed main CI run: %s\nCommit: %s\nRun ID: %s\n\nRepair instructions: diagnose logs; create a small draft PR from a fresh branch named automation/repair-*. Never weaken CI or skip tests. Do not copy secrets, user data, private campaign content, or production fixtures. Security, permissions, database migrations, and workflows require human review.\n' "$RUN_URL" "$HEAD_SHA" "$RUN_ID")"
+          existing="$(gh issue list -R "$GH_REPO" --state open --limit 100 --json number,title --jq '.[] | select(.title == "CI failure on main (automated repair intake)") | .number' | head -1)"
+          if [[ -n "$existing" ]]; then
+            gh issue comment "$existing" -R "$GH_REPO" --body "$note"
+          else
+            gh issue create -R "$GH_REPO" --title "$title" --body "$note"
+          fi
