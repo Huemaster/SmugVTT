@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased — selective CozyVTT v1.7.0 backports
+
+These are narrow adaptations from [CozyVTT v1.7.0](https://github.com/CheekyChinchilla/CozyVTT/blob/main/CHANGELOG.md), applied to the SmugVTT v0.9.0 source baseline without importing its schema, game-system renaming, role renaming or full interface.
+
+### Fixed
+- Reject non-string token and map identifiers in live token drag start, movement frames and drop events before database operations. Cover malformed values with WebSocket regression tests.
+- Show subtraction, multiplication and division correctly in full dice result breakdown chips (-1, ×2, ÷2) rather than displaying every positive magnitude as an addition.
+- Keep creature and NPC ability scores at an explicitly entered zero, allow clearing/retyping a score, and fit multi-digit numbers into compact six-column editors.
+
+### Compatibility safeguards
+- No CozyVTT v1.7.0 database migrations, enum/role renames, Horror d100 sheet conversion, authentication changes or package upgrades are included.
+- Preserve SmugVTT's Map, Chat, Canvas, Scene, Squad Command and campaign permissions. Existing source/tests stay intact except for scoped changes listed above.
+- This entry describes a proposed change until its pull request is reviewed and required CI checks pass; it is not an announced release.
+
+---
 ## [SmugVTT v0.9.0] — 2026-11-14
 
 **First integrated public source release.** The fork now publishes its Map, Chat, Canvas, Scene, battlefield-overlay and optional Squad Command code as a reviewed source baseline. See [full v0.9.0 release notes](docs/releases/v0.9.0.md) and the [README](README.md).
