@@ -964,7 +964,7 @@ describe('the Node.js major', () => {
       [`${dir}/package.json @types/node`, [majorOf(pkg(`${dir}/package.json`).devDependencies?.['@types/node'] ?? 'missing')]],
       [`${dir}/package-lock.json @types/node`, [majorOf(lockedTypesNode(`${dir}/package-lock.json`))]],
     ]),
-    ['README.md', found('README.md', read('README.md'), /^- Node\.js (\d+)\+/gm)],
+    ['README.md', found('README.md', read('README.md'), /Node\.js (\d+)\+/g)],
     ['docs/DEVELOPMENT.md', found('docs/DEVELOPMENT.md', read('docs/DEVELOPMENT.md'), /\| Node\.js \| (\d+)\.x \||Comes with Node\.js (\d+)/g)],
     ['docs/DEPLOYMENT.md', found('docs/DEPLOYMENT.md', read('docs/DEPLOYMENT.md'), /Install Node\.js (\d+)|setup_(\d+)\.x/g)],
     ['docs/DEPLOYMENT.md, what node --version prints', found('docs/DEPLOYMENT.md', read('docs/DEPLOYMENT.md'), /prints `v(\d+)`/g)],

@@ -151,6 +151,8 @@ docker compose logs backend
 
 Open **http://localhost** and follow initial setup. The backend logs provide the one-time setup token.
 
+**Container privileges:** The backend startup briefly runs as root to prepare mounted folders, then drops to the unprivileged `appuser`. The frontend and reverse-proxy nginx master process runs as root and starts unprivileged workers. The Docker Compose configuration drops every Linux capability except the few its start-up needs, and enables `no-new-privileges` on every service. See the [Deployment Guide](docs/DEPLOYMENT.md) for the complete hardening settings.
+
 **Before exposing your instance to the internet**, read the [Deployment Guide](docs/DEPLOYMENT.md) for HTTPS, `CORS_ORIGIN`, proxies, account security, and backups. Never commit `.env` files, private campaigns, chat logs, character records, or database exports.
 
 ### Updating an installation

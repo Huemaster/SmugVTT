@@ -10,6 +10,21 @@ import { configure } from '@testing-library/react';
 // ceiling: a passing test still finishes as soon as its condition holds.
 configure({ asyncUtilTimeout: 3000 });
 
+// jsdom does not implement the browser's ResizeObserver. MapCanvas also
+// measures its container on mount and listens to window.resize; a no-op
+// observer here supplies the missing platform API without changing those
+// production measurement paths. Tests about resize notifications can replace
+// this with their own observer and invoke its callback explicitly.
+if (typeof window !== 'undefined' && typeof window.ResizeObserver === 'undefined') {
+  class StubResizeObserver implements ResizeObserver {
+    constructor(_callback: ResizeObserverCallback) {}
+    observe(_target: Element): void {}
+    unobserve(_target: Element): void {}
+    disconnect(): void {}
+  }
+  Object.defineProperty(window, 'ResizeObserver', { configurable: true, writable: true, value: StubResizeObserver });
+}
+
 // jsdom has no pointer capture, and MapCanvas asks for it on every touch and
 // pen press. Stubbed once, on Element, so a test can spy on it;
 // hasPointerCapture answers from what was asked.

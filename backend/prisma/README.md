@@ -7,7 +7,7 @@ through the `pg` driver (`src/config/prismaClient.ts`).
 
 ## Models
 
-The schema is in [`schema.prisma`](./schema.prisma) — 24 models grouped by domain:
+The schema is in [`schema.prisma`](./schema.prisma) — 34 models grouped by domain:
 
 **User & auth**
 - `User` — accounts with optional MFA, which an administrator must turn on within 7 days
@@ -54,6 +54,18 @@ The schema is in [`schema.prisma`](./schema.prisma) — 24 models grouped by dom
   players, and what keeps a picture from a delete that is not forced, are read
   from here, never from the files. It goes with the document and with the
   asset it names
+
+**SmugVTT gameplay and Scene extensions**
+- `CampaignNpc` — campaign-scoped NPC record with optional game system, image, and JSON data.
+- `MessageRevision` — prior chat content and metadata retained by message, with editor and timestamp.
+- `MessageReaction` — user emoji reaction attached to a message.
+- `MessageBookmark` — user-specific message bookmark with a category.
+- `CampaignScene` — staged campaign scene with a title and optional location, time label, and image.
+- `CampaignEntry` — campaign entry with a kind, title, content, and optional GM notes.
+- `Encounter` — campaign encounter with active state, notes, and members.
+- `EncounterMember` — an encounter's ordered actor entry with optional state.
+- `ActionTransaction` — campaign action record identifying its actor and action.
+- `CampaignEvent` — campaign event with category, summary, and optional structured payload.
 
 **Assets & messages**
 - `Asset` — file metadata (the actual files live in `backend/uploads/`); scoped GLOBAL / USER / CAMPAIGN. When the uploader's account is deleted, `uploadedById` becomes null on the uploads that stay (those in a campaign or the global library, and personal ones still in use or shared into a campaign); the avatar and every other personal upload are deleted, row and file (`services/accountDeletion.ts`). `picturesReadAt` is when a document's text was last read for `DocumentPicture`; it is null on every other asset, and on a document stored before those rows were kept until a request has read it
