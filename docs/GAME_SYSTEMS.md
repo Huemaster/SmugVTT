@@ -2,7 +2,7 @@
 
 This guide explains how to add a new tabletop game system to CozyVTT end to end. It names the files, the functions you extend and the reference systems to copy from, as the code ships them.
 
-CozyVTT currently ships three systems you can choose: **D&D 5e**, **Pathfinder 2e** and **Call of Cthulhu 7e**. A fourth, **Shadowrun 6e**, is in the code as groundwork: its schema and templates are complete and its sheet is a placeholder, so it is left out of the lists a game system is chosen from (see [Reference systems](#reference-systems)). Adding another system means touching a fixed set of registration points, all listed in the [Full checklist](#full-checklist). There is no plugin loader and no config file. Most of those points are `switch` statements with a `default` branch, so neither the compiler nor the tests point you at them: work through the checklist.
+SmugVTT currently ships four systems you can choose: **D&D 5e**, **Pathfinder 2e**, **Call of Cthulhu 7e**, and **Squad Command**. **Shadowrun 6e** remains in the code as groundwork: its schema and templates are complete and its sheet is a placeholder, so it is left out of the lists a game system is chosen from (see [Reference systems](#reference-systems)). Adding another system means touching a fixed set of registration points, all listed in the [Full checklist](#full-checklist). There is no plugin loader and no config file. Most of those points are `switch` statements with a `default` branch, so neither the compiler nor the tests point you at them: work through the checklist.
 
 ---
 
