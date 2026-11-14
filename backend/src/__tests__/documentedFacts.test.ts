@@ -586,13 +586,13 @@ describe('backend/DATABASE_MIGRATIONS.md', () => {
 describe('what a reader is asked to send, and where', () => {
   const template = read('.github/ISSUE_TEMPLATE/bug_report.md').toLowerCase();
 
-  // CONTRIBUTING.md asks for the CozyVTT version and more; the template was
+  // CONTRIBUTING.md asks for the SmugVTT version and more; the template was
   // GitHub's stock one, which asks for the browser's version and nothing about
   // the install, and says nothing about secrets in a pasted .env or log.
   it('the bug report template asks for what CONTRIBUTING.md asks for', () => {
-    const asked = [...read('docs/CONTRIBUTING.md').matchAll(/^- (CozyVTT version|Browser and OS|Steps to reproduce|Expected vs actual behavior|Console output)/gm)].map((m) => m[1]);
+    const asked = [...read('docs/CONTRIBUTING.md').matchAll(/^- (SmugVTT version|Browser and OS|Steps to reproduce|Expected vs actual behavior|Console output)/gm)].map((m) => m[1]);
     expect(asked).toHaveLength(5);
-    for (const key of ['cozyvtt version', 'browser', 'steps to reproduce', 'expected', 'console']) expect(template).toContain(key);
+    for (const key of ['smugvtt version', 'browser', 'steps to reproduce', 'expected', 'console']) expect(template).toContain(key);
   });
 
   it('the bug report template asks how it is installed and warns against pasting secrets', () => {
