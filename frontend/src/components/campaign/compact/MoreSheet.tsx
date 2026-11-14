@@ -4,9 +4,8 @@
 // What the desktop's header and rail offer that the compact layout's bar
 // does not, as a list at full height:
 //
-// - At the table, for everyone: Notes and Session (the session panels the
-//   rail's tabs open, which the compact layout opens in its session sheet),
-//   Documents and Shortcuts.
+// - At the table, for everyone: Journal, Media, Notes, Session, Documents
+//   and Shortcuts. NPCs remain a DM-only panel.
 // - DM tools, for the DM: the header's toolbar, every tool in its order
 //   (SessionToolbar's TOOL_GROUPS), each opening its slide-over or window.
 // - Owner Settings, for an owner who has handed the DM's seat to someone
@@ -21,17 +20,16 @@ import { BookOpen, Keyboard, Settings } from 'lucide-react';
 import { useCampaign } from '@/contexts/CampaignContext';
 import type { MenuAction } from '@/components/ui/menu';
 import { TOOL_GROUPS, type SessionToolKey } from '@/components/campaign/SessionToolbar';
-import { SESSION_TABS, SESSION_TAB_LOOKS, type SessionTab } from '@/components/campaign/sessionTabs';
+import { SESSION_TAB_LOOKS, type SessionTab } from '@/components/campaign/sessionTabs';
 import { BottomSheet, type SheetEdges } from './BottomSheet';
-import { onTheBar, type BarPanel } from './BottomBar';
+import type { BarPanel } from './BottomBar';
 import SheetMenuRows from './SheetMenuRows';
 
-/** The session panels More opens: every one the bar has no button for (BAR_PANELS). */
+/** Session panels available from More on the compact layout. */
 export type MorePanel = Exclude<SessionTab, BarPanel>;
 
-/** More's session panels, in the rail's order. */
-type MoreSessionTab = Exclude<(typeof SESSION_TABS)[number], BarPanel>;
-export const MORE_PANELS: readonly MorePanel[] = SESSION_TABS.filter((tab): tab is MoreSessionTab => !onTheBar(tab));
+/** The compact bar has Chat, Dice and Initiative; other panels stay in More. */
+export const MORE_PANELS: readonly MorePanel[] = ['journal', 'media', 'notes', 'session'];
 
 export interface MoreSheetProps {
   open: boolean;
@@ -82,6 +80,7 @@ export default function MoreSheet({
 
   const atTheTable = [
     ...MORE_PANELS.map((panel) => action(panel, SESSION_TAB_LOOKS[panel].label, SESSION_TAB_LOOKS[panel].icon, () => onOpenPanel(panel))),
+    ...(userRole === 'DM' ? [action('npcs', 'NPCs', SESSION_TAB_LOOKS.npcs.icon, () => onOpenPanel('npcs'))] : []),
     action('documents', 'Documents', BookOpen, onOpenDocuments),
     action('shortcuts', 'Shortcuts', Keyboard, onOpenShortcuts),
   ];

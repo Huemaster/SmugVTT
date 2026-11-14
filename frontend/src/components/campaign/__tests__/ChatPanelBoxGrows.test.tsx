@@ -5,7 +5,7 @@
  */
 
 import { it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@/test/renderWithToast';
 import type { MessageHistoryPage } from '@/types';
 
 const layout = vi.hoisted(() => ({ compact: false }));
@@ -18,7 +18,7 @@ vi.mock('@/contexts/CampaignContext', () => ({
   useCampaign: () => ({ userRole: 'PLAYER', campaign: { id: 'campaign-1', status: 'ACTIVE', memberships: [], characters: [], chatCooldownEnabled: false } }),
 }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'me', displayName: 'Me' } }) }));
-const socket = { onChatMessage: vi.fn(), onChatSystem: vi.fn(), off: vi.fn(), sendChatMessage: vi.fn() };
+const socket = { getSocket: () => null, onChatMessage: vi.fn(), onChatSystem: vi.fn(), on: vi.fn(), off: vi.fn(), sendChatMessage: vi.fn() };
 vi.mock('@/contexts/WebSocketContext', () => ({ useWebSocket: () => ({ socket, joinedEpoch: 1 }) }));
 const empty: MessageHistoryPage = { messages: [], pagination: { limit: 50, hasMore: false, nextCursor: null } };
 vi.mock('@/services/message.service', () => ({ getMessages: async () => empty }));
@@ -87,6 +87,6 @@ it('shrinks back to one line when Enter sends the message', async () => {
 it('says the keys once on a computer: under the box, and not in its placeholder', async () => {
   layout.compact = false;
   const box = await chatBox();
-  expect(box).toHaveAttribute('placeholder', 'Type a message…');
+  expect(box).toHaveAttribute('placeholder', 'Message…  /w name · /r 1d20');
   expect(screen.getByText('Press Enter to send, Shift+Enter for new line')).toBeTruthy();
 });

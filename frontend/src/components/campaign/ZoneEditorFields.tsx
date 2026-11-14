@@ -38,12 +38,12 @@ export default function ZoneEditorFields({ selectedZone, onUpdate, onDuplicate, 
     </label>
     <span className="text-[11px] text-ink-muted">{selectedZone.audience==='DM' ? 'GM-only zone' : 'Visible to everyone'} · Drag the zone or its white corners to move/resize. Positional cover, smoke and elevation apply to Squad Command. AoE effects require GM approval.</span>
     <div className="flex flex-wrap gap-1">
-      {(selectedZone.zoneType === 'healing' || selectedZone.zoneType === 'hazard') && <button type="button" className={btn+' border-green-500/60 font-semibold'} onClick={()=>onActivate?.(selectedZone)}>{selectedZone.zoneType === 'healing' ? 'Activate healing AoE…' : 'Review hazard…'}</button>}
+      {(selectedZone.zoneType === 'healing' || selectedZone.zoneType === 'hazard') && <button type="button" className={btn+' border-success/60 font-semibold'} onClick={()=>onActivate?.(selectedZone)}>{selectedZone.zoneType === 'healing' ? 'Activate healing AoE…' : 'Review hazard…'}</button>}
       <button type="button" className={btn} onClick={()=>onDuplicate?.(selectedZone)}>Duplicate</button>
       {confirmDelete ? <>
-        <button type="button" className={btn+' text-red-600'} onClick={()=>{onDelete?.(selectedZone);setConfirmDelete(false);}}>Confirm delete</button>
+        <button type="button" className={btn+' text-danger-ink'} onClick={()=>{onDelete?.(selectedZone);setConfirmDelete(false);}}>Confirm delete</button>
         <button type="button" className={btn} onClick={()=>setConfirmDelete(false)}>Cancel</button>
-      </> : <button type="button" className={btn+' text-red-600'} onClick={()=>setConfirmDelete(true)}>Delete zone</button>}
+      </> : <button type="button" className={btn+' text-danger-ink'} onClick={()=>setConfirmDelete(true)}>Delete zone</button>}
     </div>
   </section>;
 }

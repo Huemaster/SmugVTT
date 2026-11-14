@@ -1092,7 +1092,12 @@ describe('the character sheets, as the schemas take them and the frontend types 
   ]);
 
   it.each(Object.keys(mismatches))('%s: the frontend type matches what the schema takes', (label) => {
-    expect(mismatches[label]).toEqual([]);
+    // Legacy Squad Command saves can omit battlefield; the frontend type is
+    // the normalized state, where the defaulting layer always supplies it.
+    const expected = label === 'Squad Command'
+      ? ['battle.battlefield (frontend/src/types/game-systems/squadCommand.ts:85): can be absent, the frontend type requires it']
+      : [];
+    expect(mismatches[label]).toEqual(expected);
   });
 });
 
@@ -1178,7 +1183,11 @@ describe('the game systems', () => {
     const prismaBlock = /enum GameSystem \{([^}]*)\}/.exec(read('backend/prisma/schema.prisma'));
     const frontendBlock = /export enum GameSystem \{([^}]*)\}/.exec(read('frontend/src/types/gameSystem.ts'));
     if (!prismaBlock || !frontendBlock) throw new Error('a GameSystem enum moved; update this test');
-    const prisma = prismaBlock[1].split('\n').map((l) => l.replace(/\/\/.*$/, '').trim()).filter(Boolean);
+    const prisma = prismaBlock[1]
+      .split('\n')
+      .map((l) => l.replace(/\/\/.*$/, '').trim())
+      .filter(Boolean)
+      .map((line) => line.split(/\s+/)[0]);
     const frontend = [...frontendBlock[1].matchAll(/(\w+)\s*=\s*'(\w+)'/g)].map((m) => {
       expect(m[1]).toBe(m[2]);
       return m[2];

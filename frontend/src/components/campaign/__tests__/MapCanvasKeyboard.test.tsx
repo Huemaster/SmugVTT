@@ -205,6 +205,12 @@ function click(point: { clientX: number; clientY: number }) {
   mouse.up(surface(), point);
 }
 
+function drag(from: { clientX: number; clientY: number }, to: { clientX: number; clientY: number }) {
+  mouse.down(surface(), from);
+  mouse.move(surface(), to, 1);
+  mouse.up(surface(), to);
+}
+
 const selected = () => useGameStore.getState().selectedTokenId;
 const announced = () => screen.getByRole('status').textContent;
 
@@ -229,13 +235,13 @@ afterEach(() => {
 });
 
 describe('what a click selects', () => {
-  it('picks up a token you may move, as before, and selects it too', () => {
+  it('selects a token you may move without starting a move', () => {
     render(<MapCanvas />);
     show(goblin());
 
     click(at(0, 19));
 
-    expect(sentOf('token.move.start')).toEqual([{ tokenId: 'tok-goblin', mapId: 'map-a' }]);
+    expect(sentOf('token.move.start')).toEqual([]);
     expect(selected()).toBe('tok-goblin');
     expect(announced()).toBe('Selected Goblin Scout, square 0, 19');
   });
@@ -255,9 +261,7 @@ describe('what a click selects', () => {
     render(<MapCanvas />);
     show(goblin());
 
-    click(at(0, 19));
-    mouse.move(surface(), at(3, 17));
-    click(at(3, 17));
+    drag(at(0, 19), at(3, 17));
 
     expect(sentOf('token.move.end')).toEqual([{ tokenId: 'tok-goblin', mapId: 'map-a', x: 3, y: 17 }]);
     expect(selected()).toBe('tok-goblin');
@@ -365,16 +369,16 @@ describe('selecting in Player Preview', () => {
     expect(selected()).toBe('tok-a');
   });
 
-  it('picks up only a token the preview draws, and drags the view on any other square', () => {
+  it('selects only a token the preview draws, without starting a move', () => {
     render(<MapCanvas />);
     show(alya(), lurker());
     previewAsAlice();
 
     click(at(3, 10));
     expect(sentOf('token.move.start')).toEqual([]);
-    // Nothing is held, so the next click picks Alya up.
     click(at(2, 10));
-    expect(sentOf('token.move.start')).toEqual([{ tokenId: 'tok-a', mapId: 'map-a' }]);
+    expect(sentOf('token.move.start')).toEqual([]);
+    expect(selected()).toBe('tok-a');
   });
 
   it('says nothing of a selected token the preview does not draw', () => {
@@ -448,7 +452,7 @@ describe('an Escape something else on the page used', () => {
     expect(screen.getByText('AoE Shape')).toBeInTheDocument();
   });
 
-  it('leaves a held token held', () => {
+  it('keeps selection when another listener consumes Escape', () => {
     render(<MapCanvas />);
     show(goblin());
     click(at(0, 19));
@@ -461,8 +465,7 @@ describe('an Escape something else on the page used', () => {
     }
 
     expect(sentOf('token.move')).toEqual([]);
-    click(at(2, 19));
-    expect(sentOf('token.move.end')).toEqual([{ tokenId: 'tok-goblin', mapId: 'map-a', x: 2, y: 19 }]);
+    expect(selected()).toBe('tok-goblin');
   });
 });
 
@@ -983,23 +986,16 @@ describe('Enter on a token out of sight', () => {
 });
 
 describe('Escape', () => {
-  it('lets go of one thing a press: the menu, the held token, the tool, then the selection', async () => {
+  it('closes the menu, puts away the tool, then clears the selection', async () => {
     render(<MapCanvas />);
     show(token('tok-goblin', 'Goblin Scout', 2, 18));
     click(at(2, 18));
-    mouse.move(surface(), at(6, 14));
     fireEvent.click(screen.getByTitle('AoE Shape — area of effect overlay'));
     await act(async () => { press('Enter'); });
     expect(screen.getByText('Rotate Left')).toBeInTheDocument();
 
     press('Escape');
     expect(screen.queryByText('Rotate Left')).not.toBeInTheDocument();
-    expect(sentOf('token.move')).toHaveLength(1); // the frame to (6, 14) only
-
-    press('Escape');
-    expect(sentOf('token.move').slice(-1)[0]).toEqual({ tokenId: 'tok-goblin', mapId: 'map-a', x: 2, y: 18 });
-    expect(screen.getByText('AoE Shape')).toBeInTheDocument();
-
     press('Escape');
     expect(screen.queryByText('AoE Shape')).not.toBeInTheDocument();
     expect(selected()).toBe('tok-goblin');
@@ -1072,7 +1068,6 @@ describe('where the token keys apply', () => {
     press('ArrowUp');
 
     expect(sentOf('token.move.end')).toEqual([
-      { tokenId: 'tok-goblin', mapId: 'map-a', x: 5, y: 10 },
       { tokenId: 'tok-goblin', mapId: 'map-a', x: 5, y: 11 },
     ]);
   });

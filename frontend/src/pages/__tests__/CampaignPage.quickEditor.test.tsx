@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, within } from '@/test/renderWithToast';
 import type { Token } from '@/types';
 
 const editor = vi.hoisted(() => ({ onTokenUpdate: null as ((t: Token) => void) | null, mapId: null as string | null }));
@@ -107,20 +107,28 @@ import CampaignPage from '../CampaignPage';
 beforeEach(() => {
   editor.onTokenUpdate = null;
   view.mapId = 'map-1';
+  window.localStorage.clear();
 });
 
 const open = (name: string) => fireEvent.click(screen.getByRole('button', { name: `Edit ${name}` }));
 const editorFor = (name: string) => screen.queryByRole('dialog', { name: `Quick edit ${name}` });
+async function openPage() {
+  const view = render(<CampaignPage />);
+  fireEvent.click(within(screen.getByRole('navigation', { name: 'SmugVTT workspaces' })).getByRole('button', { name: 'Map' }));
+  fireEvent.click(screen.getByText('Campaign & Party'));
+  await screen.findByRole('button', { name: 'Edit Goblin A' });
+  return view;
+}
 
 describe('the token quick editor', () => {
-  it('saves to the map on screen', () => {
-    render(<CampaignPage />);
+  it('saves to the map on screen', async () => {
+    await openPage();
     open('Goblin A');
     expect(editor.mapId).toBe('map-1');
   });
 
-  it('saves to the map its token was opened on when the map on screen changes under it', () => {
-    const { rerender } = render(<CampaignPage />);
+  it('saves to the map its token was opened on when the map on screen changes under it', async () => {
+    const { rerender } = await openPage();
     open('Goblin A');
     // The table moved from another device: the page follows it.
     view.mapId = 'map-2';
@@ -131,8 +139,8 @@ describe('the token quick editor', () => {
 });
 
 describe('the token quick editor and saves that finish late', () => {
-  it('stays closed when a save finishes after it was closed', () => {
-    render(<CampaignPage />);
+  it('stays closed when a save finishes after it was closed', async () => {
+    await openPage();
     open('Goblin A');
     const finishSave = editor.onTokenUpdate!;
     fireEvent.click(screen.getByRole('button', { name: 'Close editor' }));
@@ -143,8 +151,8 @@ describe('the token quick editor and saves that finish late', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('stays on the token now open when the last one finishes saving', () => {
-    render(<CampaignPage />);
+  it('stays on the token now open when the last one finishes saving', async () => {
+    await openPage();
     open('Goblin A');
     const finishSaveOfA = editor.onTokenUpdate!;
     open('Goblin B');
@@ -156,8 +164,8 @@ describe('the token quick editor and saves that finish late', () => {
     expect(editorFor('Goblin A')).toBeNull();
   });
 
-  it('shows the saved token while it is still the one open', () => {
-    render(<CampaignPage />);
+  it('shows the saved token while it is still the one open', async () => {
+    await openPage();
     open('Goblin A');
 
     act(() => editor.onTokenUpdate!({ ...tokens.a, name: 'Goblin A (renamed)' } as unknown as Token));

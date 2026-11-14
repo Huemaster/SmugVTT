@@ -19,7 +19,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor } from '@/test/renderWithToast';
 import { CampaignRole, type RosterMember } from '@/types';
 import { useGameStore } from '@/stores/gameStore';
 import { contact } from '@/test/pointer';
@@ -30,7 +30,10 @@ const assignCharacterToCampaign = vi.fn();
 const socket = { on: vi.fn(), off: vi.fn() };
 const seat = vi.hoisted(() => ({ role: 'DM', userId: 'dm' }));
 
-vi.mock('@/contexts/ToastContext', () => ({ useToast: () => ({ showToast: () => undefined }) }));
+vi.mock('@/contexts/ToastContext', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/contexts/ToastContext')>();
+  return { ...actual, useToast: () => ({ showToast: () => undefined }) };
+});
 vi.mock('@/contexts/CampaignContext', () => ({
   useCampaign: () => ({
     campaign: { id: 'c1', memberships: [{ userId: seat.userId, role: seat.role }] },
@@ -147,9 +150,9 @@ describe("a character's row, pressed and held by a finger", () => {
   }
 
   it.each([
-    ['the DM, on a player\'s character', 'DM', 'dm', "Ash's hero", ['View Character Sheet', 'Roll...', 'Edit Character Sheet', 'Add to Map', 'Remove from Campaign']],
+    ['the DM, on a player\'s character', 'DM', 'dm', "Ash's hero", ['View Character Sheet', 'Whisper', 'Roll...', 'Edit Character Sheet', 'Add to Map', 'Remove from Campaign']],
     ['a player, on their own character', 'PLAYER', 'p1', "Ash's hero", ['View Character Sheet', 'Roll...', 'Edit Character Sheet', 'Remove from Campaign']],
-    ["a player, on another player's character", 'PLAYER', 'p1', "Bo's hero", ['View Character Sheet']],
+    ["a player, on another player's character", 'PLAYER', 'p1', "Bo's hero", ['View Character Sheet', 'Whisper']],
   ])('opens the menu a right-click opens, item for item, for %s', async (_who, role, userId, name, items) => {
     seat.role = role;
     seat.userId = userId;
@@ -235,7 +238,7 @@ describe("a character's row, pressed and held by a finger", () => {
     const menus = document.querySelectorAll<HTMLElement>('div.fixed.z-50');
     expect(menus).toHaveLength(1);
     expect({ left: menus[0]!.style.left, top: menus[0]!.style.top }).toEqual({ left: '120px', top: '200px' });
-    expect(menuLabels()).toEqual(['View Character Sheet', 'Roll...', 'Edit Character Sheet', 'Add to Map', 'Remove from Campaign']);
+    expect(menuLabels()).toEqual(['View Character Sheet', 'Whisper', 'Roll...', 'Edit Character Sheet', 'Add to Map', 'Remove from Campaign']);
     vi.useRealTimers();
     fireEvent.click(screen.getByRole('button', { name: /Remove from Campaign/ }));
     fireEvent.click(await screen.findByRole('button', { name: 'Remove' }));

@@ -168,6 +168,12 @@ function click(point: { clientX: number; clientY: number }) {
   mouse.up(surface(), point);
 }
 
+function drag(from: { clientX: number; clientY: number }, to: { clientX: number; clientY: number }) {
+  mouse.down(surface(), from);
+  mouse.move(surface(), to, 1);
+  mouse.up(surface(), to);
+}
+
 const readout = () => screen.queryByText(/^\(-?\d+, -?\d+\)$/)?.textContent ?? null;
 const zoom = () => screen.getByText(/^\d+%$/).textContent;
 
@@ -252,27 +258,27 @@ describe('panning', () => {
   });
 });
 
-describe('moving a token: click to pick it up, click again to put it down', () => {
-  it('tells the table when it is picked up, as it follows the pointer, and where it is put down', () => {
+describe('moving a token: click selects, drag moves', () => {
+  it('selects on click without moving, then sends a move on drag and release', () => {
     render(<MapCanvas />);
     show(goblin());
 
     click(at(0, 19));
+    expect(sentOf('token.move.start')).toEqual([]);
+    expect(sentOf('token.move.end')).toEqual([]);
+
+    drag(at(0, 19), at(3, 19));
     expect(sentOf('token.move.start')).toEqual([{ tokenId: 'tok-goblin', mapId: 'map-a' }]);
-
-    mouse.move(surface(), at(3, 19));
     expect(sentOf('token.move')).toEqual([{ tokenId: 'tok-goblin', mapId: 'map-a', x: 3, y: 19 }]);
-
-    click(at(3, 19));
     expect(sentOf('token.move.end')).toEqual([{ tokenId: 'tok-goblin', mapId: 'map-a', x: 3, y: 19 }]);
     expect(useGameStore.getState().tokens['tok-goblin'].position).toEqual({ x: 3, y: 19 });
   });
 
-  it('puts a held token back where it was when the pointer leaves the map', () => {
+  it('cancels a drag back to its starting square when the pointer leaves the map', () => {
     render(<MapCanvas />);
     show(goblin());
-    click(at(0, 19));
-    mouse.move(surface(), at(3, 19));
+    mouse.down(surface(), at(0, 19));
+    mouse.move(surface(), at(3, 19), 1);
 
     mouse.leave(surface());
 
@@ -281,15 +287,13 @@ describe('moving a token: click to pick it up, click again to put it down', () =
     expect(useGameStore.getState().tokens['tok-goblin'].position).toEqual({ x: 0, y: 19 });
   });
 
-  it('puts a held token back on a right-click', () => {
+  it('does not start a token move on right-click', () => {
     render(<MapCanvas />);
     show(goblin());
-    click(at(0, 19));
-    mouse.move(surface(), at(3, 19));
-
     fireEvent.contextMenu(surface(), at(3, 19));
 
-    expect(lastOf('token.move')).toEqual({ tokenId: 'tok-goblin', mapId: 'map-a', x: 0, y: 19 });
+    expect(sentOf('token.move')).toEqual([]);
+    expect(sentOf('token.move.start')).toEqual([]);
     expect(sentOf('token.move.end')).toEqual([]);
   });
 
@@ -297,8 +301,7 @@ describe('moving a token: click to pick it up, click again to put it down', () =
     render(<MapCanvas />);
     show(goblin(), token('tok-wolf', 'Wolf', 3, 19));
 
-    click(at(0, 19));
-    click(at(3, 19));
+    drag(at(0, 19), at(3, 19));
 
     expect(sentOf('token.move.end')).toEqual([{ tokenId: 'tok-goblin', mapId: 'map-a', x: 3, y: 19 }]);
   });
@@ -318,8 +321,7 @@ describe('moving a token: click to pick it up, click again to put it down', () =
     render(<MapCanvas />);
     show(token('tok-mine', 'Aldra', 0, 19, { type: TokenType.PLAYER, controlledBy: 'me' }));
 
-    click(at(0, 19));
-    click(at(2, 18));
+    drag(at(0, 19), at(2, 18));
 
     expect(sentOf('token.move.start')).toEqual([{ tokenId: 'tok-mine', mapId: 'map-a' }]);
     expect(sentOf('token.move.end')).toEqual([{ tokenId: 'tok-mine', mapId: 'map-a', x: 2, y: 18 }]);
@@ -330,8 +332,7 @@ describe('moving a token: click to pick it up, click again to put it down', () =
     render(<MapCanvas />);
     show(token('tok-mine', 'Aldra', 0, 19, { type: TokenType.PLAYER, controlledBy: 'me' }), token('tok-wolf', 'Wolf', 3, 19));
 
-    click(at(0, 19));
-    click(at(3, 19));
+    drag(at(0, 19), at(3, 19));
 
     expect(await screen.findByText('Wolf is already standing there.')).toBeInTheDocument();
     expect(sentOf('token.move.end')).toEqual([]);
@@ -393,7 +394,7 @@ describe('the card a hovered token shows', () => {
     const shown = card('Goblin Scout');
     expect(within(shown).getByText('(0, 19)')).toBeInTheDocument();
     expect(within(shown).getByText('poisoned')).toBeInTheDocument();
-    expect(within(shown).getByText('prone')).toBeInTheDocument();
+    expect(within(shown).getByText('Prone')).toBeInTheDocument();
   });
 
   it("shows a creature's own hit points to the DM, and to a player only once its HP bar is on", () => {
@@ -401,19 +402,19 @@ describe('the card a hovered token shows', () => {
     render(<MapCanvas />);
     show(wounded(false));
     hover(at(0, 19));
-    expect(within(card('Goblin Scout')).getByText('5/7')).toBeInTheDocument();
-    expect(within(card('Goblin Scout')).getByText('+2')).toBeInTheDocument();
+    expect(within(card('Goblin Scout')).getByText(/^HP:/).textContent).toContain('5/7');
+    expect(within(card('Goblin Scout')).getByText(/5\/7 \+2/)).toBeInTheDocument();
 
     act(() => { h.set({ userRole: 'PLAYER' }); });
     hover(at(1, 19));
     hover(at(0, 19));
-    expect(within(card('Goblin Scout')).queryByText('5/7')).toBeNull();
+    expect(within(card('Goblin Scout')).queryByText(/^HP:/)).toBeNull();
     expect(within(card('Goblin Scout')).queryByText('HP')).toBeNull();
 
     show(wounded(true));
     hover(at(1, 19));
     hover(at(0, 19));
-    expect(within(card('Goblin Scout')).getByText('5/7')).toBeInTheDocument();
+    expect(within(card('Goblin Scout')).getByText(/^HP:/).textContent).toContain('5/7');
   });
 
   it("shows a character's hit points from its sheet, to a player too", () => {
@@ -434,7 +435,7 @@ describe('the card a hovered token shows', () => {
     expect(within(card('Goblin Scout')).queryByText('Initiative')).toBeNull();
 
     inOrder(null);
-    expect(within(card('Goblin Scout')).getByText('Initiative')).toBeInTheDocument();
+    expect(within(card('Goblin Scout')).getByText(/^Initiative:/)).toBeInTheDocument();
     expect(within(card('Goblin Scout')).getByText('—')).toBeInTheDocument();
 
     inOrder(14);

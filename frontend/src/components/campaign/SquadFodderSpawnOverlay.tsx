@@ -585,7 +585,7 @@ export default function SquadFodderSpawnOverlay() {
               })}
             </div>
 
-            <div className="mt-2 rounded-cozy border border-amber-500/30 bg-amber-500/5 p-2 text-xs">
+            <div className="mt-2 rounded-cozy border border-warning/30 bg-warning/5 p-2 text-xs">
               <div className="mb-1 flex items-center justify-between gap-2">
                 <span className="flex items-center gap-1 font-semibold text-ink"><ShieldCheck className="h-4 w-4"/> GM · Legacy Fodder Sheets</span>
                 <button type="button" disabled={scanningLegacy || cleaning || templates.length === 0}
@@ -606,7 +606,7 @@ export default function SquadFodderSpawnOverlay() {
                   </ul>
                 </details>}
                 <button type="button" disabled={(!legacyScan.verified.length && !legacyScan.convertible.length) || cleaning} onClick={() => void deleteVerifiedLegacySheets()}
-                  className="self-start rounded border border-red-600/40 bg-paper px-2 py-1 font-semibold text-red-700 disabled:opacity-40">
+                  className="self-start rounded border border-danger/40 bg-paper px-2 py-1 font-semibold text-danger-ink disabled:opacity-40">
                   Backup, Convert & Clean ({legacyScan.verified.length + legacyScan.convertible.length})
                 </button>
               </div>}
@@ -618,7 +618,7 @@ export default function SquadFodderSpawnOverlay() {
                 type="button"
                 disabled={fodderTokens.length === 0 || cleaning}
                 onClick={() => void cleanupFodder()}
-                className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-[10px] font-semibold text-red-700 hover:bg-red-500/10 disabled:opacity-40"
+                className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-[10px] font-semibold text-danger-ink hover:bg-danger-fill/10 disabled:opacity-40"
                 title="Remove only units spawned through Squad Command Units; master templates are kept"
               >
                 {cleaning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}

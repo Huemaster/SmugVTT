@@ -7,7 +7,7 @@
  * new messages.
  */
 import { it, expect, vi, beforeAll } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@/test/renderWithToast';
 
 vi.mock('framer-motion', () => ({
   useReducedMotionConfig: () => false,
@@ -21,7 +21,7 @@ vi.mock('@/contexts/CampaignContext', () => ({
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'me', displayName: 'Me' } }) }));
 vi.mock('@/contexts/WebSocketContext', () => ({
   useWebSocket: () => ({
-    socket: { onChatMessage: vi.fn(), onChatSystem: vi.fn(), off: vi.fn(), on: vi.fn(), isConnected: () => true, sendChatMessage: vi.fn() },
+    socket: { getSocket: () => null, onChatMessage: vi.fn(), onChatSystem: vi.fn(), off: vi.fn(), on: vi.fn(), isConnected: () => true, sendChatMessage: vi.fn() },
     status: 'connected', joinedEpoch: 1, reconnectCount: 0,
   }),
 }));

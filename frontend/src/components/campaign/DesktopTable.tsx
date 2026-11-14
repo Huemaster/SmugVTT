@@ -280,7 +280,7 @@ export default function DesktopTable({
             const cfg = side === 'left' ? left : right;
             updatePanel(side, { x: side === 'left' ? cfg.x : cfg.x - dx, y: cfg.y, width: cfg.width + dx, height: cfg.height });
           }}
-          className={`absolute ${side === 'left' ? 'right-0' : 'left-0'} top-8 bottom-4 z-40 w-2 cursor-col-resize touch-none hover:bg-brand/25 focus-visible:bg-brand/30`} />
+          className={`absolute ${side === 'left' ? 'right-0' : 'left-0'} top-8 bottom-4 z-40 w-2 pointer-coarse:w-11 cursor-col-resize touch-none hover:bg-brand/25 focus-visible:bg-brand/30`} />
         <div role="separator" tabIndex={0} aria-label={`Resize ${label} vertically`}
           aria-orientation="horizontal" title="Drag to resize panel height"
           onPointerDown={(event) => startPanelInteraction(side, 'height', event)}
@@ -290,7 +290,7 @@ export default function DesktopTable({
             const height = (side === 'left' ? left : right).height + (event.key === 'ArrowDown' ? 16 : -16);
             updatePanel(side, { x: pos.x, y: pos.y, width: pos.width, height });
           }}
-          className="absolute bottom-0 left-6 right-6 z-40 h-2 cursor-row-resize touch-none hover:bg-brand/25 focus-visible:bg-brand/30" />
+          className="absolute bottom-0 left-6 right-6 z-40 h-2 pointer-coarse:h-11 cursor-row-resize touch-none hover:bg-brand/25 focus-visible:bg-brand/30" />
         <div title="Drag to resize panel width and height"
           onPointerDown={(event) => startPanelInteraction(side, 'corner', event)}
           className={`absolute bottom-0 z-50 h-4 w-4 cursor-nwse-resize touch-none border-ink/30 ${side === 'left' ? 'right-0 border-b-2 border-r-2' : 'left-0 border-b-2 border-l-2'}`} />

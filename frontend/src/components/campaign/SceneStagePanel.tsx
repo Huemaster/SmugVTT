@@ -256,7 +256,7 @@ export default function SceneStagePanel() {
       {message && <p role="alert" className="bg-warm-amber/15 p-2 text-xs text-ink-secondary">{message}</p>}
       {gm && sceneId && <div className="flex shrink-0 flex-wrap items-center gap-1 border-b border-ink/10 px-2 py-1.5 text-xs">
         <button type="button" aria-pressed={editParticipants} onClick={() => setEditParticipants((value) => !value)}
-          className={`rounded border px-2 py-1 ${editParticipants ? 'bg-amber-200/30' : ''}`}>
+          className={`rounded border px-2 py-1 ${editParticipants ? 'bg-warning/20/30' : ''}`}>
           {editParticipants ? 'Done editing' : 'Edit cast'}
         </button>
         <label className="sr-only" htmlFor="scene-stage-add">Add a scene participant</label>
@@ -272,8 +272,8 @@ export default function SceneStagePanel() {
       {gm && editParticipants && stage.people.length > 0 && <div className="flex max-h-24 shrink-0 flex-wrap gap-1 overflow-y-auto border-b border-ink/10 px-2 py-1" aria-label="Scene Director cast controls">
         {stage.people.map((person) => <button key={person.key} type="button" disabled={busy}
           title={`Remove ${person.name} from Scene`} onClick={() => change({ ...stage, people: stage.people.filter((p) => p.key !== person.key) })}
-          className="flex items-center gap-1 rounded border border-red-700/30 px-2 py-1 text-[11px]">
-          <Trash2 className="h-3 w-3 text-red-500" /> Remove {person.name}
+          className="flex items-center gap-1 rounded border border-danger/30 px-2 py-1 text-[11px]">
+          <Trash2 className="h-3 w-3 text-danger-ink" /> Remove {person.name}
         </button>)}
       </div>}
       <div ref={stageArea} className="relative min-h-[160px] flex-1 overflow-hidden" style={{ backgroundColor: stage.background }}
@@ -288,12 +288,12 @@ export default function SceneStagePanel() {
             {speech && <div className="relative mb-3 w-max max-w-[min(18rem,90vw)]" style={{ width: 'max-content' }}>
               <button type="button" title="Expand or collapse this dialogue" aria-expanded={expandedMessageId === speech.messageId}
                 onClick={() => setExpandedMessageId(expandedMessageId === speech.messageId ? null : speech.messageId)}
-                className={`block max-h-32 w-full overflow-y-auto whitespace-pre-wrap break-words rounded-xl border border-white/40 bg-white/95 px-2.5 py-1.5 text-center text-[11px] text-slate-900 shadow-md ${active ? 'ring-2 ring-amber-300' : ''}`}>
+                className={`block max-h-32 w-full overflow-y-auto whitespace-pre-wrap break-words rounded-xl border border-white/40 bg-white/95 px-2.5 py-1.5 text-center text-[11px] text-ink shadow-md ${active ? 'ring-2 ring-warning' : ''}`}>
                 {expandedMessageId === speech.messageId ? speech.quotes.map((q) => `“${q}”`).join(' ') : `“${speech.quotes[speech.quotes.length - 1]?.slice(0, 100)}${(speech.quotes[speech.quotes.length - 1]?.length ?? 0) > 100 ? '…' : ''}”`}
               </button>
               <span aria-hidden="true" className="pointer-events-none absolute -bottom-[6px] left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-b border-r border-white/40 bg-white/95" />
             </div>}
-            <div className={`relative flex h-20 w-20 max-w-full items-center justify-center overflow-hidden rounded-xl border border-white/30 bg-slate-700/90 shadow-lg ${active ? 'ring-2 ring-amber-300' : ''}`}
+            <div className={`relative flex h-20 w-20 max-w-full items-center justify-center overflow-hidden rounded-xl border border-white/30 bg-ink/90 shadow-lg ${active ? 'ring-2 ring-warning' : ''}`}
               title={gm ? `Drag ${person.name} to arrange the scene` : person.name}
               onPointerDown={(event) => {
                 if (!gm || event.button !== 0) return;

@@ -14428,6 +14428,17 @@ components:
           pattern: '^#[0-9A-Fa-f]{6}$'
           nullable: true
           description: The fill of a `rect`, an `ellipse` or a `polygon`; null for none.
+        zoneType:
+          type: string
+          enum: [light-cover, heavy-cover, high-ground, low-ground, smoke, obscured, healing, hazard]
+          nullable: true
+          description: Generic battlefield-zone label; set only for a filled rectangle, ellipse or polygon.
+        fillOpacity:
+          type: integer
+          minimum: 10
+          maximum: 70
+          nullable: true
+          description: Fill opacity percentage for a battlefield zone; null for an ordinary drawing.
         width:
           type: integer
           minimum: 1
@@ -14468,7 +14479,7 @@ components:
         createdAt:
           type: string
           format: date-time
-      required: [id, authorId, audience, layer, kind, color, fillColor, width, rotation, sortKey, points, text, createdAt]
+      required: [id, authorId, audience, layer, kind, color, fillColor, zoneType, fillOpacity, width, rotation, sortKey, points, text, createdAt]
 
     WallInput:
       type: object

@@ -220,7 +220,7 @@ export default function SquadSpecialAbilityPanel({
   const targetLabel = chosenTarget.startsWith('token:') ? 'Fodder token'
     : knownCharacters.find((entry) => entry.id === chosenTarget)?.name;
   return (
-    <section className="space-y-2 rounded-cozy border border-amber-500/30 bg-amber-500/5 p-3" aria-label="Commander and PC special abilities">
+    <section className="space-y-2 rounded-cozy border border-warning/30 bg-warning/5 p-3" aria-label="Commander and PC special abilities">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <strong className="flex items-center gap-1.5 text-sm"><RadioTower className="h-4 w-4" /> Special Abilities</strong>
 <span className="text-[10px] text-ink-muted">Uses chat/SFX volume</span>
@@ -266,7 +266,7 @@ export default function SquadSpecialAbilityPanel({
               notify('Orbital laser armed: click a target token to confirm, or press Esc to cancel.');
             }}
             title={reason ?? ability.rules ?? ''}
-            className="rounded border border-amber-500/20 bg-paper px-2 py-2 text-left text-xs font-semibold hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-40">
+            className="rounded border border-warning/20 bg-paper px-2 py-2 text-left text-xs font-semibold hover:bg-warning/10 disabled:cursor-not-allowed disabled:opacity-40">
             {ability.id === 'orbital_rail_cannon' && orbitalAiming ? 'Confirm Orbital Strike' : ability.name}{reason && <span className="mt-0.5 block text-[10px] font-normal text-danger-ink">{reason}</span>}
           </button>;
         })}

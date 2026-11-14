@@ -586,6 +586,109 @@ erDiagram
         json metadata
     }
 
+    CampaignNpc {
+        string id PK
+        string campaignId FK
+        string name
+        GameSystem gameSystem
+        json data
+        json actions
+        bool revealed
+        bool favorite
+        string[] controllerIds
+        string[] tags
+    }
+
+    MessageRevision {
+        string id PK
+        string messageId FK
+        string editorId
+        string content
+        json metadata
+    }
+
+    MessageReaction {
+        string id PK
+        string messageId FK
+        string userId
+        string emoji
+    }
+
+    MessageBookmark {
+        string id PK
+        string messageId FK
+        string userId
+        string category
+    }
+
+    CampaignScene {
+        string id PK
+        string campaignId FK
+        string title
+        string[] participantIds
+        string summary
+        string gmNotes
+        bool revealed
+        bool active
+        string boardVisibility
+        json boardState
+        int boardVersion
+    }
+
+    CampaignEntry {
+        string id PK
+        string campaignId FK
+        string kind
+        string title
+        string content
+        string gmNotes
+        string[] tags
+        bool revealed
+        bool pinned
+        json relatedIds
+    }
+
+    Encounter {
+        string id PK
+        string campaignId FK
+        string name
+        bool active
+        string notes
+    }
+
+    EncounterMember {
+        string id PK
+        string encounterId FK
+        string actorType
+        string actorId
+        int sortOrder
+        json state
+    }
+
+    ActionTransaction {
+        string id PK
+        string campaignId FK
+        string actorType
+        string actorId
+        string actionId
+        string actionName
+        string[] targetIds
+        json beforeState
+        json afterState
+        datetime undoneAt
+        string undoneById
+    }
+
+    CampaignEvent {
+        string id PK
+        string campaignId FK
+        string sessionId
+        string category
+        string summary
+        json payload
+        string visibility
+    }
+
     DiceRoll {
         string id PK
         string campaignId FK
@@ -709,6 +812,16 @@ erDiagram
     Campaign ||--o{ Message : "has"
     User ||--o{ Message : "writes"
     User ||--o{ Message : "receives whispers"
+    Campaign ||--o{ CampaignNpc : "prepares"
+    Message ||--o{ MessageRevision : "has revisions"
+    Message ||--o{ MessageReaction : "has reactions"
+    Message ||--o{ MessageBookmark : "has bookmarks"
+    Campaign ||--o{ CampaignScene : "stages"
+    Campaign ||--o{ CampaignEntry : "records"
+    Campaign ||--o{ Encounter : "tracks"
+    Encounter ||--o{ EncounterMember : "contains"
+    Campaign ||--o{ ActionTransaction : "records actions"
+    Campaign ||--o{ CampaignEvent : "records events"
     Campaign ||--o{ DiceRoll : "has"
     User ||--o{ DiceRoll : "rolls"
     Campaign ||--o{ Session : "has"

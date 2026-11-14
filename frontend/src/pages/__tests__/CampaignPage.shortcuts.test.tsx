@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@/test/renderWithToast';
 
 // The page subscribes to many socket events; each method is a harmless stub.
 const anySocket = vi.hoisted(() => new Proxy({}, { get: () => () => undefined }));

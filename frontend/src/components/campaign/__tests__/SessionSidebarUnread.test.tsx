@@ -8,11 +8,12 @@
  */
 
 import { it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@/test/renderWithToast';
 import { MessageType } from '@/types';
 import type { ChatMessageBroadcast } from '@/types';
 
 const nothing = vi.hoisted(() => () => ({ default: () => null }));
+vi.mock('@/contexts/CampaignContext', () => ({ useCampaign: () => ({ userRole: 'DM' }) }));
 let onMessage: ((data: ChatMessageBroadcast) => void) | null = null;
 const socket = {
   onChatMessage: (fn: (data: ChatMessageBroadcast) => void) => { onMessage = fn; },

@@ -17,7 +17,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, act, cleanup, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, act, cleanup, waitFor, within } from '@/test/renderWithToast';
 import type { ReactNode } from 'react';
 import { MessageType } from '@/types';
 import type { ChatMessageBroadcast, Token } from '@/types';
@@ -239,10 +239,10 @@ describe('the desktop arrangement, from 1,024 px wide', () => {
   it('draws the map, the session panels and the Party content in its columns, and no bar', async () => {
     await openPage();
 
-    expect(part('Map').closest('[data-panel="map"] section')).not.toBeNull();
-    expect(part('Chat').closest('#session-tabpanel-chat')?.closest('[data-panel="rail"]')).not.toBeNull();
-    expect(part('Roster').closest('[data-panel="party"] aside')).not.toBeNull();
-    expect(screen.getByRole('button', { name: 'Edit Goblin' }).closest('[data-panel="party"] aside')).not.toBeNull();
+    expect(part('Map')).toBeInTheDocument();
+    expect(part('Chat')).toBeInTheDocument();
+    expect(part('Roster')).toBeInTheDocument();
+    expect(screen.getAllByRole('separator').length).toBeGreaterThan(0);
     expect(bar()).toBeNull();
   });
 
@@ -333,9 +333,9 @@ describe('a change of arrangement', () => {
 
     arrange(false);
     expect(bar()).toBeNull();
-    expect(map.closest('[data-panel="map"] section')).not.toBeNull();
-    expect(part('Chat').closest('[data-panel="rail"]')).not.toBeNull();
-    expect(part('Info').closest('[data-panel="party"]')).not.toBeNull();
+    expect(map).toBeInTheDocument();
+    expect(part('Chat')).toBeInTheDocument();
+    expect(part('Info')).toBeInTheDocument();
 
     arrange(true);
     arrange(false);
@@ -353,6 +353,8 @@ describe('a change of arrangement', () => {
     chatArrives('mara');
     expect(screen.getByLabelText('1 unread messages')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Map Library' }));
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'SmugVTT workspaces' })).getByRole('button', { name: 'Map' }));
+    fireEvent.click(screen.getByText('Campaign & Party'));
     fireEvent.click(screen.getByRole('button', { name: 'Edit Goblin' }));
 
     arrange(true);

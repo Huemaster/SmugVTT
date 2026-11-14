@@ -9,7 +9,7 @@
  */
 
 import { it, expect, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { render } from '@/test/renderWithToast';
 
 // The page subscribes to many socket events; each method is a harmless stub.
 const anySocket = vi.hoisted(() => new Proxy({}, { get: () => () => undefined }));

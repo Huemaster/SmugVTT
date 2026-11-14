@@ -909,7 +909,7 @@ export default function SceneBoardPanel() {
       <div
         key={element.id}
         style={common}
-        className={`${active && isGm ? 'outline outline-2 outline-brand' : ''} ${speakingKey && element.type === 'image' && linkedSpeaker(element) === speakingKey ? 'ring-4 ring-sky-400/70' : ''} ${element.locked ? 'cursor-default' : isGm ? 'cursor-move' : ''}`}
+        className={`${active && isGm ? 'outline outline-2 outline-brand' : ''} ${speakingKey && element.type === 'image' && linkedSpeaker(element) === speakingKey ? 'ring-4 ring-info/70' : ''} ${element.locked ? 'cursor-default' : isGm ? 'cursor-move' : ''}`}
         onPointerDown={(event) => onElementPointerDown(event, element, 'move')}
         onPointerMove={onElementPointerMove}
         onPointerUp={onElementPointerUp}
@@ -1345,11 +1345,11 @@ export default function SceneBoardPanel() {
               const y = showBelow ? element.y + element.height + 26 : element.y - 25;
               return <div key={`${element.id}:${spoken.messageId}`}
                 role="status" aria-label={`${spoken.speakerName} says: ${spoken.quotes.join(' ')}`}
-                className={`absolute w-[360px] rounded-xl border border-slate-400 bg-white/95 px-3 py-2 text-center text-[17px] leading-snug text-slate-900 shadow-xl ${speakingKey === spoken.speakerKey ? 'ring-4 ring-sky-400/60' : ''}`}
+                className={`absolute w-[360px] rounded-xl border border-ink/30 bg-white/95 px-3 py-2 text-center text-[17px] leading-snug text-ink shadow-xl ${speakingKey === spoken.speakerKey ? 'ring-4 ring-info/60' : ''}`}
                 style={{ left: x, top: y, transform: showBelow ? 'translateX(-50%)' : 'translate(-50%, -100%)' }}
                 title={spoken.quotes.join(' ')}>
                 <span className="block break-words">“{canvasDialogueLabel(spoken)}”</span>
-                <span aria-hidden="true" className={`absolute left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 border-slate-400 bg-white ${showBelow ? '-top-[9px] border-l border-t' : '-bottom-[9px] border-b border-r'}`} />
+                <span aria-hidden="true" className={`absolute left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 border-ink/30 bg-white ${showBelow ? '-top-[9px] border-l border-t' : '-bottom-[9px] border-b border-r'}`} />
               </div>;
             })}
           </div>}

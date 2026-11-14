@@ -15,7 +15,7 @@
  */
 
 import { it, expect, vi, beforeAll, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@/test/renderWithToast';
 import type { ChatMessageAck, ChatMessageBroadcast, ChatMessageEvent } from '@/types';
 
 vi.mock('react-router', () => ({ useParams: () => ({ id: 'campaign-1' }) }));
@@ -27,6 +27,8 @@ vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'me', d
 let onMessage: ((data: ChatMessageBroadcast) => void) | null = null;
 const sendChatMessage = vi.fn<(data: ChatMessageEvent) => Promise<ChatMessageAck>>();
 const socket = {
+  getSocket: () => null,
+  on: vi.fn(),
   onChatMessage: (fn: (data: ChatMessageBroadcast) => void) => { onMessage = fn; },
   onChatSystem: vi.fn(),
   off: vi.fn(),

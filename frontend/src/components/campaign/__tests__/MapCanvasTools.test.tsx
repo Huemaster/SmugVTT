@@ -958,13 +958,13 @@ describe('the ruler and the AoE template', () => {
     expect(aoeOn()).toBe(false);
   });
 
-  it('turn the ruler off when a player picks up their token', () => {
+  it('turn the ruler off when a player drags their token', () => {
     h.set({ userRole: 'PLAYER' });
     render(<MapCanvas />);
     show(token('tok-mine', 'Aldra', 0, 19, { type: TokenType.PLAYER, controlledBy: 'me' }));
     fireEvent.click(screen.getByTitle('Ruler — measure distance'));
 
-    click(square(0, 19));
+    drag(square(0, 19), { ...square(0, 19), clientX: square(0, 19).clientX + 10 });
 
     expect(sentOf('token.move.start')).toHaveLength(1);
     expect(rulerOn()).toBe(false);
@@ -1338,11 +1338,11 @@ describe('switching maps', () => {
   const mapB = () => ({ ...mapWith({ wallSegments: [seg('b1', 100, 500, 200, 500)] }), id: 'map-b', name: 'Map B' }) as unknown as CampaignMap;
   const switchMap = () => act(() => { h.set({ currentMap: mapB() }); });
 
-  it('puts a held token back on the map it came from', () => {
+  it('cancels a token drag when the current map changes', () => {
     render(<MapCanvas />);
     show(token('tok-goblin', 'Goblin', 0, 19));
-    click(square(0, 19));
-    move(square(3, 19), 0);
+    down(square(0, 19));
+    move(square(3, 19));
 
     switchMap();
 
@@ -1388,11 +1388,11 @@ describe('switching maps', () => {
 });
 
 describe('Escape with a token held', () => {
-  it('puts the token back where it was picked up', () => {
+  it('cancels the token drag and restores its starting square', () => {
     render(<MapCanvas />);
     show(token('tok-goblin', 'Goblin', 0, 19));
-    click(square(0, 19));
-    move(square(3, 19), 0);
+    down(square(0, 19));
+    move(square(3, 19));
 
     press('Escape');
 
@@ -1430,24 +1430,22 @@ describe('a click on a token beside a door', () => {
   // fits a map to the screen covers most of a square.
   const door = seg('d1', 100, 100, 100, 150, 'door-closed');
 
-  it('picks the token up, leaving the door', () => {
+  it('drags the token, leaving the door', () => {
     h.set({ currentMap: mapWith({ wallSegments: [door] }) });
     render(<MapCanvas />);
     show(token('tok-goblin', 'Goblin', 2, 17));
 
-    click(px(105, 125));
+    drag(px(105, 125), px(115, 125));
 
     expect(sentOf('token.move.start')).toHaveLength(1);
     expect(sentOf('wall:update')).toEqual([]);
   });
 
-  it('puts a held token down there, leaving the door', () => {
+  it('moves the token there, leaving the door', () => {
     h.set({ currentMap: mapWith({ wallSegments: [door] }) });
     render(<MapCanvas />);
     show(token('tok-goblin', 'Goblin', 5, 17));
-    click(square(5, 17));
-
-    click(px(105, 125));
+    drag(square(5, 17), px(105, 125));
 
     expect(sentOf('token.move.end')).toEqual([expect.objectContaining({ tokenId: 'tok-goblin', x: 2, y: 17 })]);
     expect(sentOf('wall:update')).toEqual([]);

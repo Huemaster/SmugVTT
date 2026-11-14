@@ -120,7 +120,7 @@ describe('a whisper', () => {
     const [row] = await stored();
     expect(answer).toEqual({ ok: true, id: row.id });
     expect(row).toMatchObject({ type: 'WHISPER', userId: ids.ash, recipientId: ids.mara, content: 'Meet me by the well' });
-    const sent = { id: row.id, userId: ids.ash, userName: 'Ash', content: 'Meet me by the well', type: 'WHISPER', recipientId: ids.mara, recipientName: 'Mara', timestamp: row.createdAt.toISOString() };
+    const sent = { id: row.id, userId: ids.ash, userName: 'Ash', content: 'Meet me by the well', type: 'WHISPER', recipientId: ids.mara, recipientName: 'Mara', metadata: { chatMode: 'ooc', speaker: { name: 'Ash', type: 'self' } }, timestamp: row.createdAt.toISOString() };
     expect(await toAsh).toEqual({ ...sent, clientId: 'w-1' });
     expect(await toMara).toEqual(sent);
 

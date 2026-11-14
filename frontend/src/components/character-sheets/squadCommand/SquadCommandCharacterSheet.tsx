@@ -251,7 +251,7 @@ export default function SquadCommandCharacterSheet({ character, mode, onSave, on
   </section>;
 
   const combatProfile = <Section title="Combat Profile" aside={<span className="text-xs text-ink-muted">Profile rev {form.profileRevision ?? '—'}</span>}>
-    <div className="grid grid-cols-4 gap-2 md:grid-cols-8">
+    <div className="grid grid-cols-2 gap-2 md:grid-cols-4 lg:grid-cols-8">
       <StatBox label="HP" value={stats.hpCurrent} editing={currentMode === 'edit'} onChange={(v) => setStat('hpCurrent', v)} />
       <StatBox label="HP Max" value={stats.hpMax} editing={currentMode === 'edit'} onChange={(v) => setStat('hpMax', v)} />
       <StatBox label="DEF" value={stats.defense} editing={currentMode === 'edit'} onChange={(v) => setStat('defense', v)} />
@@ -347,7 +347,7 @@ export default function SquadCommandCharacterSheet({ character, mode, onSave, on
         <input type="checkbox" checked={form.isPlayerCharacter === true} onChange={(e) => change({ ...form, isPlayerCharacter: e.target.checked })} />
         Player Character (special-ability eligibility; Commanders qualify automatically)
       </label>
-      {canUseSquadSpecialAbilities(form) && <div className="mt-3 rounded-cozy border border-amber-500/25 p-3">
+      {canUseSquadSpecialAbilities(form) && <div className="mt-3 rounded-cozy border border-warning/25 p-3">
         <div className="mb-2 text-sm font-semibold text-ink">Assign Special Abilities</div>
         <div className="grid gap-1.5 md:grid-cols-2">
           {TW_SPECIAL_ABILITIES.map((special) => {

@@ -45,14 +45,14 @@ export default function SquadCommandTokenCombatHover({ characterId }: { characte
   const field = battle?.battlefield;
   const special = field?.specialEffects ?? {};
   const statuses: { label: string; icon: typeof AlertTriangle; priority: number; className: string; title: string }[] = [];
-  const add = (label: string, icon: typeof AlertTriangle, priority: number, title = label, className = 'bg-amber-500/15 text-ink') => statuses.push({ label, icon, priority, title, className });
-  if (stats.suppression >= 3) add('Pinned', ShieldAlert, 20, 'Pinned — unable to attack normally', 'bg-orange-600/15 text-ink');
+  const add = (label: string, icon: typeof AlertTriangle, priority: number, title = label, className = 'bg-warning/15 text-ink') => statuses.push({ label, icon, priority, title, className });
+  if (stats.suppression >= 3) add('Pinned', ShieldAlert, 20, 'Pinned — unable to attack normally', 'bg-warning/15 text-ink');
   if (field?.overwatch.active) add('Overwatch', Crosshair, 50, `Overwatch — ${field.overwatch.reactions} reaction(s) remaining`);
   if (battle?.downed && !field?.wrecked) {
-    if (!field?.stabilized && (battle.deathTimer ?? 1) <= 0) add('Dead', Skull, 0, 'Dead — death timer exhausted', 'bg-red-600/20 text-red-800');
-    else add('Downed', HeartCrack, 10, field?.stabilized ? 'Downed — stabilized; timer frozen' : `Downed — ${battle.deathTimer ?? 3} turn(s) remaining`, 'bg-red-600/15 text-red-800');
+    if (!field?.stabilized && (battle.deathTimer ?? 1) <= 0) add('Dead', Skull, 0, 'Dead — death timer exhausted', 'bg-danger-fill/20 text-danger-ink');
+    else add('Downed', HeartCrack, 10, field?.stabilized ? 'Downed — stabilized; timer frozen' : `Downed — ${battle.deathTimer ?? 3} turn(s) remaining`, 'bg-danger-fill/15 text-danger-ink');
   }
-  if (field?.wrecked) add('Wrecked', Wrench, 0, 'Vehicle wrecked — unable to act', 'bg-red-600/20 text-red-800');
+  if (field?.wrecked) add('Wrecked', Wrench, 0, 'Vehicle wrecked — unable to act', 'bg-danger-fill/20 text-danger-ink');
   if (field?.stabilized && battle?.downed) add('Stabilized', CheckCircle2, 11, 'Death timer stopped');
   if (battle?.bastionActive) add('Bastion', ShieldCheck, 60, 'Bastion — prevents the next single damaging hit');
   if ((battle?.naniteBuffer ?? 0) > 0) add(`Nanites ${battle?.naniteBuffer}`, ShieldCheck, 65, `Nanite buffer — ${battle?.naniteBuffer} temporary HP`);

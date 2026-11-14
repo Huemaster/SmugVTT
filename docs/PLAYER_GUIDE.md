@@ -146,7 +146,7 @@ On a computer, or a tablet held sideways, the page has three main areas, describ
 - **Your role** at the bottom of the **Campaign Info** panel, and under it **Leave Campaign**, which takes you out of the campaign after asking (see [Leaving a campaign](#leaving-a-campaign))
 
 ### Center — The Map
-This is the battle map. During a session, you'll see your token here and can move it: click it to pick it up, then click where it should go ([Moving Your Token](#moving-your-token)). On a tablet or a phone, see [On a touch screen](#on-a-touch-screen). The toolbar at its top left zooms and fits the view, and you move the view by dragging an empty part of the map ([Moving Around the Map](USER_GUIDE.md#moving-around-the-map)). The map may be a picture your DM uploaded or one they drew in CozyVTT; it works the same either way. When the DM saves a change to the map you are on, its picture changes where you are: your view, and a token you are holding, stay as they were.
+This is the battle map. During a session, you'll see your token here and can move it by pressing, dragging and releasing it ([Moving Your Token](#moving-your-token)). A click or tap selects it without moving it. On a tablet or a phone, see [On a touch screen](#on-a-touch-screen). The toolbar at its top left zooms and fits the view, and you move the view by dragging an empty part of the map ([Moving Around the Map](USER_GUIDE.md#moving-around-the-map)). The map may be a picture your DM uploaded or one they drew in CozyVTT; it works the same either way. When the DM saves a change to the map you are on, its picture changes where you are: your view and selected token stay as they were.
 
 ### Right Sidebar — Your Tools
 A tabbed panel — click a tab to switch between:
@@ -363,17 +363,17 @@ On a Pathfinder 2e sheet the menu reads **Normal**, **Fortune** and **Misfortune
 
 ## Moving Your Token
 
-When the DM has placed your character's token on the map, you can move it: click the token to pick it up, move the pointer to where you want it, and click that square to put it down. Letting go of the mouse button does not put it down, so there is no need to hold it. Right-click, press **Esc**, or move the pointer off the map, to put the token back where it was. You can't move it while the session is paused or has ended.
+When the DM has placed your character's token on the map, you can move it by pressing on it, dragging it to the destination and releasing. A click or tap selects a token; it does not pick it up. Press **Esc** to clear the selection. You can't move it while the session is paused or has ended.
 
-**How far it has come.** While you hold your token, the bottom left of the map shows how far it is from the square you picked it up from to the square it would land on, such as "Carried 15 ft (3 sq)". It is measured as the **Ruler** measures (see [Measuring and Spell Areas](#measuring-and-spell-areas)), by the map's grid scale and its rule for diagonals, and the squares count a diagonal as one. It sits beside the square under your pointer, or just above the token card when one shows there; on a phone it is at the foot of the map. It goes when you put the token down or back.
+**How far it moved.** While you drag your token, the bottom left of the map shows the distance from its starting square to the square under your pointer, such as "Moving 15 ft (3 sq)". It is measured as the **Ruler** measures (see [Measuring and Spell Areas](#measuring-and-spell-areas)), by the map's grid scale and its rule for diagonals. It goes when you release the token.
 
 **Selecting a token.** Clicking a token also selects it, and a dashed light-blue ring marks it until you click empty ground or select another; dragging the map leaves it selected. You can select any token you can see, yours or not, by clicking it; a right-click selects the token too when its menu opens for you. A token that isn't yours is only selected, never picked up. A screen reader says which token is selected and on which square.
 
-**Moving from the keyboard.** Click the map first, so the keys go to it. With your token selected, the arrow keys move it one square, or five with **Shift**; if you're holding it, an arrow puts it down one square over from where it stood. **,** and **.** (or **<** and **>**) select your previous or next token, handy when you control more than one, and the map pans to keep it in sight, two squares in from the edge. **Enter** opens the selected token's menu, and **Esc** lets go of one thing at a time: the menu, then the **Ping** button if you pressed it, then a token you're holding, then the drawing tools, the ruler or the area template if you have one up, then the selection. The mouse's rules apply: no moving while the session is paused, and not onto a square someone else is standing on. The keys go to the map only while it has the keyboard: click anywhere else, such as on the chat, and they go there instead, and a window open over the map takes them too. Click the map again to take them back. A token you selected that the map no longer shows, because it has gone under fog, stays selected but the keys leave it alone. Every key is in [Keyboard Shortcuts](#keyboard-shortcuts).
+**Moving from the keyboard.** Click the map first, so the keys go to it. With your token selected, the arrow keys move it one square, or five with **Shift**. **,** and **.** (or **<** and **>**) select your previous or next token, handy when you control more than one, and the map pans to keep it in sight. **Enter** opens the selected token's menu, and **Esc** closes the menu, puts away an active tool, or clears the selection. The same movement rules apply: no moving while the session is paused, and not onto a square someone else is standing on. The keys go to the map only while it has the keyboard: click anywhere else, such as on the chat, and they go there instead, and a window open over the map takes them too. Click the map again to take them back. A token you selected that the map no longer shows, because it has gone under fog, stays selected but the keys leave it alone. Every key is in [Keyboard Shortcuts](#keyboard-shortcuts).
 
 *GIF pending — Picking up a player token and placing it across the map.*
 
-A token you carry with a mouse past the edge of the map is drawn at the edge, where the rest of the table sees it.
+A token dragged past the edge of the map stays at the edge until you release it, where the rest of the table sees it.
 
 Your movement is visible to everyone in real time — your party can watch you creep around the corner (or run straight into danger).
 
@@ -395,9 +395,8 @@ On a tablet or a phone your finger does what the mouse does, and a little more:
 
 | To | Do this |
 |---|---|
-| Move your token | Put your finger on it, slide it to the square and lift: it goes down where you lift, and stays selected. A second finger on the glass before you lift puts it back where it was. |
-| Move it in two taps | Tap your token, then tap the square. In between it stays in your hand, drawn faded on its own square with the selection ring, its hit-point bar and its conditions, so you can move the map with one finger, or pinch, and keep hold of it. Slide the token from its own square to carry it, or tap the square it came from to put it back. |
-| Put back a token you are holding | Tap **Put back** in the bar at the top of the map, which names the token. It does what **Esc** does. |
+| Move your token | Put your finger on it, slide it to the destination and lift. A tap selects the token without moving it. |
+| Cancel a move | Put a second finger on the screen before lifting, or press **Esc**. |
 | Move the map | Slide one finger anywhere but on a token you can move. Pinch two fingers to zoom, about your fingers. |
 | Read a token's details | Tap it. It is selected, and its card shows at the bottom left of the map (on a phone, across its foot), as hovering it with a mouse would (see [Pointing at a token](#pointing-at-a-token)). The card lets taps through to the map under it, except on its **✕**, which closes it until you next tap a token, the same one included. |
 | Open a token's menu | Press and hold the token for half a second: the menu a right-click opens there opens, with the same items, and the token is selected. Lift your finger and tap an item. |
@@ -409,7 +408,7 @@ On a tablet or a phone your finger does what the mouse does, and a little more:
 | Point at the map | Tap the spot twice, quickly, on empty ground: everyone sees your ping where the second tap lands, as with **Tab**. It works while no tool is up; two taps on a token do what they always do, and ping nothing. Or press and hold the spot for half a second, on empty ground or on a token that has no menu for you. Or tap **Ping** in the map's toolbar, then tap the spot; you can move the map first. Tap **Ping** again to put it away. |
 | Draw on the map | With **Draw** up, one finger draws and two fingers move and pinch the map; with the eraser, the text label or the polygon, one finger moves the map too, and a tap acts. Holding a finger still opens no menu (see [Drawing and pointing](#drawing-and-pointing)). |
 
-A stylus works as a mouse, and opens no menu by holding: use a finger for that. Tap your token with it to pick it up and tap the square to put it down. On a tablet that can tell a stylus hovering just above it, the token follows the stylus meanwhile; take the stylus away and the token waits, faded, on its own square.
+A stylus works as a mouse: press on your token, drag it and lift to place it. A tap selects without moving. On a tablet that can tell a stylus hovering just above it, the token follows the stylus while it is down.
 
 On a phone or a tablet some controls are bigger than on a computer, at least 44 pixels square, so a fingertip hits the one it means: the map's toolbar, **Put back**, the **AoE Shape** panel's buttons, the card's **✕**, the items of the token, door and character menus and of a character sheet's roll menu, the buttons of a sheet's **Roll mode**, the close buttons of messages, dialogs, side panels and the **Roll...** pickers, the icon buttons in the page's header, your character's hit point buttons in the party panel, and the names and your die in the initiative tracker. A menu taller than the screen scrolls. Where a row is too narrow for its buttons, they go onto a line of their own: in a narrow party panel your character's hit point buttons take two lines, **−5** and **−** beside the hit points and **+** and **+5** under them on the right. With a mouse they keep their usual size, and other controls keep the size they have on a computer.
 
@@ -419,7 +418,7 @@ Try to finish a move on a square somebody is already standing in and the move is
 
 A creature at **zero hit points** is the exception. It's drawn faded to show it's down, and you can move onto its square — the body stays there marking where it fell without getting in the way of the fight. That only works when you can see its hit points: another player's character, or a creature whose HP bar the DM has turned on. A creature whose hit points the DM keeps hidden looks standing to you until the DM removes it.
 
-If your token ends up underneath another one anyway — your DM can place tokens wherever they like — clicking the square still picks up **your** token, not the one drawn over it. You can always get your own token back.
+If your token ends up underneath another one anyway — your DM can place tokens wherever they like — clicking the square selects the topmost token. Ask your DM to move overlapping tokens apart.
 
 ### Pointing at a token
 
@@ -773,7 +772,7 @@ On the map, once you've clicked it. Press `?` on the map, or click **Keyboard sh
 | Move the selected token five squares | `Shift + arrow keys` |
 | Turn the selected token 45 degrees anticlockwise or clockwise | `[` `]` |
 | Open the selected token's menu | `Enter` |
-| Let go of one thing: the menu, the armed **Ping**, a held token, the tool, then the selection | `Esc` |
+| Close the menu, put away an active tool, or clear the selection | `Esc` |
 | Ping the map | `Tab` (cursor over the map) |
 | Ping the map, on a touch screen, where there is no token or door and no tool is up | `Double tap` |
 | Place a spell area off the grid | `Alt + click` (AoE tool) |

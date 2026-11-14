@@ -172,6 +172,11 @@ function click(point: { clientX: number; clientY: number }) {
   mouse.up(surface(), point);
 }
 
+function beginMouseDrag(point: { clientX: number; clientY: number }) {
+  mouse.down(surface(), point);
+  mouse.move(surface(), { ...point, clientX: point.clientX + 10 }, 1);
+}
+
 /** What the readout says, its spaces as a page shows them, or null while none shows. */
 const carried = () => screen.queryByText(/^Carried /)?.textContent?.replace(/\s+/g, ' ') ?? null;
 
@@ -194,14 +199,14 @@ describe('with a mouse', () => {
     mouse.move(surface(), at(0, 19));
     expect(carried()).toBeNull();
 
-    click(at(0, 19));
+    beginMouseDrag(at(0, 19));
     expect(carried()).toBe('Carried 0 ft (0 sq)');
-    mouse.move(surface(), at(3, 17));
+    mouse.move(surface(), at(3, 17), 1);
 
     expect(carried()).toBe('Carried 15 ft (3 sq)');
     expect(screen.getByText('(3, 17)').parentElement).toBe(screen.getByText(/^Carried /).parentElement);
 
-    click(at(3, 17));
+    mouse.up(surface(), at(3, 17));
     expect(sentOf('token.move.end')).toEqual([{ tokenId: 'tok-goblin', mapId: 'map-a', x: 3, y: 17 }]);
     expect(carried()).toBeNull();
   });
@@ -210,9 +215,9 @@ describe('with a mouse', () => {
     h.set({ currentMap: mapWith({ feetPerSquare: 10, diagonalRule: 'alternating' }) });
     render(<MapCanvas />);
     show(goblin());
-    click(at(0, 19));
+    beginMouseDrag(at(0, 19));
 
-    mouse.move(surface(), at(2, 17));
+    mouse.move(surface(), at(2, 17), 1);
 
     expect(carried()).toBe('Carried 30 ft (2 sq)');
   });
@@ -221,9 +226,9 @@ describe('with a mouse', () => {
   it("shows above the card of a token the pointer is over", () => {
     render(<MapCanvas />);
     show(goblin(), token('tok-wolf', 'Wolf', 4, 19));
-    click(at(0, 19));
+    beginMouseDrag(at(0, 19));
 
-    mouse.move(surface(), at(4, 19));
+    mouse.move(surface(), at(4, 19), 1);
 
     const card = screen.getByText('Wolf').closest('.glass-panel') as HTMLElement;
     expect(within(card).getByText(/^Carried /)).toBeInTheDocument();
@@ -233,8 +238,8 @@ describe('with a mouse', () => {
   it('goes when the token is put back', () => {
     render(<MapCanvas />);
     show(goblin());
-    click(at(0, 19));
-    mouse.move(surface(), at(3, 19));
+    beginMouseDrag(at(0, 19));
+    mouse.move(surface(), at(3, 19), 1);
 
     fireEvent.keyDown(window, { key: 'Escape' });
 
@@ -246,8 +251,8 @@ describe('with a mouse', () => {
     h.set({ currentMap: mapWith({ fogEnabled: true }) });
     render(<MapCanvas />);
     show(goblin({ visible: false }), token('tok-alya', 'Alya', 10, 10, { type: TokenType.PLAYER, controlledBy: 'alice' }));
-    click(at(0, 19));
-    mouse.move(surface(), at(2, 19));
+    beginMouseDrag(at(0, 19));
+    mouse.move(surface(), at(2, 19), 1);
     expect(carried()).toBe('Carried 10 ft (2 sq)');
 
     fireEvent.click(screen.getByRole('button', { name: 'Preview Player View' }));
@@ -263,9 +268,7 @@ describe('with a stylus', () => {
     show(goblin());
     const pen = contact('pen', 1);
     pen.down(surface(), at(0, 19));
-    pen.up(surface(), at(0, 19));
-
-    fireEvent.pointerMove(surface(), { pointerType: 'pen', pointerId: 1, isPrimary: true, ...at(3, 19), button: -1, buttons: 0 });
+    pen.move(surface(), { ...at(3, 19) });
 
     expect(carried()).toBe('Carried 15 ft (3 sq)');
   });
@@ -276,8 +279,8 @@ describe('when the map on screen changes', () => {
   it('goes', () => {
     render(<MapCanvas />);
     show(goblin());
-    click(at(0, 19));
-    mouse.move(surface(), at(3, 19));
+    beginMouseDrag(at(0, 19));
+    mouse.move(surface(), at(3, 19), 1);
     expect(carried()).toBe('Carried 15 ft (3 sq)');
 
     act(() => { h.set({ currentMap: mapWith({ id: 'map-b', feetPerSquare: 10 }) }); });
@@ -287,13 +290,11 @@ describe('when the map on screen changes', () => {
 });
 
 describe('from the keyboard', () => {
-  // An arrow ends a hold one square over from where the token stood.
-  it('goes when an arrow puts the held token down', () => {
+  // An arrow moves the selected token one square.
+  it('shows no carried distance after an arrow moves the selected token', () => {
     render(<MapCanvas />);
     show(goblin({ position: { x: 2, y: 10 } }));
     click(at(2, 10));
-    mouse.move(surface(), at(5, 10));
-    expect(carried()).toBe('Carried 15 ft (3 sq)');
     const map = screen.getByRole('application', { name: 'Map' });
     map.focus();
 
@@ -323,9 +324,7 @@ describe('with a finger', () => {
     expect(carried()).toBeNull();
   });
 
-  // A tap takes it up and selects it; its card shows where the pointer's
-  // square would, and the token waits on its own square.
-  it('shows above the selected token’s card while a tap holds it', () => {
+  it('selects on tap without showing a carried distance', () => {
     render(<MapCanvas />);
     show(goblin());
     const finger = contact('touch', 1);
@@ -335,8 +334,8 @@ describe('with a finger', () => {
 
     const card = screen.getByRole('button', { name: 'Close details' }).closest('.glass-panel') as HTMLElement;
     expect(within(card).getByText('Goblin Scout')).toBeInTheDocument();
-    expect(within(card).getByText(/^Carried /)).toBeInTheDocument();
-    expect(carried()).toBe('Carried 0 ft (0 sq)');
+    expect(within(card).queryByText(/^Carried /)).toBeNull();
+    expect(carried()).toBeNull();
   });
 });
 
@@ -360,7 +359,7 @@ describe('on the compact layout', () => {
     expect(carried()).toBe('Carried 10 ft (2 sq)');
   });
 
-  it('shows in the dock above the selected token’s card while a tap holds it', () => {
+  it('selects on tap without a carried-distance readout', () => {
     render(compactMap());
     show(goblin());
     const finger = contact('touch', 1);
@@ -369,6 +368,6 @@ describe('on the compact layout', () => {
     finger.leave(surface());
 
     expect(within(dock()).getByText('Goblin Scout')).toBeInTheDocument();
-    expect(within(dock()).getByText(/^Carried /)).toBeInTheDocument();
+    expect(within(dock()).queryByText(/^Carried /)).toBeNull();
   });
 });

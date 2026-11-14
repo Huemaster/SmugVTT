@@ -5,9 +5,10 @@
  */
 
 import { it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen } from '@/test/renderWithToast';
 
 const nothing = vi.hoisted(() => () => ({ default: () => null }));
+vi.mock('@/contexts/CampaignContext', () => ({ useCampaign: () => ({ userRole: 'DM' }) }));
 vi.mock('@/contexts/WebSocketContext', () => ({ useWebSocket: () => ({ socket: null }) }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'me' } }) }));
 vi.mock('../ChatPanel', nothing);
@@ -21,7 +22,7 @@ vi.mock('../PersonalNotes', nothing);
 import SessionPanels from '../SessionPanels';
 import { LayoutProvider } from '@/contexts/LayoutContext';
 
-const PANELS = ['chat', 'dice', 'initiative', 'notes', 'session'];
+const PANELS = ['chat', 'journal', 'media', 'dice', 'initiative', 'notes', 'session', 'npcs'];
 
 it('names each panel by its tab on the desktop', () => {
   const { container } = render(<SessionPanels />);
@@ -36,8 +37,8 @@ it('names each panel itself on the compact layout, as a group and no tab panel',
   expect(screen.getByRole('group', { name: 'Chat' })).toBeInTheDocument();
   expect(screen.queryByRole('tabpanel')).toBeNull();
   const panels = PANELS.map((tab) => document.getElementById(`session-tabpanel-${tab}`) as HTMLElement);
-  expect(panels.map((p) => p.getAttribute('role'))).toEqual(['group', 'group', 'group', 'group', 'group']);
-  expect(panels.map((p) => p.getAttribute('aria-label'))).toEqual(['Chat', 'Dice', 'Initiative', 'Notes', 'Session']);
+  expect(panels.map((p) => p.getAttribute('role'))).toEqual(Array(8).fill('group'));
+  expect(panels.map((p) => p.getAttribute('aria-label'))).toEqual(['Chat', 'Journal', 'Media', 'Dice', 'Initiative', 'Notes', 'Session', 'NPCs']);
   expect(panels.every((p) => !p.hasAttribute('aria-labelledby'))).toBe(true);
 });
 

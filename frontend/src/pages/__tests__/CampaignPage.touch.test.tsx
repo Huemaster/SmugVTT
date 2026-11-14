@@ -9,7 +9,7 @@
  */
 
 import { it, expect, vi, beforeEach } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, screen } from '@/test/renderWithToast';
 
 const groups = vi.hoisted(() => [] as Array<Record<string, unknown>>);
 
@@ -85,9 +85,13 @@ beforeEach(() => {
   window.localStorage.clear();
 });
 
-it('gives the panel dividers a 44-pixel grip for a finger, and a mouse its 10', () => {
+it('gives resize separators a 44-pixel touch target and keeps the compact mouse grip', () => {
   render(<CampaignPage />);
 
-  expect(groups.length).toBeGreaterThan(0);
-  for (const props of groups) expect(props.resizeTargetMinimumSize).toEqual({ coarse: 44, fine: 10 });
+  const separators = screen.getAllByRole('separator');
+  expect(separators.length).toBeGreaterThan(0);
+  const widthGrip = separators.find((separator) => separator.getAttribute('aria-orientation') === 'vertical')!;
+  const heightGrip = separators.find((separator) => separator.getAttribute('aria-orientation') === 'horizontal')!;
+  expect(widthGrip.className.split(/\s+/)).toEqual(expect.arrayContaining(['w-2', 'pointer-coarse:w-11']));
+  expect(heightGrip.className.split(/\s+/)).toEqual(expect.arrayContaining(['h-2', 'pointer-coarse:h-11']));
 });

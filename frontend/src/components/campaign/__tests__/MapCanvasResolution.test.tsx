@@ -387,12 +387,17 @@ describe('a pointer at ratio 2', () => {
     act(() => { useGameStore.getState().setTokens([token('tok-goblin', 'Goblin', 5, 13)]); });
 
     mouse.down(surface(), square(5, 13));
-    mouse.up(surface(), square(5, 13));
+    mouse.move(surface(), square(6, 13), 1);
+    mouse.up(surface(), square(6, 13));
     expect(sentOf('token.move.start')).toEqual([{ tokenId: 'tok-goblin', mapId: 'map-a' }]);
 
-    mouse.down(surface(), square(8, 2));
+    mouse.down(surface(), square(6, 13));
+    mouse.move(surface(), square(8, 2), 1);
     mouse.up(surface(), square(8, 2));
-    expect(sentOf('token.move.end')).toEqual([{ tokenId: 'tok-goblin', mapId: 'map-a', x: 8, y: 2 }]);
+    expect(sentOf('token.move.end')).toEqual([
+      { tokenId: 'tok-goblin', mapId: 'map-a', x: 6, y: 13 },
+      { tokenId: 'tok-goblin', mapId: 'map-a', x: 8, y: 2 },
+    ]);
   });
 });
 
@@ -568,7 +573,8 @@ describe('a new picture for the map on screen', () => {
     expect(zoom()).toBe('54%');
 
     mouse.down(surface(), fittedSquare(5, 13));
-    mouse.up(surface(), fittedSquare(5, 13));
+    mouse.move(surface(), fittedSquare(6, 13), 1);
+    mouse.up(surface(), fittedSquare(6, 13));
     expect(sentOf('token.move.start')).toEqual([{ tokenId: 'tok-goblin', mapId: 'map-a' }]);
 
     act(() => { h.set({ currentMap: mapWith({ imageUrl: NEW }) }); });
@@ -578,10 +584,14 @@ describe('a new picture for the map on screen', () => {
     expect(picturesIn(drawing.take(layers()[0]))).toEqual([pictureAt(NEW)]);
 
     expect(zoom()).toBe('54%');
-    expect(sentOf('token.move.end')).toEqual([]);
-    mouse.down(surface(), fittedSquare(8, 2));
+    expect(sentOf('token.move.end')).toEqual([{ tokenId: 'tok-goblin', mapId: 'map-a', x: 6, y: 13 }]);
+    mouse.down(surface(), fittedSquare(6, 13));
+    mouse.move(surface(), fittedSquare(8, 2), 1);
     mouse.up(surface(), fittedSquare(8, 2));
-    expect(sentOf('token.move.end')).toEqual([{ tokenId: 'tok-goblin', mapId: 'map-a', x: 8, y: 2 }]);
+    expect(sentOf('token.move.end')).toEqual([
+      { tokenId: 'tok-goblin', mapId: 'map-a', x: 6, y: 13 },
+      { tokenId: 'tok-goblin', mapId: 'map-a', x: 8, y: 2 },
+    ]);
   });
 
   it('keeps the old picture when the new one does not load, and says so', async () => {

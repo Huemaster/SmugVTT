@@ -226,7 +226,7 @@ export default function DrawControls({
         <div className="flex flex-col gap-1.5 rounded-md border border-blue-400/30 bg-blue-900/15 p-2" aria-label="Battlefield zones">
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs font-semibold text-blue-200">Battlefield Zones</span>
-            <button type="button" onClick={() => onZonesVisibleChange?.(!zonesVisible)} className="text-[11px] text-blue-200 underline" aria-pressed={zonesVisible}>
+            <button type="button" onClick={() => onZonesVisibleChange?.(!zonesVisible)} className="touch-target text-[11px] text-blue-200 underline" aria-pressed={zonesVisible}>
               {zonesVisible ? 'Hide zones' : 'Show zones'}
             </button>
           </div>
@@ -238,7 +238,7 @@ export default function DrawControls({
                   onSettingsChange({ zoneType: preset.id, color: preset.color, width: 3, fill: true });
                   if (!FILLABLE.has(kind)) onKindChange('rect');
                 }}
-                className={`flex items-center gap-1.5 rounded border px-1.5 py-1 text-left text-[11px] ${settings.zoneType === preset.id && FILLABLE.has(kind) ? 'border-blue-300 bg-blue-800/40' : 'border-stone-600 bg-stone-800/50'}`}>
+                className={`touch-target flex items-center gap-1.5 rounded border px-1.5 py-1 text-left text-[11px] ${settings.zoneType === preset.id && FILLABLE.has(kind) ? 'border-blue-300 bg-blue-800/40' : 'border-stone-600 bg-stone-800/50'}`}>
                 <span className="size-3 shrink-0 rounded-sm" style={{ backgroundColor: preset.color }} /> {preset.label}
               </button>
             ))}
@@ -246,9 +246,9 @@ export default function DrawControls({
           {settings.zoneType && FILLABLE.has(kind) && (
             <>
               <div className="flex items-center gap-1 text-[11px]">
-                <button type="button" onClick={() => onKindChange('rect')} className="rounded border px-2 py-1 border-stone-500">Rectangle</button>
-                <button type="button" onClick={() => onKindChange('ellipse')} className="rounded border px-2 py-1 border-stone-500">Ellipse</button>
-                <button type="button" onClick={() => onSettingsChange({ zoneType: null, fill: false })} className="ml-auto text-stone-300 underline">Plain drawing</button>
+                <button type="button" onClick={() => onKindChange('rect')} className="touch-target rounded border px-2 py-1 border-stone-500">Rectangle</button>
+                <button type="button" onClick={() => onKindChange('ellipse')} className="touch-target rounded border px-2 py-1 border-stone-500">Ellipse</button>
+                <button type="button" onClick={() => onSettingsChange({ zoneType: null, fill: false })} className="touch-target ml-auto text-stone-300 underline">Plain drawing</button>
               </div>
               <label className="flex flex-col gap-1 text-[11px] text-stone-300">Zone fill transparency — {settings.fillOpacity}% opacity
                 <input type="range" aria-label="Zone fill opacity" min={10} max={70} step={5} value={settings.fillOpacity}

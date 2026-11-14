@@ -297,7 +297,7 @@ describe('the game systems named in the guides', () => {
   // number of systems counted it.
   it('are counted in GAME_SYSTEMS.md as the ones that can be chosen', () => {
     expect(selectable).not.toContain('SHADOWRUN_6E');
-    expect(read('docs/GAME_SYSTEMS.md')).toContain(`CozyVTT currently ships ${words[selectable.length]} systems you can choose`);
+    expect(read('docs/GAME_SYSTEMS.md')).toContain(`SmugVTT currently ships ${words[selectable.length]} systems you can choose`);
   });
 });
 
@@ -586,13 +586,13 @@ describe('backend/DATABASE_MIGRATIONS.md', () => {
 describe('what a reader is asked to send, and where', () => {
   const template = read('.github/ISSUE_TEMPLATE/bug_report.md').toLowerCase();
 
-  // CONTRIBUTING.md asks for the CozyVTT version and more; the template was
+  // CONTRIBUTING.md asks for the SmugVTT version and more; the template was
   // GitHub's stock one, which asks for the browser's version and nothing about
   // the install, and says nothing about secrets in a pasted .env or log.
   it('the bug report template asks for what CONTRIBUTING.md asks for', () => {
-    const asked = [...read('docs/CONTRIBUTING.md').matchAll(/^- (CozyVTT version|Browser and OS|Steps to reproduce|Expected vs actual behavior|Console output)/gm)].map((m) => m[1]);
+    const asked = [...read('docs/CONTRIBUTING.md').matchAll(/^- (SmugVTT version|Browser and OS|Steps to reproduce|Expected vs actual behavior|Console output)/gm)].map((m) => m[1]);
     expect(asked).toHaveLength(5);
-    for (const key of ['cozyvtt version', 'browser', 'steps to reproduce', 'expected', 'console']) expect(template).toContain(key);
+    for (const key of ['smugvtt version', 'browser', 'steps to reproduce', 'expected', 'console']) expect(template).toContain(key);
   });
 
   it('the bug report template asks how it is installed and warns against pasting secrets', () => {
@@ -623,24 +623,17 @@ describe('what a reader is asked to send, and where', () => {
 describe('the guides on moving a token and on setting up', () => {
   const guides = ['README.md', 'docs/USER_GUIDE.md', 'docs/PLAYER_GUIDE.md', 'docs/DM_GUIDE.md'].map((rel) => ({ rel, text: read(rel).replace(/\*\*/g, '') }));
 
-  // The map picks a token up on one click and puts it down on the next;
-  // letting go of the button does nothing to a held token (MapCanvas).
-  // Dragging a character from the roster onto the map is a real drag, and a
-  // light can be dragged, so those are not what is looked for.
-  it('never tell a reader to drag a token to move it', () => {
-    const wording = [
-      /\b(?:drag|dragging|dragged) (?:a |the |your |any |all )?(?:player )?tokens?\b/i,
-      /ready to drag/i,
-      /drag it (?:where|to move)/i,
-      /\bdrag to move\b/i,
-    ];
-    const found = guides.flatMap(({ rel, text }) => wording.flatMap((pattern) => (pattern.exec(text) ? [`${rel}: ${pattern}`] : [])));
+  // A click selects; pressing, dragging and releasing moves a token.
+  it('does not describe the removed click-to-pick-up interaction', () => {
+    const obsolete = [/click (?:a |the |your )?token to pick it up/i, /click that square to put it down/i, /tap it and then tap the square/i];
+    const found = guides.flatMap(({ rel, text }) => obsolete.flatMap((pattern) => (pattern.exec(text) ? [`${rel}: ${pattern}`] : [])));
     expect(found).toEqual([]);
+    for (const { text } of guides) expect(text).toMatch(/click.{0,80}select|select.{0,80}click/i);
   });
 
   // The behaviour itself is driven through MapCanvas by this suite.
   it('describe the pick-up and put-down the map really uses', () => {
-    expect(read('frontend/src/components/campaign/__tests__/MapCanvasInput.test.tsx')).toContain("describe('moving a token: click to pick it up, click again to put it down'");
+    expect(read('frontend/src/components/campaign/__tests__/MapCanvasInput.test.tsx')).toContain("describe('moving a token: click selects, drag moves'");
     for (const { text } of guides) expect(text).toMatch(/click/i);
   });
 

@@ -8,7 +8,7 @@
  */
 
 import { it, expect, vi, beforeAll, beforeEach } from 'vitest';
-import { render, waitFor, act } from '@testing-library/react';
+import { render, waitFor, act } from '@/test/renderWithToast';
 
 const ws = { reconnectCount: 0, joinedEpoch: 1 };
 
@@ -29,6 +29,7 @@ vi.mock('@/contexts/AuthContext', () => ({
   useAuth: () => ({ user: { id: 'me', displayName: 'Me' } }),
 }));
 const socket = {
+  getSocket: vi.fn(() => ({ connected: true, emit: vi.fn() })),
   onDiceRolled: vi.fn(), onDiceRolledSecret: vi.fn(), onDiceHistoryCleared: vi.fn(),
   onChatMessage: vi.fn(), onChatSystem: vi.fn(), on: vi.fn(), off: vi.fn(), rollDice: vi.fn().mockResolvedValue({ ok: true, id: "r" }), sendChatMessage: vi.fn(),
 };

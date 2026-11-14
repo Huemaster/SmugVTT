@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@/test/renderWithToast';
 import DrawControls, { type DrawControlsProps } from '../DrawControls';
 import { DEFAULT_DRAW_SETTINGS } from '../map/tools/useDrawTool';
 

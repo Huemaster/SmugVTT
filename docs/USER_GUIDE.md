@@ -330,7 +330,7 @@ Each token has:
 
 **Colored-letter placeholders:** Tokens without an assigned image display a colored circle with the first letter of their name. Player tokens are blue; for creatures the color reflects the disposition, and objects are grey.
 
-**Moving tokens:** During a session, click a token to pick it up, move the pointer to where it should go, and click that square to put it down. Letting go of the mouse button does not put it down, so there is no need to hold it. Right-click, press **Esc**, or move the pointer off the map, to put the token back where it was. Everyone connected sees the movement as it happens.
+**Moving tokens:** Click a token to select it. To move it, press and drag it to its destination, then release. Press **Esc** to clear the selection. Everyone connected sees the movement as it happens.
 
 **Selecting and the keyboard:** Clicking a token also selects it, marked with a dashed light-blue ring, and the keyboard then acts on it: the arrow keys move it a square (five with **Shift**), **,** and **.** step to the previous or next token you can act on, and **Enter** opens its menu. Press **?** on the map for every key, or see [Keyboard Shortcuts](PLAYER_GUIDE.md#keyboard-shortcuts).
 
@@ -778,7 +778,7 @@ To move the view, drag an empty part of the map; on a touch screen, drag it with
 
 ### Moving Your Token
 
-When the DM has placed your character's token on the map, you can move it: **click** the token to pick it up, move the pointer to where you want it, and **click** that square to put it down. Right-click, press **Esc**, or move the pointer off the map, to put it back where it was.
+When the DM has placed your character's token on the map, click it to select it. Press and drag it to move it, then release at the destination. Press **Esc** to clear the selection.
 
 Clicking the token also selects it. Then the arrow keys move it one square at a time, or five with **Shift**, and **[** and **]** turn it (see [Moving Your Token](PLAYER_GUIDE.md#moving-your-token) in the player guide).
 
