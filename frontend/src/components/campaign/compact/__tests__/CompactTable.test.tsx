@@ -247,17 +247,17 @@ describe("the bar's buttons", () => {
 });
 
 describe('More', () => {
-  it("opens the session sheet on Notes or Session at full height, the bar showing More", () => {
+  it("opens the session sheet on Journal or Media at full height, the bar showing More", () => {
     table();
     press('More');
-    fireEvent.click(moreRow('Notes'));
+    fireEvent.click(moreRow('Journal'));
 
-    expect(openSheets()).toEqual(['Notes']);
-    expect(sheet('Notes')).toHaveAttribute('aria-modal', 'true');
+    expect(openSheets()).toEqual(['Journal']);
+    expect(sheet('Journal')).toHaveAttribute('aria-modal', 'true');
     expect(within(bar()).getByRole('button', { name: /^More/ })).toHaveAttribute('aria-current', 'true');
     // More's own list is closed, so More is not expanded.
     expect(within(bar()).getByRole('button', { name: /^More/ })).toHaveAttribute('aria-expanded', 'false');
-    expect(useGameStore.getState().sessionTab).toBe('notes');
+    expect(useGameStore.getState().sessionTab).toBe('journal');
 
     // From there the bar's Chat moves the same sheet to the chat.
     press('Chat');
@@ -266,9 +266,9 @@ describe('More', () => {
 
   // They kept More's full height and its backdrop, where the guides say
   // the bar's panels open at half height with the map live above them.
-  it("leaves the bar's Chat, Dice and Initiative to open at half height from Notes or Session", () => {
+  it("leaves the bar's Chat, Dice and Initiative to open at half height from Journal or Media", () => {
     table();
-    for (const [row, name] of [['Notes', 'Chat'], ['Session', 'Dice'], ['Notes', 'Initiative']]) {
+    for (const [row, name] of [['Journal', 'Chat'], ['Media', 'Dice'], ['Journal', 'Initiative']]) {
       press('More');
       fireEvent.click(moreRow(row));
       expect(sheet(row)).toHaveAttribute('aria-modal', 'true');
