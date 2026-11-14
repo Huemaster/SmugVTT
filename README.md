@@ -154,6 +154,8 @@ Open **http://localhost** and complete the setup wizard with the setup token in 
 
 Do not expose the instance publicly until HTTPS, **CORS_ORIGIN**, proxy settings, registration, account security and backups are configured correctly. The production stack keeps the database/backend ports internal and includes privilege restrictions. For internet access and Cloudflare Tunnel configuration, follow the [Deployment Guide](docs/DEPLOYMENT.md).
 
+**Container privilege model:** Docker Compose applies no-new-privileges and drops every Linux capability except the few its start-up needs. The nginx master process runs as root to bind its listening ports and launch unprivileged workers; the backend performs its mounted-folder setup and then switches to the unprivileged **appuser** before serving requests. The database and application ports remain internal.
+
 **Without Docker:** a manual Node.js 26+/PostgreSQL 15 deployment is supported by the [Deployment Guide](docs/DEPLOYMENT.md#manual-deployment). It is an administrator-oriented setup, **not** yet a portable installer.
 
 ### Updating an existing SmugVTT instance
