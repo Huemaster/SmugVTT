@@ -26,6 +26,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import type { PointerEvent, ReactNode } from 'react';
 import { canvasArtSpeechX, measureCanvasArt, type CanvasArtMetrics } from './canvasSpeechAnchor';
 import { importLegacyStageCast } from './stageLegacyCast';
+import { mayDragStageElement, stageContentChanged } from './stageUX';
 import { StagePicture, STAGE_MOTIONS, STAGE_EMOTES, stageMotion, stageEmote } from './StageEffects';
 import { api } from '@/services/api';
 import { useCampaign } from '@/contexts/CampaignContext';
@@ -289,9 +290,7 @@ export default function SceneBoardPanel() {
       if (dragRef.current || playerSavePending.current) return;
       const incoming = response.scene;
       const previous = sceneRef.current;
-      if (previous?.id === incoming?.id &&
-          previous?.boardVersion === incoming?.boardVersion &&
-          previous?.updatedAt === incoming?.updatedAt) return;
+      if (!stageContentChanged(previous, incoming)) return;
       sceneRef.current = incoming;
       setScene(incoming);
       const next = incoming ? normaliseBoard(incoming.boardState) : { ...DEFAULT_BOARD, elements: [] };
@@ -766,7 +765,7 @@ export default function SceneBoardPanel() {
   };
 
   const onElementPointerDown = (event: PointerEvent, element: SceneBoardElement, mode: 'move' | 'resize') => {
-    if (event.button !== 0 || !canEdit || tool !== 'select' || element.locked || element.hidden || (!isGm && element.type !== 'image')) return;
+    if (!mayDragStageElement(event.button, canEdit, isGm, tool, element)) return;
     event.stopPropagation();
 
     if (mode === 'move' && event.shiftKey) {
