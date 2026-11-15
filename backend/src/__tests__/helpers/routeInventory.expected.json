@@ -968,6 +968,16 @@
       ]
     },
     {
+      "method": "PATCH",
+      "path": "/api/campaigns/:campaignId/fork/scenes/:sceneId/elements/:elementId/transform",
+      "handlers": [
+        "requireAuth",
+        "loadCampaignMembership",
+        "requireCampaignMember",
+        "<anonymous>"
+      ]
+    },
+    {
       "method": "DELETE",
       "path": "/api/campaigns/:campaignId/fork/scenes/:sceneId",
       "handlers": [
