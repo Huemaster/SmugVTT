@@ -288,8 +288,8 @@ function CampaignPageContent() {
   const tableParts: Record<TablePart, ReactNode> = {
     stage: <SceneStagePanel />,
     map: (
-      // Scene is SmugVTT's standard table surface; tactical Map is second.
-      // Both stay mounted so switching does not reset either workspace.
+      // The unified Stage reuses the existing Canvas Scene Board. Tactical Map stays
+      // separate; both remain mounted to preserve visual and combat state.
       <div className="flex h-full w-full flex-col">
         <div className={`${compact ? 'flex' : 'hidden'} shrink-0 items-center justify-center gap-1 border-b border-ink/10 bg-paper/95 p-1.5`}>
           <button
@@ -302,7 +302,7 @@ function CampaignPageContent() {
                 : 'text-ink-secondary hover:bg-ink/5 hover:text-ink'
             }`}
           >
-            Canvas
+            Stage
           </button>
           <button
             type="button"
