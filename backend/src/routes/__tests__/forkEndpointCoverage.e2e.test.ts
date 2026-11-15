@@ -94,6 +94,7 @@ describe('Scene and NPC endpoints', () => {
       { id: 'visible', type: 'image', x: 100, y: 100, width: 640, height: 480, locked: false, hidden: false },
       { id: 'secret', type: 'image', x: 200, y: 100, width: 640, height: 480, locked: false, hidden: true, imageAssetId: 'private-prop' },
       { id: 'locked', type: 'image', x: 300, y: 100, width: 640, height: 480, locked: true, hidden: false },
+      { id: 'annotation', type: 'stroke', x: 0, y: 0, width: 300, height: 300, points: [{ x: 2, y: 2 }], locked: false, hidden: false },
     ];
     try {
       const initial = await dm.patch(`/api/campaigns/${campaignId}/fork/scenes/${sceneId}`)
@@ -111,18 +112,19 @@ describe('Scene and NPC endpoints', () => {
 
       const viewer = await player.get(`/api/campaigns/${campaignId}/fork/scenes/active`);
       expect(viewer.status).toBe(200);
-      expect(viewer.body.scene.boardState.elements.map((e: { id: string }) => e.id)).toEqual(['visible', 'locked']);
+      expect(viewer.body.scene.boardState.elements.map((e: { id: string }) => e.id)).toEqual(['visible', 'locked', 'annotation']);
       expect(JSON.stringify(viewer.body)).not.toContain('private-prop');
       expect(JSON.stringify(viewer.body)).not.toContain('private GM context');
 
       expect((await player.patch(path('secret')).send(transform(version))).status).toBe(404);
       expect((await player.patch(path('locked')).send(transform(version))).status).toBe(404);
+      expect((await player.patch(path('annotation')).send(transform(version))).status).toBe(404);
       expect((await player.patch(path('visible')).send({ ...transform(version), hidden: false })).status).toBe(400);
       expect((await player.patch(path('visible')).send(transform(version - 1))).status).toBe(409);
 
       const allowed = await player.patch(path('visible')).send(transform(version));
       expect(allowed.status).toBe(200);
-      expect(allowed.body.scene.boardState.elements.map((e: { id: string }) => e.id)).toEqual(['visible', 'locked']);
+      expect(allowed.body.scene.boardState.elements.map((e: { id: string }) => e.id)).toEqual(['visible', 'locked', 'annotation']);
       expect(allowed.body.scene.gmNotes).toBeUndefined();
       const stored = await prisma.campaignScene.findUnique({ where: { id: sceneId } });
       const board = stored?.boardState as unknown as { elements: Array<Record<string, unknown>> };
