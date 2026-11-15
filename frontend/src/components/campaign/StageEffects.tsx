@@ -1,5 +1,6 @@
 import { AlertTriangle, Cloud, Droplet, Heart, HelpCircle, MessageCircleMore, Sparkles, Zap, CircleAlert, Wind } from 'lucide-react';
 import type { ComponentType } from 'react';
+import type { StageMotion, StageEmote, StageCue } from '@/types/sceneBoard';
 import './stageEffects.css';
 
 /**
@@ -17,7 +18,6 @@ export const STAGE_MOTIONS = [
   ['slide', 'Slide in'],
   ['jolt', 'Impact jolt'],
 ] as const;
-export type StageMotion = (typeof STAGE_MOTIONS)[number][0];
 
 export const STAGE_EMOTES = [
   ['none', 'None'],
@@ -32,14 +32,6 @@ export const STAGE_EMOTES = [
   ['heart', 'Heart'],
   ['thought', 'Thinking'],
 ] as const;
-export type StageEmote = (typeof STAGE_EMOTES)[number][0];
-
-export interface StageCue {
-  id: string;
-  at: number;
-  motion: StageMotion;
-  emote: StageEmote;
-}
 
 export function stageMotion(value: unknown): StageMotion {
   return STAGE_MOTIONS.some(([id]) => id === value) ? value as StageMotion : 'none';
