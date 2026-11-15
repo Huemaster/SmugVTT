@@ -1387,8 +1387,16 @@ export default function SceneBoardPanel() {
 
       {contextMenu && selected && contextMenu.elementId === selected.id && (
         <div
-          className="fixed z-[1000] min-w-44 rounded-cozy border border-ink/15 bg-paper p-1 shadow-xl"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
+          className="fixed z-[1000] min-w-44 overflow-y-auto rounded-cozy border border-ink/15 bg-paper p-1 shadow-xl"
+          // Context menus can be tall once speaker, emotion and picture tools
+          // are shown. Open up and left as needed, and scroll the menu itself
+          // rather than letting the last buttons fall off a phone/iPad screen.
+          style={{
+            left: Math.max(8, Math.min(contextMenu.x, window.innerWidth - 260)),
+            top: Math.max(8, Math.min(contextMenu.y, window.innerHeight - 440)),
+            maxHeight: `calc(100dvh - ${Math.max(8, Math.min(contextMenu.y, window.innerHeight - 440)) + 8}px)`,
+            maxWidth: 'calc(100vw - 16px)',
+          }}
           onPointerDown={(event) => event.stopPropagation()}
           onContextMenu={(event) => event.preventDefault()}
         >
