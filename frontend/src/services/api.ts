@@ -725,6 +725,20 @@ class ApiClient {
     return response.data;
   }
 
+  /** Players can only submit a locked-down transform, never a whole board JSON. */
+  async transformStageElement(
+    campaignId: string,
+    sceneId: string,
+    elementId: string,
+    data: { boardVersion: number; x: number; y: number; width: number; height: number },
+  ): Promise<{ scene: CampaignSceneBoard }> {
+    const response = await this.client.patch(
+      `/api/campaigns/${campaignId}/fork/scenes/${sceneId}/elements/${elementId}/transform`,
+      data,
+    );
+    return response.data;
+  }
+
   async deleteSceneBoard(campaignId: string, sceneId: string): Promise<{ message: string }> {
     const response = await this.client.delete(`/api/campaigns/${campaignId}/fork/scenes/${sceneId}`);
     return response.data;
