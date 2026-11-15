@@ -20,8 +20,8 @@ export function importLegacyStageCast(board: SceneBoardState, makeId: () => stri
     const p = person as Record<string, unknown>;
     if (typeof p.key !== 'string' || !/^(character|npc):[^:]+$/.test(p.key) || existing.has(p.key)) continue;
     if (typeof p.imageUrl !== 'string' || !/^(https?:\/\/|\/)/.test(p.imageUrl)) continue;
-    const centerX = Math.max(0, Math.min(100, typeof p.x === 'number' ? p.x : 50)) * 16;
-    const centerY = Math.max(0, Math.min(100, typeof p.y === 'number' ? p.y : 50)) * 9;
+    const centerX = Math.max(0, Math.min(100, typeof p.x === 'number' && Number.isFinite(p.x) ? p.x : 50)) * 16;
+    const centerY = Math.max(0, Math.min(100, typeof p.y === 'number' && Number.isFinite(p.y) ? p.y : 50)) * 9;
     result.push({
       id: makeId(), type: 'image',
       x: Math.max(0, Math.min(960, Math.round(centerX - 320))),
