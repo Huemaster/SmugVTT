@@ -86,10 +86,11 @@ const DM_ONLY = [
   'PUT /api/campaigns/:campaignId/maps/:id/lighting',
 ];
 
-/** Routes any member of the campaign may use, spectators included. */
+/** Routes with campaign-member middleware. Individual handlers may enforce stricter permissions (the Stage transform route refuses spectators). */
 const ANY_MEMBER = [
   'GET /api/campaigns/:campaignId/fork/scenes',
   'GET /api/campaigns/:campaignId/fork/scenes/active',
+  'PATCH /api/campaigns/:campaignId/fork/scenes/:sceneId/elements/:elementId/transform',
   'GET /api/campaigns/:campaignId',
   'GET /api/campaigns/:campaignId/characters',
   'GET /api/campaigns/:campaignId/messages',
