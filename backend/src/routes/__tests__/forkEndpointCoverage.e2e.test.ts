@@ -84,6 +84,57 @@ describe('Scene and NPC endpoints', () => {
     expect((await player.get(`/api/campaigns/${campaignId}/fork/npcs`)).status).toBe(403);
   });
 
+  it('allows shared Stage transforms only after the GM opts in, without exposing hidden objects', async () => {
+    const created = await dm.post(`/api/campaigns/${campaignId}/fork/scenes`)
+      .send({ title: 'Public Stage permission test', revealed: true, boardVisibility: 'shared' });
+    expect(created.status).toBe(201);
+    const sceneId = created.body.scene.id as string;
+    const path = (elementId: string) => `/api/campaigns/${campaignId}/fork/scenes/${sceneId}/elements/${elementId}/transform`;
+    const elements = [
+      { id: 'visible', type: 'image', x: 100, y: 100, width: 640, height: 480, locked: false, hidden: false },
+      { id: 'secret', type: 'image', x: 200, y: 100, width: 640, height: 480, locked: false, hidden: true, imageAssetId: 'private-prop' },
+      { id: 'locked', type: 'image', x: 300, y: 100, width: 640, height: 480, locked: true, hidden: false },
+    ];
+    try {
+      const initial = await dm.patch(`/api/campaigns/${campaignId}/fork/scenes/${sceneId}`)
+        .send({ gmNotes: 'private GM context', boardState: { background: '#f4efe6', allowPlayerEditing: false, elements } });
+      expect(initial.status).toBe(200);
+      const fields = { x: 140, y: 160, width: 660, height: 500 };
+      const transform = (boardVersion: number) => ({ boardVersion, ...fields });
+      let version = initial.body.scene.boardVersion as number;
+      expect((await player.patch(path('visible')).send(transform(version))).status).toBe(403);
+
+      const enabled = await dm.patch(`/api/campaigns/${campaignId}/fork/scenes/${sceneId}`)
+        .send({ boardState: { background: '#f4efe6', allowPlayerEditing: true, elements } });
+      expect(enabled.status).toBe(200);
+      version = enabled.body.scene.boardVersion as number;
+
+      const viewer = await player.get(`/api/campaigns/${campaignId}/fork/scenes/active`);
+      expect(viewer.status).toBe(200);
+      expect(viewer.body.scene.boardState.elements.map((e: { id: string }) => e.id)).toEqual(['visible', 'locked']);
+      expect(JSON.stringify(viewer.body)).not.toContain('private-prop');
+      expect(JSON.stringify(viewer.body)).not.toContain('private GM context');
+
+      expect((await player.patch(path('secret')).send(transform(version))).status).toBe(404);
+      expect((await player.patch(path('locked')).send(transform(version))).status).toBe(404);
+      expect((await player.patch(path('visible')).send({ ...transform(version), hidden: false })).status).toBe(400);
+      expect((await player.patch(path('visible')).send(transform(version - 1))).status).toBe(409);
+
+      const allowed = await player.patch(path('visible')).send(transform(version));
+      expect(allowed.status).toBe(200);
+      expect(allowed.body.scene.boardState.elements.map((e: { id: string }) => e.id)).toEqual(['visible', 'locked']);
+      expect(allowed.body.scene.gmNotes).toBeUndefined();
+      const stored = await prisma.campaignScene.findUnique({ where: { id: sceneId } });
+      const board = stored?.boardState as unknown as { elements: Array<Record<string, unknown>> };
+      expect(board.elements.find((e) => e.id === 'visible')?.x).toBe(140);
+      expect(board.elements.find((e) => e.id === 'secret')?.imageAssetId).toBe('private-prop');
+      expect(stored?.gmNotes).toBe('private GM context');
+      expect((await player.patch(path('visible')).send(transform(version))).status).toBe(409);
+    } finally {
+      expect((await dm.delete(`/api/campaigns/${campaignId}/fork/scenes/${sceneId}`)).status).toBe(200);
+    }
+  });
+
   it('creates, updates, activates, reads and deletes an NPC and Scene as the DM', async () => {
     const createdNpc = await dm.post(`/api/campaigns/${campaignId}/fork/npcs`).send({ name: 'Test NPC' });
     expect(createdNpc.status).toBe(201);
