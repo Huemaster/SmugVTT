@@ -106,8 +106,6 @@ export default function DesktopTable({
   const { userRole } = useCampaign();
   const mapSlot = useTableSlot('map');
   const partySlot = useTableSlot('party');
-  const stageSlot = useTableSlot('stage');
-  const [sceneExpanded, setSceneExpanded] = useState(false);
 
   // All three workspaces retain usable side panels. Their content is portaled
   // once, and the Chat workspace gets a navigation panel rather than a second
@@ -240,8 +238,8 @@ export default function DesktopTable({
     if (collapsed) return null;
     const hide = side === 'left' ? toggleLeft : toggleRight;
     const label = side === 'left'
-      ? (sceneExpanded || workspace === 'map' ? 'Character and party' : 'Scene Stage')
-      : (workspace === 'chat' && !sceneExpanded ? 'Character and party' : 'Session tools / Chat');
+      ? (workspace === 'chat' ? 'Stage shortcut' : 'Character and party')
+      : (workspace === 'chat' ? 'Character and party' : 'Session tools / Chat');
     return (
       <div key={side} aria-label={`${label} panel`}
         className="pointer-events-auto absolute flex flex-col overflow-hidden rounded-cozy border border-moss-green/20 bg-paper/95 shadow-lg backdrop-blur-sm"
@@ -301,16 +299,20 @@ export default function DesktopTable({
   const pillars = [
     { key: 'map', name: 'Map' },
     { key: 'chat', name: 'Chat' },
-    { key: 'scene', name: 'Canvas' },
+    { key: 'scene', name: 'Stage' },
   ] as const;
   const partyPane = <aside ref={partySlot.ref} className="h-full min-w-0 overflow-y-auto p-3" />;
-  const stagePane = <div ref={stageSlot.ref} className="h-full min-w-0" />;
-  // Map mode uses the right window for LIVE Chat + dice + announcements.
-  // The Scene stage remains mounted in its host (parked offscreen) so
-  // switching workspaces never loses staging state or unmounts Chat.
-  const stageVisible = sceneExpanded || ((workspace === 'chat' || workspace === 'scene') && !leftCollapsed);
-  const partyVisible = sceneExpanded ? !leftCollapsed : workspace === 'map' ? !leftCollapsed : workspace === 'chat' && !rightCollapsed;
-  const sessionVisible = (!sceneExpanded && workspace === 'chat') || !rightCollapsed;
+  // The old small-portrait Scene editor is NOT another table surface. Leave its
+  // archived data in place for Stage's explicit import, but offer just one
+  // active visual workspace to users.
+  const stageShortcut = <aside aria-label="Stage shortcut" className="flex h-full flex-col gap-3 overflow-y-auto p-4">
+    <h2 className="text-base font-semibold text-ink">Stage</h2>
+    <p className="text-sm text-ink-secondary">Arrange large images, portraits and GIFs, then present quoted Chat dialogue as speech bubbles or VN/JRPG text boxes.</p>
+    <Button variant="primary" onClick={() => onWorkspaceChange('scene')}>Open Stage</Button>
+    <p className="text-xs text-ink-muted">For an older Scene, use Stage Options → Import existing Scene cast. The original is preserved.</p>
+  </aside>;
+  const partyVisible = workspace === 'chat' ? !rightCollapsed : !leftCollapsed;
+  const sessionVisible = workspace === 'chat' || !rightCollapsed;
 
   return (
     <>
@@ -337,13 +339,11 @@ export default function DesktopTable({
               <button
                 key={key}
                 type="button"
-                aria-pressed={!sceneExpanded && workspace === key}
-                onClick={() => { setSceneExpanded(false); onWorkspaceChange(key); }}
+                aria-pressed={workspace === key}
+                onClick={() => onWorkspaceChange(key)}
                 className={`rounded-cozy px-3 py-1.5 text-sm font-semibold transition-colors ${workspace === key ? 'bg-accent text-accent-text' : 'text-ink-secondary hover:bg-ink/10'}`}
               >{name}</button>
             ))}
-            <button type="button" aria-pressed={sceneExpanded} onClick={() => setSceneExpanded(true)}
-              className={`rounded-cozy px-3 py-1.5 text-sm font-semibold transition-colors ${sceneExpanded ? 'bg-accent text-accent-text' : 'text-ink-secondary hover:bg-ink/10'}`}>Scene</button>
           </nav>
         </div>
 
@@ -469,11 +469,11 @@ export default function DesktopTable({
       <main ref={mainRef} className="relative isolate flex-1 min-h-0 overflow-hidden bg-ink/5" style={workspaceInsets}>
         <section
           ref={mapSlot.ref}
-          aria-label="Map and Canvas workspace"
-          className={`absolute inset-0 min-w-0 ${workspace === 'chat' || sceneExpanded ? 'invisible pointer-events-none' : ''}`}
+          aria-label="Map and Stage workspace"
+          className={`absolute inset-0 min-w-0 ${workspace === 'chat' ? 'invisible pointer-events-none' : ''}`}
         />
 
-        {workspace === 'chat' && !sceneExpanded && (
+        {workspace === 'chat' && (
           <section className="absolute inset-0 overflow-hidden py-2" aria-label="Chat workspace"
             style={{ paddingLeft: leftInset + 4, paddingRight: rightInset + 4 }}>
             <div className="mx-auto h-full w-full max-w-5xl overflow-hidden rounded-cozy border border-moss-green/20 bg-paper shadow-xl">
@@ -482,24 +482,10 @@ export default function DesktopTable({
           </section>
         )}
 
-        {sceneExpanded && (
-          <section className="absolute inset-0 overflow-hidden p-2" aria-label="Expanded Scene workspace"
-            style={{ paddingLeft: leftInset + 4, paddingRight: rightInset + 4 }}>
-            <div className="mx-auto h-full w-full max-w-6xl overflow-hidden rounded-cozy border border-moss-green/20 bg-paper shadow-xl">
-              {stagePane}
-            </div>
-          </section>
-        )}
+        {windowPanel('left', workspace === 'chat' ? stageShortcut : partyPane)}
+        {windowPanel('right', workspace === 'chat' ? partyPane : <SessionSidebar />)}
 
-        {windowPanel('left', sceneExpanded || workspace === 'map'
-          ? partyPane
-          : stagePane)}
-        {windowPanel('right', sceneExpanded || workspace === 'scene' || workspace === 'map'
-          ? <SessionSidebar /> : partyPane)}
-
-        {/* One live instance of each hosted surface even while the relevant
-            panel is folded. Map mode keeps Chat visible in the right window. */}
-        {!stageVisible && <div ref={stageSlot.ref} aria-hidden="true" className="absolute -left-[10000px] top-0 h-px w-px overflow-hidden" />}
+        {/* The live map, Party and Chat hosts retain their existing slots and state. */}
         {!partyVisible && <aside ref={partySlot.ref} aria-hidden="true" className="absolute -left-[10000px] top-0 h-px w-px overflow-hidden" />}
         {!sessionVisible && <div aria-hidden="true" className="pointer-events-none invisible absolute -left-[10000px] top-0 h-96 w-80 overflow-hidden"><SessionSidebar /></div>}
       </main>

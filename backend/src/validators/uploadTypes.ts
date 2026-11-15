@@ -13,7 +13,7 @@ export type UploadAssetType = 'MAP' | 'TOKEN' | 'AUDIO' | 'AVATAR' | 'DOCUMENT' 
 
 /** The content types the server stores each kind of asset as. */
 export const UPLOAD_CONTENT_TYPES = {
-  MAP: ['image/png', 'image/jpeg', 'image/webp'],
+  MAP: ['image/png', 'image/jpeg', 'image/webp', 'image/gif'],
   TOKEN: ['image/png', 'image/jpeg', 'image/webp', 'image/gif'],
   AUDIO: ['audio/mpeg', 'audio/ogg', 'audio/wav'],
   AVATAR: ['image/png', 'image/jpeg', 'image/webp'],
@@ -23,7 +23,7 @@ export const UPLOAD_CONTENT_TYPES = {
 
 /** The extensions a file of each kind may be named with. */
 export const UPLOAD_EXTENSIONS = {
-  MAP: ['.png', '.jpg', '.jpeg', '.webp'],
+  MAP: ['.png', '.jpg', '.jpeg', '.webp', '.gif'],
   TOKEN: ['.png', '.jpg', '.jpeg', '.webp', '.gif'],
   AUDIO: ['.mp3', '.ogg', '.wav'],
   AVATAR: ['.png', '.jpg', '.jpeg', '.webp'],

@@ -417,7 +417,7 @@ describe('an asset the import leaves out', () => {
 
     expect(result.mapCount).toBe(1);
     expect(result.skipped).toEqual([
-      { kind: 'asset', name: 'cave.png', reason: 'Its content is not a format a map picture can be (.png, .jpg, .jpeg, .webp).' },
+      { kind: 'asset', name: 'cave.png', reason: 'Its content is not a format a map picture can be (.png, .jpg, .jpeg, .webp, .gif).' },
       { kind: 'asset', name: 'gone.png', reason: 'Its file is missing from the archive.' },
       { kind: 'asset', name: 'rules.pdf', reason: 'A campaign archive carries map pictures, token pictures and audio, and this is none of them.' },
     ]);

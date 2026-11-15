@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased — Stage integration UX pass (draft PR #17)
+
+- Unify Canvas and Scene navigation under a single **Stage** pillar and replace
+  the small competing Chat-side Scene editor with a Stage shortcut. Old cast
+  data remains preserved and can be imported explicitly.
+- Preserve player picture selections during routine four-second refreshes;
+  prevent right-click from starting artwork drags.
+- Place new 640×480 pictures centrally, not beneath floating panels.
+- Clarify dialogue toggles across VN/JRPG modes, upload help and the GM
+  permission switch for revealed/shared Stage pictures.
+- Add browser and interaction regression tests for desktop, phone, iPhone
+  and iPad, pending full CI verification.
+
 ## Unreleased — Stage v1 foundation (draft)
 
 SmugVTT-specific Scene + Canvas convergence work: freeform large Stage pictures,

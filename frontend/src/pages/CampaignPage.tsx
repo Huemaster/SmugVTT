@@ -166,6 +166,17 @@ function CampaignPageContent() {
   };
   const compact = useCompactLayout();
   const visibleWorkspace = compact && mainWorkspace === 'chat' ? 'scene' : mainWorkspace;
+  // Speaker-presence cards belong to Map/Chat, where they do not conflict with
+  // a tactical token or a full-screen Stage image. Stage already renders the
+  // canonical active speaker on the artwork itself.
+  useEffect(() => {
+    const old = document.body.dataset.smugWorkspace;
+    document.body.dataset.smugWorkspace = visibleWorkspace;
+    return () => {
+      if (old === undefined) delete document.body.dataset.smugWorkspace;
+      else document.body.dataset.smugWorkspace = old;
+    };
+  }, [visibleWorkspace]);
   // Journal/Media tabs use existing modal/library surfaces until native
   // document and asset grids can be audited; no feature is deleted.
   useEffect(() => {
@@ -288,8 +299,8 @@ function CampaignPageContent() {
   const tableParts: Record<TablePart, ReactNode> = {
     stage: <SceneStagePanel />,
     map: (
-      // Scene is SmugVTT's standard table surface; tactical Map is second.
-      // Both stay mounted so switching does not reset either workspace.
+      // The unified Stage reuses the existing Canvas Scene Board. Tactical Map stays
+      // separate; both remain mounted to preserve visual and combat state.
       <div className="flex h-full w-full flex-col">
         <div className={`${compact ? 'flex' : 'hidden'} shrink-0 items-center justify-center gap-1 border-b border-ink/10 bg-paper/95 p-1.5`}>
           <button
@@ -302,7 +313,7 @@ function CampaignPageContent() {
                 : 'text-ink-secondary hover:bg-ink/5 hover:text-ink'
             }`}
           >
-            Canvas
+            Stage
           </button>
           <button
             type="button"

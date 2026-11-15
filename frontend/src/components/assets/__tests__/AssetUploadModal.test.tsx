@@ -261,6 +261,8 @@ describe('the files the dialog takes', () => {
     [AssetType.AUDIO, 'Tavern.MP3', 'audio/mpeg'],
     [AssetType.DOCUMENT, 'notes.md', ''],
     [AssetType.MAP, 'cave.jpeg', 'image/jpeg'],
+    // Stage pictures use MAP assets; genuine GIFs are now accepted by the server.
+    [AssetType.MAP, 'animation.gif', 'image/gif'],
   ])('takes %s file %s, reported as "%s"', async (type, name, browserType) => {
     choose(type, name, browserType);
     expect(await screen.findByText(name)).toBeInTheDocument();
@@ -269,7 +271,7 @@ describe('the files the dialog takes', () => {
 
   it.each([
     [AssetType.AUDIO, 'song.m4a', 'audio/mp4', '.mp3, .ogg, .wav'],
-    [AssetType.MAP, 'animation.gif', 'image/gif', '.png, .jpg, .jpeg, .webp'],
+
     [AssetType.DOCUMENT, 'page.html', 'text/html', '.pdf, .txt, .md'],
   ])('refuses %s file %s, which the server would refuse', async (type, name, browserType, listed) => {
     choose(type, name, browserType);

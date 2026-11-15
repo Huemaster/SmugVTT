@@ -327,16 +327,35 @@ export function isAllowedExtension(assetType: AssetType, extension: string): boo
   return (ALLOWED_EXTENSIONS[assetType] as readonly string[]).includes(ext);
 }
 
+/** Expected file extensions for each content type, as identified from bytes. */
+const EXTENSIONS_FOR_MIME: Readonly<Record<string, readonly string[]>> = {
+  'image/png': ['png'],
+  'image/jpeg': ['jpg', 'jpeg'],
+  'image/webp': ['webp'],
+  'image/gif': ['gif'],
+  'audio/mpeg': ['mp3'],
+  'audio/ogg': ['ogg'],
+  'audio/wav': ['wav'],
+  'application/pdf': ['pdf'],
+  'text/plain': ['txt'],
+  'text/markdown': ['md'],
+};
+
 /**
- * Whether a file whose bytes were identified as `detected` (after
- * storedFileType) may be stored as this asset type: its type must be allowed,
- * and so must the extension it is stored under. The type alone is not
- * enough: MPEG layer 1 and 2 audio is audio/mpeg like an MP3, but would be
- * stored as .mp1 or .mp2, which the audio route does not serve and no browser
- * plays. The upload and the campaign import both decide by this.
+ * Whether content detected from bytes (and normalized by storedFileType) may
+ * be stored as this asset type. Both the MIME and its extension must be
+ * allowed, and they must describe the SAME format. Accepting an image/png
+ * with a GIF extension just because both are supported allows inconsistent
+ * content to be stored or served under a misleading type.
+ *
+ * The upload and campaign-import paths share this guard; MPEG layer 1/2 and
+ * unknown extensions remain refused even when their broad MIME is allowed.
  */
 export function isAcceptedContent(assetType: AssetType, detected: { mime: string; ext: string }): boolean {
-  return isAllowedMimeType(assetType, detected.mime) && isAllowedExtension(assetType, detected.ext);
+  const ext = detected.ext.replace(/^\./, '').toLowerCase();
+  return isAllowedMimeType(assetType, detected.mime)
+    && isAllowedExtension(assetType, ext)
+    && (EXTENSIONS_FOR_MIME[detected.mime]?.includes(ext) ?? false);
 }
 
 /**
