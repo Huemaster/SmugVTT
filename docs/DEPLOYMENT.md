@@ -1588,15 +1588,21 @@ docker compose exec -u appuser backend wget -qO- http://localhost:4000/health
 
 Docker already runs this check for you every 30 seconds; `docker compose ps` shows the backend as `healthy` or `unhealthy` based on it.
 
-The **Status** card on the Admin Panel's **Dashboard** tab shows three lights and a count of the live connections open at that moment:
+The **Status** card on the Admin Panel's **Dashboard** tab shows three parts, each in words, and a count of the live connections open at that moment:
 
-| Light | Green when | What it does not tell you |
+| Part | Shows | What it checks |
 |---|---|---|
-| **API** | The card's request reached the backend | |
-| **DB** | The database answers a simple query, as in the check above | |
-| **WS** | The backend's live-connection service (Socket.io) is running inside the backend. That is so whenever the backend itself is up, so it is practically always green | It does not tell you that a proxy in front lets live connections through. A proxy that refuses WebSocket connections leaves it green while dice, chat and token movement fail |
+| **API** | **Working** or **Down** | Whether the card's request reached the backend |
+| **DB** | **Working** or **Down** | Whether the database answers a simple query, as in the check above |
+| **WS** | **Working**, **Polling only** or **Down** | Whether your browser can open a live connection (dice, chat, token movement) through everything between it and the backend, your proxy included |
 
-The card says **Healthy** when all three are green, **Degraded** with the failing part in red when **DB** or **WS** is not, and **Unknown** when the backend could not be asked at all. To see whether live connections really work, open a campaign: the right of its header shows **Connected** (on a narrow screen only an icon), and a table that stays on **Connecting...**, **Disconnected** or **Connection Error** has the problem described under [Live features don't work](#live-features-dont-work-dice-token-movement-chat).
+For **WS**, your browser opens a live connection of its own each time the card appears and each time you press **Refresh**, after the count above is taken, and closes it as soon as it has the answer. It never joins a campaign, so nobody sees you arrive at their table.
+
+- **Working**: the live connection is made over WebSocket, as it should be.
+- **Polling only**: the live connection works, but only by polling, which is slower and puts more load on the server. Something between the browser and the backend, usually your reverse proxy, does not pass WebSocket connections through. The card says so and links to [Minimum proxy requirements](#minimum-proxy-requirements).
+- **Down**: no live connection could be made, or none was answered within 10 seconds, so dice, chat and token movement do not work. The card links to [Live features don't work](#live-features-dont-work-dice-token-movement-chat).
+
+A part still being checked shows **Checking…**, and one that could not be checked **Not known**. The card says **Healthy** when all three are **Working**, and **Degraded** when the backend answered and **DB** is **Down**, **WS** is **Down** or **Polling only**, or the backend's own live-connection service is not running. It says **Unknown** when the backend gave no answer, whatever **WS** shows: **API** then shows **Down**, or **Working** if the request reached the backend and failed there, and **DB** shows **Not known**. **WS** shows what your own browser gets: a player who reaches the site another way, through a different address or proxy, may get something else.
 
 If you run your own reverse proxy and want an uptime monitor to reach `/health` from outside, add a route for it alongside your `/api` route, both pointing at the backend.
 
