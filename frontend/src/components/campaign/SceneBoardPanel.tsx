@@ -105,6 +105,8 @@ export default function SceneBoardPanel() {
   const [board, setBoard] = useState<SceneBoardState>(DEFAULT_BOARD);
   const boardRef = useRef(board);
   boardRef.current = board;
+  const sceneRef = useRef(scene);
+  sceneRef.current = scene;
   const canEdit = isGm || (userRole === 'PLAYER' && scene?.revealed === true && scene.boardVisibility === 'shared' && board.allowPlayerEditing === true);
   const [snapToGrid, setSnapToGrid] = useState(() => {
     try { return window.localStorage.getItem('smugvtt:stage-snap') === 'true'; } catch { return false; }
@@ -190,6 +192,8 @@ export default function SceneBoardPanel() {
     originals: Record<string, SceneBoardElement>;
   } | null>(null);
   const panRef = useRef<{ pointerId: number; startX: number; startY: number; scrollLeft: number; scrollTop: number } | null>(null);
+  // Keep polling from overwriting an optimistic player drag before the server responds.
+  const playerSavePending = useRef(false);
 
   useEffect(() => {
     try { window.localStorage.setItem('smugvtt:canvas-bubbles', String(canvasBubblesEnabled)); } catch { /* optional browser setting */ }
@@ -274,12 +278,42 @@ export default function SceneBoardPanel() {
     void load();
   }, [load]);
 
+  // Poll for shared board changes without remounting the viewer's interaction.
+  // Initial load/switch resets selection and history; a routine background
+  // refresh must NOT erase the currently selected artwork every four seconds.
+  const refreshPlayerStage = useCallback(async () => {
+    if (!campaignId || dragRef.current || playerSavePending.current) return;
+    try {
+      const response = await api.getActiveSceneBoard(campaignId);
+      // A drag or save might have started while the request was in flight.
+      if (dragRef.current || playerSavePending.current) return;
+      const incoming = response.scene;
+      const previous = sceneRef.current;
+      if (previous?.id === incoming?.id &&
+          previous?.boardVersion === incoming?.boardVersion &&
+          previous?.updatedAt === incoming?.updatedAt) return;
+      sceneRef.current = incoming;
+      setScene(incoming);
+      const next = incoming ? normaliseBoard(incoming.boardState) : { ...DEFAULT_BOARD, elements: [] };
+      boardRef.current = next;
+      setBoard(next);
+      if (previous?.id !== incoming?.id) {
+        setSelectedId(null);
+        setSelectedIds([]);
+        setContextMenu(null);
+      }
+    } catch {
+      // Temporary network trouble must not wipe the existing visible Stage.
+      // The next interval retries, and explicit edits report their own errors.
+    }
+  }, [campaignId]);
+
   // Viewers poll lightly so a GM's scene reveal/board save appears without reload.
   useEffect(() => {
     if (isGm || !campaignId) return;
-    const timer = window.setInterval(() => { if (!dragRef.current) void load(); }, 4000);
+    const timer = window.setInterval(() => { void refreshPlayerStage(); }, 4000);
     return () => window.clearInterval(timer);
-  }, [campaignId, isGm, load]);
+  }, [campaignId, isGm, refreshPlayerStage]);
 
 
   useEffect(() => {
@@ -495,7 +529,7 @@ export default function SceneBoardPanel() {
     if (sceneId === scene?.id) return;
     if (dirty) {
       // Never discard local edits because an autosave failed or is pending.
-      if (!window.confirm('You have unsaved Canvas edits. Save them before switching? Cancel keeps this Canvas open.')) return;
+      if (!window.confirm('You have unsaved Stage edits. Save them before switching? Cancel keeps this Stage open.')) return;
       const didSave = await save(false);
       if (!didSave) { showToast('Save failed. Canvas switch cancelled.', 'error'); return; }
     }
@@ -530,7 +564,7 @@ export default function SceneBoardPanel() {
 
   const saveCanvasCopy = async () => {
     if (!isGm || !scene || libraryBusy) return;
-    const title = window.prompt('Save this Canvas composition as:', `${scene.title} copy`)?.trim();
+    const title = window.prompt('Save this Stage composition as:', `${scene.title} copy`)?.trim();
     if (!title) return;
     if (dirty) {
       const ok = await save(false);
@@ -556,7 +590,7 @@ export default function SceneBoardPanel() {
   };
 
   const renameLibraryCanvas = async (entry: CampaignSceneBoard) => {
-    const title = window.prompt('Canvas name:', entry.title)?.trim();
+    const title = window.prompt('Stage name:', entry.title)?.trim();
     if (!title || title === entry.title) return;
     setLibraryBusy(true);
     try {
@@ -732,7 +766,7 @@ export default function SceneBoardPanel() {
   };
 
   const onElementPointerDown = (event: PointerEvent, element: SceneBoardElement, mode: 'move' | 'resize') => {
-    if (!canEdit || tool !== 'select' || element.locked || element.hidden || (!isGm && element.type !== 'image')) return;
+    if (event.button !== 0 || !canEdit || tool !== 'select' || element.locked || element.hidden || (!isGm && element.type !== 'image')) return;
     event.stopPropagation();
 
     if (mode === 'move' && event.shiftKey) {
@@ -821,6 +855,7 @@ export default function SceneBoardPanel() {
       && (element.x !== drag.originals[element.id]?.x || element.y !== drag.originals[element.id]?.y
         || element.width !== drag.originals[element.id]?.width || element.height !== drag.originals[element.id]?.height));
     if (!changed.length) return;
+    playerSavePending.current = true;
     void (async () => {
       try {
         let version = scene.boardVersion;
@@ -835,6 +870,8 @@ export default function SceneBoardPanel() {
       } catch (error) {
         showToast(apiErrorMessage(error) || 'Stage changed. Reloading the shared layout.', 'error');
         void load();
+      } finally {
+        playerSavePending.current = false;
       }
     })();
   };
@@ -1119,8 +1156,9 @@ export default function SceneBoardPanel() {
           </label>
           <Button size="sm" variant="secondary" icon={MessageSquareText}
             onClick={() => setCanvasBubblesEnabled((value) => !value)}
-            title="Show or hide quoted IC dialogue above linked Canvas images">
-            {canvasBubblesEnabled ? 'Bubbles On' : 'Bubbles Off'}
+            aria-pressed={canvasBubblesEnabled}
+            title="Show or hide quoted IC dialogue in the selected Stage style">
+            {canvasBubblesEnabled ? 'Dialogue On' : 'Dialogue Off'}
           </Button>
           {scene.location && <span className="shrink-0 text-xs text-ink-muted">{scene.location}</span>}
           {scene.timeLabel && <span className="shrink-0 text-xs text-ink-muted">{scene.timeLabel}</span>}
@@ -1131,7 +1169,7 @@ export default function SceneBoardPanel() {
             <strong className="text-sm">Stage Library</strong>
             <Button size="sm" variant="secondary" icon={Copy} disabled={libraryBusy} onClick={() => void saveCanvasCopy()}>Save As New Stage</Button>
           </div>
-          <p className="mb-2 text-xs text-ink-muted">Reusable Canvas compositions. Loading another Canvas changes the shared active board. Stage dialogue is not copied.</p>
+          <p className="mb-2 text-xs text-ink-muted">Saved Stage compositions. Loading another Stage changes the shared active scene. IC Chat messages are never duplicated.</p>
           <div className="grid max-h-52 grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3">
             {sceneList.map((entry) => {
               const preview = normaliseBoard(entry.boardState);
@@ -1357,7 +1395,7 @@ export default function SceneBoardPanel() {
 
           {selected.type === 'image' && <label className="block border-b border-ink/10 px-2 py-1.5 text-xs text-ink">
             Speaking as / Character is
-            <select aria-label="Link Canvas image to speaker" className="input-cozy mt-1 w-full text-xs" value={linkedSpeaker(selected)}
+            <select aria-label="Speaking as / Character is" className="input-cozy mt-1 w-full text-xs" value={linkedSpeaker(selected)}
               onChange={(event) => { updateElement(selected.id, { smugSpeakerKey: event.target.value || undefined } as Partial<SceneBoardElement>); setContextMenu(null); }}>
               <option value="">Unlinked image</option>
               {linkedSpeakers.map((speaker) => <option key={speaker.key} value={speaker.key}>{speaker.name}</option>)}
