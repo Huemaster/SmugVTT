@@ -106,7 +106,6 @@ export default function DesktopTable({
   const { userRole } = useCampaign();
   const mapSlot = useTableSlot('map');
   const partySlot = useTableSlot('party');
-  const stageSlot = useTableSlot('stage');
 
   // All three workspaces retain usable side panels. Their content is portaled
   // once, and the Chat workspace gets a navigation panel rather than a second
@@ -239,7 +238,7 @@ export default function DesktopTable({
     if (collapsed) return null;
     const hide = side === 'left' ? toggleLeft : toggleRight;
     const label = side === 'left'
-      ? (workspace === 'chat' ? 'Scene preview' : 'Character and party')
+      ? (workspace === 'chat' ? 'Stage shortcut' : 'Character and party')
       : (workspace === 'chat' ? 'Character and party' : 'Session tools / Chat');
     return (
       <div key={side} aria-label={`${label} panel`}
@@ -303,11 +302,15 @@ export default function DesktopTable({
     { key: 'scene', name: 'Stage' },
   ] as const;
   const partyPane = <aside ref={partySlot.ref} className="h-full min-w-0 overflow-y-auto p-3" />;
-  const stagePane = <div ref={stageSlot.ref} className="h-full min-w-0" />;
-  // One presentation pillar: Stage (the existing Canvas renderer). The old
-  // compact cast view remains a *preview* beside Chat only, so older scenes
-  // stay accessible until GMs choose to import their portraits into Stage.
-  const stageVisible = workspace === 'chat' && !leftCollapsed;
+  // The old small-portrait Scene editor is NOT another table surface. Leave its
+  // archived data in place for Stage's explicit import, but offer just one
+  // active visual workspace to users.
+  const stageShortcut = <aside aria-label="Stage shortcut" className="flex h-full flex-col gap-3 overflow-y-auto p-4">
+    <h2 className="text-base font-semibold text-ink">Stage</h2>
+    <p className="text-sm text-ink-secondary">Arrange large images, portraits and GIFs, then present quoted Chat dialogue as speech bubbles or VN/JRPG text boxes.</p>
+    <Button variant="primary" onClick={() => onWorkspaceChange('scene')}>Open Stage</Button>
+    <p className="text-xs text-ink-muted">For an older Scene, use Stage Options → Import existing Scene cast. The original is preserved.</p>
+  </aside>;
   const partyVisible = workspace === 'chat' ? !rightCollapsed : !leftCollapsed;
   const sessionVisible = workspace === 'chat' || !rightCollapsed;
 
@@ -479,12 +482,10 @@ export default function DesktopTable({
           </section>
         )}
 
-        {windowPanel('left', workspace === 'chat' ? stagePane : partyPane)}
+        {windowPanel('left', workspace === 'chat' ? stageShortcut : partyPane)}
         {windowPanel('right', workspace === 'chat' ? partyPane : <SessionSidebar />)}
 
-        {/* One live instance of each hosted surface even while the relevant
-            panel is folded. Map mode keeps Chat visible in the right window. */}
-        {!stageVisible && <div ref={stageSlot.ref} aria-hidden="true" className="absolute -left-[10000px] top-0 h-px w-px overflow-hidden" />}
+        {/* The live map, Party and Chat hosts retain their existing slots and state. */}
         {!partyVisible && <aside ref={partySlot.ref} aria-hidden="true" className="absolute -left-[10000px] top-0 h-px w-px overflow-hidden" />}
         {!sessionVisible && <div aria-hidden="true" className="pointer-events-none invisible absolute -left-[10000px] top-0 h-96 w-80 overflow-hidden"><SessionSidebar /></div>}
       </main>
