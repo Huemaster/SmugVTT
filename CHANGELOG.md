@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased — browser WebSocket connection diagnostics
+
+Selective port of CozyVTT v1.7.0's Admin Panel live-connection status check.
+- The Admin **Status** card checks whether the current browser actually connects via WebSocket, falls back to polling, or cannot connect.
+- Uses the same proxy/path/credentials settings as the campaign table, but opens a disposable independent socket and never joins or broadcasts to a campaign.
+- Rechecks on Refresh, cleans up connections on unmount, distinguishes **Working**, **Polling only**, and **Down**, and links to SmugVTT's own deployment guide.
+- Adds transport simulation tests and updates the deployment guidance. No database migrations, game systems, permissions, Scene/Map/Canvas, or Squad Command changes.
+
+This is a proposed pull-request change, not a published SmugVTT release.
+
+---
+
 ## [SmugVTT v0.9.0] — 2026-11-14
 
 **First integrated public source release.** The fork now publishes its Map, Chat, Canvas, Scene, battlefield-overlay and optional Squad Command code as a reviewed source baseline. See [full v0.9.0 release notes](docs/releases/v0.9.0.md) and the [README](README.md).
