@@ -235,6 +235,25 @@ afterEach(async () => {
   await waitFor(() => expect(onSheetEntry()).toBe(false));
 });
 
+describe('the unified Stage interaction', () => {
+  it('presents exactly Map, Chat and Stage and switches from Chat into the one Stage workspace', async () => {
+    await openPage();
+    const nav = screen.getByRole('navigation', { name: 'SmugVTT workspaces' });
+    expect(within(nav).getAllByRole('button').map((button) => button.textContent)).toEqual(['Map', 'Chat', 'Stage']);
+    expect(within(nav).queryByRole('button', { name: 'Scene' })).toBeNull();
+    expect(within(nav).queryByRole('button', { name: 'Canvas' })).toBeNull();
+
+    fireEvent.click(within(nav).getByRole('button', { name: 'Chat' }));
+    expect(screen.getByRole('button', { name: 'Open Stage' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Scene Stage' })).toBeNull();
+    expect(within(nav).getByRole('button', { name: 'Chat' })).toHaveAttribute('aria-pressed', 'true');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open Stage' }));
+    expect(within(nav).getByRole('button', { name: 'Stage' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByRole('button', { name: 'Open Stage' })).toBeNull();
+  });
+});
+
 describe('the desktop arrangement, from 1,024 px wide', () => {
   it('draws the map, the session panels and the Party content in its columns, and no bar', async () => {
     await openPage();
