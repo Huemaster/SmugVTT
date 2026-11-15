@@ -25,6 +25,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { PointerEvent, ReactNode } from 'react';
 import { canvasArtSpeechX, measureCanvasArt, type CanvasArtMetrics } from './canvasSpeechAnchor';
+import { importLegacyStageCast } from './stageLegacyCast';
 import { StagePicture, STAGE_MOTIONS, STAGE_EMOTES, stageMotion, stageEmote } from './StageEffects';
 import { api } from '@/services/api';
 import { useCampaign } from '@/contexts/CampaignContext';
@@ -513,6 +514,18 @@ export default function SceneBoardPanel() {
     } catch (error) {
       showToast(apiErrorMessage(error) || 'Could not switch scene', 'error');
     }
+  };
+
+  /** Explicit, additive import: earlier small portraits are never discarded. */
+  const importSceneCast = () => {
+    if (!isGm) return;
+    const images = importLegacyStageCast(board, () => id('stage-image'));
+    if (!images.length) {
+      showToast('No additional Scene portraits to import. Existing linked pictures are kept.', 'info');
+      return;
+    }
+    commit({ ...board, elements: [...board.elements, ...images] });
+    showToast(`${images.length} Scene portrait${images.length === 1 ? '' : 's'} placed on Stage. Resize and arrange them as you like.`, 'success');
   };
 
   const saveCanvasCopy = async () => {
@@ -1187,6 +1200,10 @@ export default function SceneBoardPanel() {
               <option value="gm">GM only</option>
               <option value="shared">Shared</option>
             </select>
+            <Button size="sm" variant="secondary" onClick={importSceneCast}
+              title="Copy older Scene portraits into the freeform Stage without deleting the original Scene cast">
+              Import existing Scene cast
+            </Button>
 
             <label className="flex items-center gap-1.5 text-xs text-ink-muted">
               Background
