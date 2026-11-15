@@ -1076,13 +1076,13 @@ export default function SceneBoardPanel() {
           {isGm && (
             <>
               <Button size="sm" variant={libraryOpen ? 'primary' : 'secondary'} icon={Library}
-                onClick={() => setLibraryOpen((value) => !value)}>Canvas Library</Button>
+                onClick={() => setLibraryOpen((value) => !value)}>Stage Library</Button>
               <Button
                 size="sm"
                 variant={sceneOptionsOpen ? 'primary' : 'secondary'}
                 onClick={() => setSceneOptionsOpen((open) => !open)}
               >
-                Scene Options
+                Stage Options
               </Button>
 
               {selected && (
@@ -1126,10 +1126,10 @@ export default function SceneBoardPanel() {
           {scene.timeLabel && <span className="shrink-0 text-xs text-ink-muted">{scene.timeLabel}</span>}
         </div>
 
-        {isGm && libraryOpen && <section className="rounded-cozy border border-ink/15 bg-paper p-2" aria-label="Canvas Library">
+        {isGm && libraryOpen && <section className="rounded-cozy border border-ink/15 bg-paper p-2" aria-label="Stage Library">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <strong className="text-sm">Canvas Library</strong>
-            <Button size="sm" variant="secondary" icon={Copy} disabled={libraryBusy} onClick={() => void saveCanvasCopy()}>Save As New Canvas</Button>
+            <strong className="text-sm">Stage Library</strong>
+            <Button size="sm" variant="secondary" icon={Copy} disabled={libraryBusy} onClick={() => void saveCanvasCopy()}>Save As New Stage</Button>
           </div>
           <p className="mb-2 text-xs text-ink-muted">Reusable Canvas compositions. Loading another Canvas changes the shared active board. Stage dialogue is not copied.</p>
           <div className="grid max-h-52 grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3">
@@ -1322,10 +1322,10 @@ export default function SceneBoardPanel() {
 
       {board.presentation && isGm && (
         <div className="absolute top-3 z-[910] flex items-center gap-2 rounded-cozy border border-ink/20 bg-paper/95 p-2 shadow-lg"
-          style={{ right: 'var(--smug-map-right-inset, 12px)' }} role="toolbar" aria-label="Canvas presentation controls">
+          style={{ right: 'var(--smug-map-right-inset, 12px)' }} role="toolbar" aria-label="Stage presentation controls">
           <span className="px-1 text-xs font-semibold text-ink-secondary">Presentation Mode</span>
           <Button size="sm" variant="secondary" icon={Library} onClick={() => { setLibraryOpen(true); togglePresentation(); }}>
-            Canvas Library
+            Stage Library
           </Button>
           <Button size="sm" variant="primary" icon={LogOut} onClick={togglePresentation}>
             Exit (Esc)
