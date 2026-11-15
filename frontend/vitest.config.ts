@@ -33,7 +33,7 @@ export default defineConfig({
     // theme.css by src/constants/__tests__/layout.test.ts, for the lg
     // breakpoint the narrow layout's query must agree with.
     css: {
-      include: [/src\/assets\/fonts\/fonts\.css/, /src\/index\.css/, /src\/styles\/[^/]+\.css/, /node_modules\/tailwindcss\/theme\.css/],
+      include: [/src\/assets\/fonts\/fonts\.css/, /src\/index\.css/, /src\/styles\/[^/]+\.css/, /src\/components\/campaign\/stageEffects\.css/, /node_modules\/tailwindcss\/theme\.css/],
     },
     coverage: {
       provider: 'v8',
