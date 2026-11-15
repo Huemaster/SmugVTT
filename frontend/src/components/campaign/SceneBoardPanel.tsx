@@ -314,6 +314,18 @@ export default function SceneBoardPanel() {
   };
 
 
+  const playCue = (element: SceneBoardElement) => {
+    if (!isGm || element.type !== 'image') return;
+    const cue: StageCue = {
+      id: id('stage-cue'),
+      at: Date.now(),
+      motion: stageMotion(element.stageMotion ?? 'pulse'),
+      emote: stageEmote(element.stageEmote ?? 'none'),
+    };
+    updateElement(element.id, { stageCue: cue });
+    setContextMenu(null);
+  };
+
   const rememberPresentationView = (nextZoom = zoom) => {
     const viewport = viewportRef.current;
     if (!isGm || !board.presentation || !viewport) return;
@@ -929,7 +941,15 @@ export default function SceneBoardPanel() {
         </div>
       );
     } else if (element.type === 'image') {
-      body = <img src={element.imageUrl} alt="" draggable={false} className="h-full w-full select-none object-contain" />;
+      const speaker = linkedSpeaker(element);
+      const spoken = speaker ? latestDialogueBySpeaker.get(speaker) : undefined;
+      const cueFromChat = spoken && element.stageAutoReact !== false &&
+        Date.parse(spoken.createdAt) >= (element.stageCue?.at ?? 0);
+      const cue: StageCue | undefined = cueFromChat
+        ? { id: `chat-${spoken.messageId}`, at: Date.parse(spoken.createdAt),
+            motion: stageMotion(element.stageMotion ?? 'pulse'), emote: stageEmote(element.stageEmote ?? 'none') }
+        : element.stageCue;
+      body = <StagePicture src={element.imageUrl} cue={cue} />;
     } else if (element.type === 'rect') {
       body = <div className="h-full w-full" style={{ background: element.fill, border: `${element.strokeWidth ?? 3}px solid ${element.stroke ?? '#444'}` }} />;
     } else if (element.type === 'ellipse') {
@@ -961,13 +981,13 @@ export default function SceneBoardPanel() {
       <div
         key={element.id}
         style={common}
-        className={`${active && isGm ? 'outline outline-2 outline-brand' : ''} ${speakingKey && element.type === 'image' && linkedSpeaker(element) === speakingKey ? 'ring-4 ring-info/70' : ''} ${element.locked ? 'cursor-default' : isGm ? 'cursor-move' : ''}`}
+        className={`${active && canEdit ? 'outline outline-2 outline-brand' : ''} ${speakingKey && element.type === 'image' && linkedSpeaker(element) === speakingKey ? 'ring-4 ring-info/70' : ''} ${element.locked ? 'cursor-default' : canEdit ? 'cursor-move' : ''}`}
         onPointerDown={(event) => onElementPointerDown(event, element, 'move')}
         onPointerMove={onElementPointerMove}
         onPointerUp={onElementPointerUp}
         onClick={(event) => {
           event.stopPropagation();
-          if (!isGm) return;
+          if (!canEdit) return;
           if (!event.shiftKey) {
             setSelectedId(element.id);
             setSelectedIds([element.id]);
@@ -987,7 +1007,7 @@ export default function SceneBoardPanel() {
         }}
       >
         {body}
-        {active && isGm && !element.locked && (
+        {active && canEdit && !element.locked && !element.hidden && (
           <button
             type="button"
             aria-label="Resize selected scene element"
@@ -1074,6 +1094,15 @@ export default function SceneBoardPanel() {
             </>
           )}
 
+          <label className="flex shrink-0 items-center gap-1 text-xs">
+            Dialogue
+            <select className="input-cozy py-1 text-xs" aria-label="Stage dialogue style"
+              value={dialogueStyle} onChange={(event) => setDialogueStyle(event.target.value as 'bubbles' | 'vn' | 'jrpg')}>
+              <option value="bubbles">Speech bubbles</option>
+              <option value="vn">Visual novel</option>
+              <option value="jrpg">16/32-bit JRPG</option>
+            </select>
+          </label>
           <Button size="sm" variant="secondary" icon={MessageSquareText}
             onClick={() => setCanvasBubblesEnabled((value) => !value)}
             title="Show or hide quoted IC dialogue above linked Canvas images">
@@ -1142,6 +1171,11 @@ export default function SceneBoardPanel() {
               />
               Revealed
             </label>
+            <label className="flex items-center gap-1 text-xs text-ink-secondary" title="Players may drag and resize visible unlocked Stage objects. GM-only objects and scene settings remain protected.">
+              <input type="checkbox" checked={board.allowPlayerEditing === true}
+                onChange={(event) => commit({ ...board, allowPlayerEditing: event.target.checked })} />
+              Allow players to arrange Stage
+            </label>
 
             <select
               className="input-cozy py-1 text-xs"
@@ -1200,6 +1234,10 @@ export default function SceneBoardPanel() {
             <span className="mx-0.5 h-5 w-px shrink-0 bg-ink/10" />
             <Button size="sm" variant="secondary" icon={Undo2} disabled={history.length === 0} onClick={undo}>Undo</Button>
             <Button size="sm" variant="secondary" icon={Redo2} disabled={future.length === 0} onClick={redo}>Redo</Button>
+            <label className="flex shrink-0 items-center gap-1 text-xs text-ink-secondary">
+              <input type="checkbox" checked={snapToGrid} onChange={(event) => setSnapToGrid(event.target.checked)} />
+              Snap (20 px)
+            </label>
             <Button size="sm" variant="secondary" disabled={selectedIds.length === 0} onClick={duplicateSelected}>Duplicate</Button>
             <span className="mx-0.5 h-5 w-px shrink-0 bg-ink/10" />
             <Button size="sm" variant="secondary" onClick={() => applyZoom(zoom - 0.1)}>−</Button>
@@ -1210,11 +1248,18 @@ export default function SceneBoardPanel() {
           </div>
         )}
 
+        {!isGm && canEdit && (
+          <label className="mt-1 flex items-center gap-1.5 text-xs text-ink-secondary">
+            <input type="checkbox" checked={snapToGrid} onChange={(event) => setSnapToGrid(event.target.checked)} />
+            Snap to 20 px grid while arranging shared Stage
+          </label>
+        )}
+
         {isGm && selected && selectionOptionsOpen && (
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5 rounded bg-ink/5 p-1.5 text-xs">
             <span className="mr-1 font-medium capitalize text-ink">{selectedIds.length > 1 ? `${selectedIds.length} objects` : selected.type}</span>
             {selected.type === 'image' && selectedIds.length === 1 && <label className="flex items-center gap-1 text-xs font-semibold">
-              Speak As
+              Speaking as / Character is
               <select aria-label="Link image to Chat speaker" className="input-cozy max-w-[12rem] py-1 text-xs"
                 value={linkedSpeaker(selected)}
                 onChange={(event) => updateElement(selected.id, { smugSpeakerKey: event.target.value || undefined } as Partial<SceneBoardElement>)}>
@@ -1222,6 +1267,28 @@ export default function SceneBoardPanel() {
                 {linkedSpeakers.map((speaker) => <option key={speaker.key} value={speaker.key}>{speaker.name}</option>)}
               </select>
             </label>}
+            {selected.type === 'image' && selectedIds.length === 1 && <>
+              <label className="flex items-center gap-1">Motion
+                <select className="input-cozy py-1 text-xs" aria-label="Stage picture motion"
+                  value={stageMotion(selected.stageMotion ?? 'pulse')}
+                  onChange={(event) => updateElement(selected.id, { stageMotion: stageMotion(event.target.value) })}>
+                  {STAGE_MOTIONS.map(([value, name]) => <option key={value} value={value}>{name}</option>)}
+                </select>
+              </label>
+              <label className="flex items-center gap-1">Emote
+                <select className="input-cozy py-1 text-xs" aria-label="Stage picture emote"
+                  value={stageEmote(selected.stageEmote)}
+                  onChange={(event) => updateElement(selected.id, { stageEmote: stageEmote(event.target.value) })}>
+                  {STAGE_EMOTES.map(([value, name]) => <option key={value} value={value}>{name}</option>)}
+                </select>
+              </label>
+              <label className="flex items-center gap-1" title="Trigger this picture's selected motion/emote on linked quoted IC dialogue">
+                <input type="checkbox" checked={selected.stageAutoReact !== false}
+                  onChange={(event) => updateElement(selected.id, { stageAutoReact: event.target.checked })} />
+                React to Chat
+              </label>
+              <Button size="sm" variant="secondary" onClick={() => playCue(selected)}>Play cue</Button>
+            </>}
             <Button size="sm" variant="secondary" onClick={duplicateSelected}>Duplicate</Button>
             <Button size="sm" variant="secondary" icon={selected.locked ? Unlock : Lock} onClick={() => updateElement(selected.id, { locked: !selected.locked })}>
               {selected.locked ? 'Unlock' : 'Lock'}
@@ -1271,13 +1338,37 @@ export default function SceneBoardPanel() {
           </div>
 
           {selected.type === 'image' && <label className="block border-b border-ink/10 px-2 py-1.5 text-xs text-ink">
-            Link to Speak As character
+            Speaking as / Character is
             <select aria-label="Link Canvas image to speaker" className="input-cozy mt-1 w-full text-xs" value={linkedSpeaker(selected)}
               onChange={(event) => { updateElement(selected.id, { smugSpeakerKey: event.target.value || undefined } as Partial<SceneBoardElement>); setContextMenu(null); }}>
               <option value="">Unlinked image</option>
               {linkedSpeakers.map((speaker) => <option key={speaker.key} value={speaker.key}>{speaker.name}</option>)}
             </select>
           </label>}
+          {selected.type === 'image' && <>
+            <div className="border-b border-ink/10 px-2 py-1.5 text-xs">
+              <label className="block">Motion
+                <select className="input-cozy mt-1 w-full text-xs" aria-label="Right-click Stage motion"
+                  value={stageMotion(selected.stageMotion ?? 'pulse')}
+                  onChange={(event) => updateElement(selected.id, { stageMotion: stageMotion(event.target.value) })}>
+                  {STAGE_MOTIONS.map(([value, name]) => <option key={value} value={value}>{name}</option>)}
+                </select>
+              </label>
+              <label className="mt-1 block">Emote
+                <select className="input-cozy mt-1 w-full text-xs" aria-label="Right-click Stage emote"
+                  value={stageEmote(selected.stageEmote)}
+                  onChange={(event) => updateElement(selected.id, { stageEmote: stageEmote(event.target.value) })}>
+                  {STAGE_EMOTES.map(([value, name]) => <option key={value} value={value}>{name}</option>)}
+                </select>
+              </label>
+              <label className="mt-1 flex items-center gap-1">
+                <input type="checkbox" checked={selected.stageAutoReact !== false}
+                  onChange={(event) => updateElement(selected.id, { stageAutoReact: event.target.checked })} />
+                React to quoted IC Chat
+              </label>
+              <button className="mt-2 rounded border px-2 py-1" type="button" onClick={() => playCue(selected)}>Play silent cue</button>
+            </div>
+          </>}
           {selected.type === 'image' && (
             <button
               type="button"
@@ -1389,7 +1480,7 @@ export default function SceneBoardPanel() {
 
           {/* A single non-interactive dialogue layer, above all visual objects.
               Bubbles never intercept Canvas pointer/drag controls. */}
-          {canvasBubblesEnabled && <div className="pointer-events-none absolute inset-0 z-[1000]">
+          {canvasBubblesEnabled && dialogueStyle === 'bubbles' && <div className="pointer-events-none absolute inset-0 z-[1000]">
             {board.elements.filter((element) => element.type === 'image' && !element.hidden && latestDialogueBySpeaker.has(linkedSpeaker(element))).map((element) => {
               const spoken = latestDialogueBySpeaker.get(linkedSpeaker(element))!;
               const showBelow = element.y < 175;
@@ -1405,6 +1496,20 @@ export default function SceneBoardPanel() {
               </div>;
             })}
           </div>}
+
+          {canvasBubblesEnabled && dialogueStyle !== 'bubbles' && sceneDialogue.length > 0 && (() => {
+            const since = Date.parse(scene.startedAt ?? scene.createdAt) || 0;
+            const entry = [...sceneDialogue].reverse().find((line) => Date.parse(line.createdAt) >= since);
+            if (!entry) return null;
+            return <div key={entry.messageId} role="status"
+              aria-label={`${entry.speakerName} says: ${entry.quotes.join(' ')}`}
+              className={`pointer-events-none absolute bottom-5 left-8 right-8 z-[1000] px-6 py-4 text-white shadow-2xl ${dialogueStyle === 'jrpg'
+                ? 'border-[5px] border-white bg-[#14203b] font-mono text-[23px] leading-relaxed outline outline-[5px] outline-black'
+                : 'rounded-xl border-2 border-white/70 bg-slate-950/90 text-[22px] leading-snug backdrop-blur-md'}`}>
+              <div className={`mb-1 font-bold ${dialogueStyle === 'jrpg' ? 'text-[#f7d98b]' : 'text-amber-300'}`}>{entry.speakerName}</div>
+              <div className="break-words">“{canvasDialogueLabel(entry)}”</div>
+            </div>;
+          })()}
 
           <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox={`0 0 ${BOARD_WIDTH} ${BOARD_HEIGHT}`}>
             {board.elements.filter((element) => element.type === 'stroke' && (!element.hidden || isGm)).map((element) => (
