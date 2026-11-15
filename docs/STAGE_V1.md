@@ -107,6 +107,7 @@ fixed in the Stage unification branch:
   upload-type tables now allow validated GIF MAP assets, with the existing
   content-sniffing and animated-picture size limits unchanged.
 - The full frontend suite still contained a pre-Stage upload test expecting MAP GIFs to be refused; the Stage branch now tests that MAP GIFs are accepted by the upload dialog, retaining the unrelated audio/document rejection cases.
+- Backend import-fidelity expectations now list GIF among valid MAP formats; the shared content validator also verifies that a detected MIME and its file extension match (for example, PNG bytes cannot masquerade as a GIF). These changes require a full backend CI rerun.
 - Once GIF uploads passed, four-browser Playwright testing caught a Chat
   "speaking as" presence card intercepting taps over Stage art on compact
   screens. Stage now hides that redundant overlay (the current speaker remains
