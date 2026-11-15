@@ -26,7 +26,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import type { PointerEvent, ReactNode } from 'react';
 import { canvasArtSpeechX, measureCanvasArt, type CanvasArtMetrics } from './canvasSpeechAnchor';
 import { importLegacyStageCast } from './stageLegacyCast';
-import { mayDragStageElement, stageContentChanged } from './stageUX';
+import { defaultStageImagePosition, mayDragStageElement, stageContentChanged } from './stageUX';
 import { StagePicture, STAGE_MOTIONS, STAGE_EMOTES, stageMotion, stageEmote } from './StageEffects';
 import { api } from '@/services/api';
 import { useCampaign } from '@/contexts/CampaignContext';
@@ -941,11 +941,12 @@ export default function SceneBoardPanel() {
 
     try {
       const result = await api.uploadAsset(form);
+      const position = defaultStageImagePosition(board.elements.filter((item) => item.type === 'image').length);
       const element: SceneBoardElement = {
         id: id('image'),
         type: 'image',
-        x: 180,
-        y: 120,
+        x: position.x,
+        y: position.y,
         width: 640,
         height: 480,
         rotation: 0,
