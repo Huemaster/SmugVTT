@@ -352,7 +352,7 @@ const EXTENSIONS_FOR_MIME: Readonly<Record<string, readonly string[]>> = {
  * unknown extensions remain refused even when their broad MIME is allowed.
  */
 export function isAcceptedContent(assetType: AssetType, detected: { mime: string; ext: string }): boolean {
-  const ext = detected.ext.replace(/^\\./, '').toLowerCase();
+  const ext = detected.ext.replace(/^\./, '').toLowerCase();
   return isAllowedMimeType(assetType, detected.mime)
     && isAllowedExtension(assetType, ext)
     && (EXTENSIONS_FOR_MIME[detected.mime]?.includes(ext) ?? false);
