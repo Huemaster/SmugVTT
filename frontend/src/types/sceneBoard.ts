@@ -1,3 +1,13 @@
+/** Silent, three-cycle visual effects for freeform Stage pictures. */
+export type StageMotion = 'none' | 'float' | 'bob' | 'shake' | 'hop' | 'pulse' | 'fade' | 'slide' | 'jolt';
+export type StageEmote = 'none' | 'anger' | 'stress' | 'sweat' | 'gloom' | 'alert' | 'question' | 'exclamation' | 'sparkle' | 'heart' | 'thought';
+export interface StageCue {
+  id: string;
+  at: number;
+  motion: StageMotion;
+  emote: StageEmote;
+}
+
 export type SceneBoardElementType = 'text' | 'image' | 'rect' | 'ellipse' | 'line' | 'arrow' | 'stroke';
 
 export interface SceneBoardPoint {
@@ -26,6 +36,13 @@ export interface SceneBoardElement {
 
   imageUrl?: string;
   imageAssetId?: string;
+  /** Right-click > Speaking as / Character is; canonical IC Chat links. */
+  smugSpeakerKey?: string;
+  /** Optional silent effects; no sound and no infinite animation. */
+  stageMotion?: StageMotion;
+  stageEmote?: StageEmote;
+  stageAutoReact?: boolean;
+  stageCue?: StageCue;
 
   points?: SceneBoardPoint[];
 }
@@ -40,6 +57,8 @@ export interface SceneBoardState {
   background: string;
   elements: SceneBoardElement[];
   presentation?: boolean;
+  /** GM-only toggle. Player movement is validated by a scoped server route. */
+  allowPlayerEditing?: boolean;
   view?: SceneBoardView;
 }
 
