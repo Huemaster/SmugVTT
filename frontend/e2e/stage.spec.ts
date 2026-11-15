@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { Buffer } from 'node:buffer';
 import { ADMIN } from './instance';
 import { COMPACT_LAYOUT_QUERY } from '../src/constants/layout';
 
