@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mayDragStageElement, stageContentChanged } from '../stageUX';
+import { defaultStageImagePosition, mayDragStageElement, stageContentChanged } from '../stageUX';
 
 describe('Stage interaction guardrails', () => {
   const img = { type: 'image' as const, locked: false, hidden: false };
@@ -17,6 +17,13 @@ describe('Stage interaction guardrails', () => {
     expect(mayDragStageElement(0, true, false, 'select', img)).toBe(true);
     expect(mayDragStageElement(2, true, true, 'select', img)).toBe(false);
     expect(mayDragStageElement(1, true, true, 'select', img)).toBe(false);
+  });
+
+  it('places large pictures centrally and offsets successive uploads', () => {
+    expect(defaultStageImagePosition(0)).toEqual({ x: 480, y: 210 });
+    expect(defaultStageImagePosition(1)).toEqual({ x: 512, y: 242 });
+    expect(defaultStageImagePosition(4)).toEqual({ x: 608, y: 338 });
+    expect(defaultStageImagePosition(5)).toEqual({ x: 480, y: 210 });
   });
 
   it('does not allow spectators, hidden/locked images or non-picture player edits', () => {
