@@ -1,14 +1,10 @@
 import { test, expect, type Page } from '@playwright/test';
-import { Buffer } from 'node:buffer';
 import { ADMIN } from './instance';
 import { COMPACT_LAYOUT_QUERY } from '../src/constants/layout';
 
 // Two-frame, 12×12 original test GIF. Exercises actual animated image upload,
 // not just the input's accepted MIME label.
-const TWO_FRAME_GIF = Buffer.from(
-  'R0lGODlhDAAMAIEAAP8AAAAAAAAAAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh+QQADAAAACwAAAAADAAMAAAIFgABCBxIsKDBgwgTKlzIsKHDhxARBgQAIfkEAQwAAQAsAAAAAAwADACBAAD/AAAAAAAAAAAACBYAAQgcSLCgwYMIEypcyLChw4cQEQYEADs=',
-  'base64',
-);
+const TWO_FRAME_GIF = 'R0lGODlhDAAMAIEAAP8AAAAAAAAAAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh+QQADAAAACwAAAAADAAMAAAIFgABCBxIsKDBgwgTKlzIsKHDhxARBgQAIfkEAQwAAQAsAAAAAAwADACBAAD/AAAAAAAAAAAACBYAAQgcSLCgwYMIEypcyLChw4cQEQYEADs=';
 
 async function signIn(page: Page): Promise<void> {
   await page.goto('/auth/login');
@@ -59,7 +55,16 @@ test('Stage UX: three pillars, large GIF art, presentation modes and GM opt-in',
   await page.getByRole('button', { name: 'Dialogue Off' }).click();
 
   const upload = page.locator('input[type="file"][accept*="image/gif"]').first();
-  await upload.setInputFiles({ name: 'stage-animated-test.gif', mimeType: 'image/gif', buffer: TWO_FRAME_GIF });
+  // Construct the fixture as an actual browser File: no Node Buffer typings
+  // required, and the application still performs a real multipart GIF upload.
+  await upload.evaluate((node, encoded) => {
+    const bytes = Uint8Array.from(atob(encoded), (ch) => ch.charCodeAt(0));
+    const file = new File([bytes], 'stage-animated-test.gif', { type: 'image/gif' });
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    (node as HTMLInputElement).files = transfer.files;
+    node.dispatchEvent(new Event('change', { bubbles: true }));
+  }, TWO_FRAME_GIF);
   const art = page.locator('img[src*="/api/assets/maps/"]').first();
   await expect(art).toBeVisible({ timeout: 20_000 });
   const frame = art.locator('xpath=../../..');
