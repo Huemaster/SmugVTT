@@ -14,6 +14,19 @@ const BoardStateSchema = z.object({
   elements: z.array(z.unknown()).max(1000).optional(),
 }).passthrough();
 
+/**
+ * Players may move or resize an unlocked visible stage object only after the
+ * GM explicitly enables collaborative editing on a revealed shared scene.
+ * No raw board replacement or arbitrary property edits are accepted here.
+ */
+const PlayerStageTransformSchema = z.object({
+  boardVersion: z.number().int().min(0),
+  x: z.number().finite().min(0).max(1600),
+  y: z.number().finite().min(0).max(900),
+  width: z.number().finite().min(30).max(1600),
+  height: z.number().finite().min(30).max(900),
+}).strict();
+
 const CreateSceneSchema = z.object({
   title: z.string().trim().min(1).max(160),
   location: z.string().trim().max(240).nullable().optional(),
@@ -217,6 +230,73 @@ router.patch('/:campaignId/fork/scenes/:sceneId', campaignDM, async (req: Authen
   } catch (error) {
     logger.error('Failed to update fork scene', { err: error });
     return res.status(500).json({ error: 'Internal Server Error', message: 'Failed to update scene' });
+  }
+});
+
+/**
+ * Narrow player-edit endpoint: optimistic board version, fixed transform fields,
+ * no access to GM-hidden elements, scene settings, links or other metadata.
+ * Preserve hidden elements in the stored board rather than saving redacted
+ * player reads back over them.
+ */
+router.patch('/:campaignId/fork/scenes/:sceneId/elements/:elementId/transform', campaignMember, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const input = PlayerStageTransformSchema.safeParse(req.body);
+    if (!input.success) {
+      return res.status(400).json({ error: 'Validation Error', message: 'Invalid Stage transform' });
+    }
+    const role = req.campaignMembership?.role;
+    if (role !== CampaignRole.DM && role !== CampaignRole.PLAYER) {
+      return res.status(403).json({ error: 'Forbidden', message: 'Only campaign players and GMs can move Stage elements' });
+    }
+
+    const scene = await prisma.campaignScene.findFirst({
+      where: { id: req.params.sceneId, campaignId: req.params.campaignId, active: true },
+      select: { id: true, boardState: true, boardVersion: true, revealed: true, boardVisibility: true },
+    });
+    if (!scene || (role !== CampaignRole.DM && (!scene.revealed || scene.boardVisibility !== 'shared'))) {
+      return res.status(404).json({ error: 'Not Found', message: 'Shared Stage not found' });
+    }
+
+    const raw = scene.boardState;
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+      return res.status(409).json({ error: 'Conflict', message: 'Stage data changed. Reload before editing.' });
+    }
+    const board = raw as Record<string, unknown>;
+    if (role !== CampaignRole.DM && board.allowPlayerEditing !== true) {
+      return res.status(403).json({ error: 'Forbidden', message: 'The GM has not enabled player editing for this Stage' });
+    }
+    if (scene.boardVersion !== input.data.boardVersion) {
+      return res.status(409).json({ error: 'Conflict', message: 'Stage changed. Reload and try again.' });
+    }
+
+    const elements = board.elements;
+    if (!Array.isArray(elements)) return res.status(409).json({ error: 'Conflict', message: 'Stage has no editable elements' });
+    const index = elements.findIndex((value) => value && typeof value === 'object' && !Array.isArray(value)
+      && (value as Record<string, unknown>).id === req.params.elementId);
+    const target = elements[index];
+    if (index < 0 || !target || typeof target !== 'object' || Array.isArray(target)
+      || (target as Record<string, unknown>).hidden === true || (target as Record<string, unknown>).locked === true) {
+      return res.status(404).json({ error: 'Not Found', message: 'Editable Stage element not found' });
+    }
+    const { boardVersion, ...transform } = input.data;
+    const next = { ...board, elements: elements.map((value, at) => at === index ? { ...(value as Record<string, unknown>), ...transform } : value) };
+
+    const updated = await prisma.campaignScene.updateMany({
+      where: { id: scene.id, active: true, boardVersion },
+      data: { boardState: toJson(next), boardVersion: { increment: 1 } },
+    });
+    if (updated.count !== 1) {
+      return res.status(409).json({ error: 'Conflict', message: 'Stage changed. Reload and try again.' });
+    }
+    const saved = await prisma.campaignScene.findUnique({ where: { id: scene.id }, select: selectScene });
+    if (!saved) return res.status(404).json({ error: 'Not Found', message: 'Stage not found' });
+    if (role === CampaignRole.DM) return res.status(200).json({ scene: saved });
+    const { gmNotes: _notes, ...publicScene } = saved;
+    return res.status(200).json({ scene: { ...publicScene, boardState: boardStateForPlayer(saved.boardState) } });
+  } catch (error) {
+    logger.error('Failed to transform Stage element', { err: error });
+    return res.status(500).json({ error: 'Internal Server Error', message: 'Failed to update Stage element' });
   }
 });
 
