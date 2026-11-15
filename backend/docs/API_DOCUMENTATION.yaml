@@ -681,6 +681,55 @@ paths:
         '404':
           description: Campaign resource not found
 
+  /api/campaigns/{campaignId}/fork/scenes/{sceneId}/elements/{elementId}/transform:
+    patch:
+      tags: [SmugVTT]
+      summary: Move or resize a visible Stage element
+      description: >-
+        Accepts a position/size edit from a GM, or a player only after the GM
+        opts in on an active shared/revealed Stage. Hidden and locked elements
+        are never editable here. All other board properties are preserved
+        server-side. An outdated boardVersion returns HTTP 409.
+      operationId: smugTransformStageElement
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: sceneId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: elementId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [boardVersion, x, y, width, height]
+              properties:
+                boardVersion: { type: integer, minimum: 0 }
+                x: { type: number, minimum: 0, maximum: 1600 }
+                y: { type: number, minimum: 0, maximum: 900 }
+                width: { type: number, minimum: 30, maximum: 1600 }
+                height: { type: number, minimum: 30, maximum: 900 }
+      responses:
+        '200':
+          description: The saved scene with any GM-hidden elements redacted for players
+        '400':
+          description: Invalid transform or unexpected fields
+        '403':
+          description: Editing disabled by the GM or unauthorized role
+        '404':
+          description: Scene or visible unlocked element not found
+        '409':
+          description: Scene changed; reload and retry
+
   /api/campaigns/{campaignId}/fork/scenes/{sceneId}:
     patch:
       tags: [SmugVTT]
