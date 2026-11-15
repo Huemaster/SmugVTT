@@ -13,8 +13,12 @@ Stage composes visual-novel and 16/32-bit-JRPG-style roleplay presentations.
 - **No dedicated background image slot:** Illustrations, landscapes, transparent
   characters, props and other art are all image objects with user-selected positions
   and dimensions. The existing flat Stage background color is not an image layer.
-- **GIF allowed:** The existing campaign image upload accepts GIFs along with PNG,
-  JPEG and WebP. No video playback support is proposed in v1.
+- **GIF allowed:** Stage uploads share the campaign MAP image library, which
+  now permits genuine GIF files alongside PNG, JPEG and WebP. The server
+  inspects file magic bytes, forces the actual extension and applies its
+  existing frame/pixel safety caps; a filename ending in .gif is not enough.
+  Animated GIF artwork is supported, not videos. Large animated images may
+  still cost significant memory on players' devices.
 - **Optional snap:** Freeform positioning is the default. Each editor can turn on
   a 20-unit snap for dragging and resizing, without imposing a tactical grid.
 - **Retain existing layers:** z-order, lock, hidden, rotation, duplication and
@@ -98,6 +102,10 @@ fixed in the Stage unification branch:
   toggle label. They now use the neutral "Dialogue On/Off" wording.
 - The GM's player-editing switch now states that it applies to unlocked
   pictures and warns if the scene is not yet revealed and shared.
+- The first production Playwright run discovered that Stage offered GIF uploads
+  but the backend MAP image MIME list excluded them. Both frontend and backend
+  upload-type tables now allow validated GIF MAP assets, with the existing
+  content-sniffing and animated-picture size limits unchanged.
 
 **Automated behavior coverage:** `stageUX.test.ts`,
 `SceneBoardUX.test.tsx`, `CampaignPageLayout.test.tsx`,
