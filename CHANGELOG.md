@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — Mapmaker wall overlay redraw
+
+Selective CozyVTT v1.7.0 UI backport: changing a wall color and adding polygon corners by touch now invalidate the overlay immediately, rather than waiting for a mouse movement or another redraw. Includes touch-simulation regression tests.
+
+No server, permission, database, map geometry, saved wall data, token controls, Scene, Canvas or Squad Command changes. This is a proposed PR, not a published release.
+
+---
+
 ## [SmugVTT v0.9.0] — 2026-11-14
 
 **First integrated public source release.** The fork now publishes its Map, Chat, Canvas, Scene, battlefield-overlay and optional Squad Command code as a reviewed source baseline. See [full v0.9.0 release notes](docs/releases/v0.9.0.md) and the [README](README.md).
