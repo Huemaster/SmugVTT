@@ -25,6 +25,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { PointerEvent, ReactNode } from 'react';
 import { canvasArtSpeechX, measureCanvasArt, type CanvasArtMetrics } from './canvasSpeechAnchor';
+import { StagePicture, STAGE_MOTIONS, STAGE_EMOTES, stageMotion, stageEmote } from './StageEffects';
 import { api } from '@/services/api';
 import { useCampaign } from '@/contexts/CampaignContext';
 import { useToast } from '@/contexts/ToastContext';
@@ -37,6 +38,7 @@ import type {
   SceneBoardElementType,
   SceneBoardPoint,
   SceneBoardState,
+  StageCue,
 } from '@/types/sceneBoard';
 
 const BOARD_WIDTH = 1600;
@@ -73,6 +75,7 @@ function normaliseBoard(raw: unknown): SceneBoardState {
     background: typeof value.background === 'string' ? value.background : DEFAULT_BOARD.background,
     elements: Array.isArray(value.elements) ? value.elements as SceneBoardElement[] : [],
     presentation: value.presentation === true,
+    allowPlayerEditing: value.allowPlayerEditing === true,
     ...(view ? { view } : {}),
     ...(stage !== undefined ? { smugSceneStage: stage } : {}),
   } as SceneBoardState;
@@ -99,6 +102,24 @@ export default function SceneBoardPanel() {
 
   const [scene, setScene] = useState<CampaignSceneBoard | null>(null);
   const [board, setBoard] = useState<SceneBoardState>(DEFAULT_BOARD);
+  const boardRef = useRef(board);
+  boardRef.current = board;
+  const canEdit = isGm || (userRole === 'PLAYER' && scene?.revealed === true && scene.boardVisibility === 'shared' && board.allowPlayerEditing === true);
+  const [snapToGrid, setSnapToGrid] = useState(() => {
+    try { return window.localStorage.getItem('smugvtt:stage-snap') === 'true'; } catch { return false; }
+  });
+  const [dialogueStyle, setDialogueStyle] = useState<'bubbles' | 'vn' | 'jrpg'>(() => {
+    try {
+      const value = window.localStorage.getItem('smugvtt:stage-dialogue-style');
+      return value === 'vn' || value === 'jrpg' ? value : 'bubbles';
+    } catch { return 'bubbles'; }
+  });
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('smugvtt:stage-snap', String(snapToGrid));
+      window.localStorage.setItem('smugvtt:stage-dialogue-style', dialogueStyle);
+    } catch { /* client presentation preferences are optional */ }
+  }, [snapToGrid, dialogueStyle]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [tool, setTool] = useState<Tool>('select');
@@ -144,13 +165,13 @@ export default function SceneBoardPanel() {
   ], [campaign?.characters, npcSpeakerOptions]);
   const latestDialogueBySpeaker = useMemo(() => {
     const result = new Map<string, SceneUtterance>();
-    if (!canvasBubblesEnabled || !scene) return result;
+    if (!scene) return result;
     const since = Date.parse(scene.startedAt ?? scene.createdAt) || 0;
     for (const line of sceneDialogue) {
       if (Date.parse(line.createdAt) >= since) result.set(line.speakerKey, line);
     }
     return result;
-  }, [canvasBubblesEnabled, scene, sceneDialogue]);
+  }, [scene, sceneDialogue]);
 
   const [selectionOptionsOpen, setSelectionOptionsOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ elementId: string; x: number; y: number } | null>(null);
@@ -255,7 +276,7 @@ export default function SceneBoardPanel() {
   // Viewers poll lightly so a GM's scene reveal/board save appears without reload.
   useEffect(() => {
     if (isGm || !campaignId) return;
-    const timer = window.setInterval(() => void load(), 4000);
+    const timer = window.setInterval(() => { if (!dragRef.current) void load(); }, 4000);
     return () => window.clearInterval(timer);
   }, [campaignId, isGm, load]);
 
@@ -686,7 +707,7 @@ export default function SceneBoardPanel() {
   };
 
   const onElementPointerDown = (event: PointerEvent, element: SceneBoardElement, mode: 'move' | 'resize') => {
-    if (!isGm || tool !== 'select' || element.locked) return;
+    if (!canEdit || tool !== 'select' || element.locked || element.hidden) return;
     event.stopPropagation();
 
     if (mode === 'move' && event.shiftKey) {
@@ -714,8 +735,10 @@ export default function SceneBoardPanel() {
       startY: event.clientY,
       originals,
     };
-    setHistory((current) => [...current.slice(-49), board]);
-    setFuture([]);
+    if (isGm) {
+      setHistory((current) => [...current.slice(-49), board]);
+      setFuture([]);
+    }
   };
 
   const onElementPointerMove = (event: PointerEvent) => {
@@ -724,42 +747,71 @@ export default function SceneBoardPanel() {
     const dx = (event.clientX - drag.startX) / zoom;
     const dy = (event.clientY - drag.startY) / zoom;
 
+    const current = boardRef.current;
+    const snap = (value: number) => snapToGrid ? Math.round(value / 20) * 20 : value;
     if (drag.mode === 'move') {
       const next = {
-        ...board,
-        elements: board.elements.map((element) => {
+        ...current,
+        elements: current.elements.map((element) => {
           const original = drag.originals[element.id];
           if (!original || original.locked) return element;
           if (element.type === 'stroke' && original.points) {
             return {
               ...element,
               points: original.points.map((point) => ({
-                x: Math.max(0, Math.min(BOARD_WIDTH, point.x + dx)),
-                y: Math.max(0, Math.min(BOARD_HEIGHT, point.y + dy)),
+                x: Math.max(0, Math.min(BOARD_WIDTH, snap(point.x + dx))),
+                y: Math.max(0, Math.min(BOARD_HEIGHT, snap(point.y + dy))),
               })),
             };
           }
           return {
             ...element,
-            x: Math.max(0, Math.min(BOARD_WIDTH - 20, original.x + dx)),
-            y: Math.max(0, Math.min(BOARD_HEIGHT - 20, original.y + dy)),
+            x: Math.max(0, Math.min(BOARD_WIDTH - 20, snap(original.x + dx))),
+            y: Math.max(0, Math.min(BOARD_HEIGHT - 20, snap(original.y + dy))),
           };
         }),
       };
+      boardRef.current = next;
       setBoard(next);
-      setDirty(true);
+      if (isGm) setDirty(true);
     } else {
       const original = drag.originals[drag.id];
       if (!original) return;
-      updateElement(drag.id, {
-        width: Math.max(30, original.width + dx),
-        height: Math.max(30, original.height + dy),
-      }, false);
+      const width = Math.max(30, snap(original.width + dx));
+      const height = Math.max(30, snap(original.height + dy));
+      const next = { ...current, elements: current.elements.map((element) => element.id === drag.id ? { ...element, width, height } : element) };
+      boardRef.current = next;
+      setBoard(next);
+      if (isGm) setDirty(true);
     }
   };
 
   const onElementPointerUp = () => {
+    const drag = dragRef.current;
     dragRef.current = null;
+    if (!drag || isGm || !canEdit || !scene || !campaignId) return;
+    // A player can move and resize only via the server's scoped, versioned
+    // transform endpoint, which never accepts arbitrary scene/GM metadata.
+    const changed = boardRef.current.elements.filter((element) => drag.ids.includes(element.id)
+      && (element.x !== drag.originals[element.id]?.x || element.y !== drag.originals[element.id]?.y
+        || element.width !== drag.originals[element.id]?.width || element.height !== drag.originals[element.id]?.height));
+    if (!changed.length) return;
+    void (async () => {
+      try {
+        let version = scene.boardVersion;
+        for (const element of changed) {
+          const result = await api.transformStageElement(campaignId, scene.id, element.id, {
+            boardVersion: version, x: element.x, y: element.y, width: element.width, height: element.height,
+          });
+          version = result.scene.boardVersion;
+          setScene(result.scene);
+          setBoard(normaliseBoard(result.scene.boardState));
+        }
+      } catch (error) {
+        showToast(apiErrorMessage(error) || 'Stage changed. Reloading the shared layout.', 'error');
+        void load();
+      }
+    })();
   };
 
   const onViewportPointerDown = (event: PointerEvent<HTMLDivElement>) => {
@@ -833,8 +885,8 @@ export default function SceneBoardPanel() {
         type: 'image',
         x: 180,
         y: 120,
-        width: 520,
-        height: 320,
+        width: 640,
+        height: 480,
         rotation: 0,
         z: nextZ(board.elements),
         locked: false,
