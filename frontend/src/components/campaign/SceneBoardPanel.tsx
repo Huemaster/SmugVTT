@@ -1506,8 +1506,8 @@ export default function SceneBoardPanel() {
               aria-label={`${entry.speakerName} says: ${entry.quotes.join(' ')}`}
               className={`pointer-events-none absolute bottom-5 left-8 right-8 z-[1000] px-6 py-4 text-white shadow-2xl ${dialogueStyle === 'jrpg'
                 ? 'border-[5px] border-white bg-[#14203b] font-mono text-[23px] leading-relaxed outline outline-[5px] outline-black'
-                : 'rounded-xl border-2 border-white/70 bg-slate-950/90 text-[22px] leading-snug backdrop-blur-md'}`}>
-              <div className={`mb-1 font-bold ${dialogueStyle === 'jrpg' ? 'text-[#f7d98b]' : 'text-amber-300'}`}>{entry.speakerName}</div>
+                : 'rounded-xl border-2 border-white/70 bg-ink/90 text-[22px] leading-snug backdrop-blur-md'}`}>
+              <div className={`mb-1 font-bold ${dialogueStyle === 'jrpg' ? 'text-[#f7d98b]' : 'text-warning-ink'}`}>{entry.speakerName}</div>
               <div className="break-words">“{canvasDialogueLabel(entry)}”</div>
             </div>;
           })()}
