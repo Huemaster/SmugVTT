@@ -530,7 +530,7 @@ export default function SceneBoardPanel() {
       // Never discard local edits because an autosave failed or is pending.
       if (!window.confirm('You have unsaved Stage edits. Save them before switching? Cancel keeps this Stage open.')) return;
       const didSave = await save(false);
-      if (!didSave) { showToast('Save failed. Canvas switch cancelled.', 'error'); return; }
+      if (!didSave) { showToast('Save failed. Stage switch cancelled.', 'error'); return; }
     }
     try {
       const result = await api.updateSceneBoard(campaignId, sceneId, { active: true });
@@ -582,9 +582,9 @@ export default function SceneBoardPanel() {
       const { smugSceneStage: _activeStage, ...composition } = snapshot as SceneBoardState & { smugSceneStage?: unknown };
       const updated = await api.updateSceneBoard(campaignId, created.scene.id, { boardState: composition as SceneBoardState });
       setSceneList((current) => [updated.scene, ...current.filter((item) => item.id !== updated.scene.id)]);
-      showToast(`Canvas saved to library: ${title}`, 'success');
+      showToast(`Stage saved to library: ${title}`, 'success');
     } catch (error) {
-      showToast(apiErrorMessage(error) || 'Could not save Canvas copy', 'error');
+      showToast(apiErrorMessage(error) || 'Could not save Stage copy', 'error');
     } finally { setLibraryBusy(false); }
   };
 
@@ -596,7 +596,7 @@ export default function SceneBoardPanel() {
       const response = await api.updateSceneBoard(campaignId, entry.id, { title });
       setSceneList((items) => items.map((item) => item.id === entry.id ? response.scene : item));
       if (scene?.id === entry.id) setScene(response.scene);
-    } catch (error) { showToast(apiErrorMessage(error) || 'Could not rename Canvas', 'error'); }
+    } catch (error) { showToast(apiErrorMessage(error) || 'Could not rename Stage', 'error'); }
     finally { setLibraryBusy(false); }
   };
 
@@ -617,7 +617,7 @@ export default function SceneBoardPanel() {
     let element: SceneBoardElement;
 
     if (type === 'text') {
-      const text = window.prompt('Text to place on the scene board:', 'Scene note');
+      const text = window.prompt('Text to place on Stage:', 'Scene note');
       if (!text) return;
       element = {
         id: id('text'), type, x: 180, y: 140, width: 320, height: 120,
@@ -1072,13 +1072,13 @@ export default function SceneBoardPanel() {
   };
 
   if (loading) {
-    return <div className="flex h-full items-center justify-center text-sm text-ink-muted">Loading Scene Board…</div>;
+    return <div className="flex h-full items-center justify-center text-sm text-ink-muted">Loading Stage…</div>;
   }
 
   if (!scene) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
-        <p className="text-ink-secondary">{isGm ? 'No active Scene Board yet.' : 'The GM has not shared an active scene.'}</p>
+        <p className="text-ink-secondary">{isGm ? 'No active Stage yet.' : 'The GM has not shared an active scene.'}</p>
         {isGm && (
           <div className="flex w-full max-w-md gap-2">
             <input className="input-cozy flex-1" value={newSceneName} onChange={(event) => setNewSceneName(event.target.value)} placeholder="Scene title" />
@@ -1222,11 +1222,14 @@ export default function SceneBoardPanel() {
               />
               Revealed
             </label>
-            <label className="flex items-center gap-1 text-xs text-ink-secondary" title="Players may drag and resize visible unlocked Stage objects. GM-only objects and scene settings remain protected.">
+            <label className="flex items-center gap-1 text-xs text-ink-secondary" title="When this scene is revealed and shared, players can drag and resize visible, unlocked pictures. GM notes, drawings and scene settings remain protected.">
               <input type="checkbox" checked={board.allowPlayerEditing === true}
                 onChange={(event) => commit({ ...board, allowPlayerEditing: event.target.checked })} />
-              Allow players to arrange Stage
+              Allow players to arrange pictures
             </label>
+            {board.allowPlayerEditing && (!scene.revealed || scene.boardVisibility !== 'shared') && (
+              <span className="text-xs text-warning-ink" role="status">Reveal this scene and set visibility to Shared before player arranging becomes available.</span>
+            )}
 
             <select
               className="input-cozy py-1 text-xs"
@@ -1263,7 +1266,7 @@ export default function SceneBoardPanel() {
             <Button size="sm" variant="secondary" icon={Circle} onClick={() => addElement('ellipse')}>Circle</Button>
             <Button size="sm" variant="secondary" icon={Minus} onClick={() => addElement('line')}>Line</Button>
             <Button size="sm" variant="secondary" icon={ArrowUp} onClick={() => addElement('arrow')}>Arrow</Button>
-            <Button size="sm" variant="secondary" icon={ImagePlus} onClick={() => imageInputRef.current?.click()}>Image</Button>
+            <Button size="sm" variant="secondary" icon={ImagePlus} onClick={() => imageInputRef.current?.click()} title="Add a 640×480 Stage picture; supports PNG, JPEG, WebP and GIF. Drag to resize after placing.">Image</Button>
             <input
               ref={imageInputRef}
               hidden
