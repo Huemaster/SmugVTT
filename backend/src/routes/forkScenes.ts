@@ -276,7 +276,8 @@ router.patch('/:campaignId/fork/scenes/:sceneId/elements/:elementId/transform', 
       && (value as Record<string, unknown>).id === req.params.elementId);
     const target = elements[index];
     if (index < 0 || !target || typeof target !== 'object' || Array.isArray(target)
-      || (target as Record<string, unknown>).hidden === true || (target as Record<string, unknown>).locked === true) {
+      || (target as Record<string, unknown>).hidden === true || (target as Record<string, unknown>).locked === true
+      || (role !== CampaignRole.DM && (target as Record<string, unknown>).type !== 'image')) {
       return res.status(404).json({ error: 'Not Found', message: 'Editable Stage element not found' });
     }
     const { boardVersion, ...transform } = input.data;
