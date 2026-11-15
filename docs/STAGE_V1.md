@@ -106,6 +106,13 @@ fixed in the Stage unification branch:
   but the backend MAP image MIME list excluded them. Both frontend and backend
   upload-type tables now allow validated GIF MAP assets, with the existing
   content-sniffing and animated-picture size limits unchanged.
+- Once GIF uploads passed, four-browser Playwright testing caught a Chat
+  "speaking as" presence card intercepting taps over Stage art on compact
+  screens. Stage now hides that redundant overlay (the current speaker remains
+  visible on the Stage image), without removing it from Map/Chat.
+- A tall right-click Stage menu extended beyond the iPad viewport, so its
+  Play Cue button was unreachable. The menu now clamps its origin to the
+  viewport and scrolls internally.
 
 **Automated behavior coverage:** `stageUX.test.ts`,
 `SceneBoardUX.test.tsx`, `CampaignPageLayout.test.tsx`,
