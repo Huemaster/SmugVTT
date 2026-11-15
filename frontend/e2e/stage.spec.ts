@@ -14,7 +14,7 @@ async function signIn(page: Page): Promise<void> {
   await page.getByLabel('Email').fill(ADMIN.email);
   await page.getByLabel('Password').fill(ADMIN.password);
   await page.getByRole('button', { name: 'Sign In' }).click();
-  await expect(page).toHaveURL(/\\/dashboard$/);
+  await expect(page).toHaveURL(/\/dashboard$/);
 }
 
 test('Stage UX: three pillars, large GIF art, presentation modes and GM opt-in', async ({ page }, testInfo) => {
@@ -26,7 +26,7 @@ test('Stage UX: three pillars, large GIF art, presentation modes and GM opt-in',
   await campaignDialog.getByRole('button', { name: 'Create Campaign' }).click();
   await expect(campaignDialog).toBeHidden({ timeout: 15_000 });
   await page.getByRole('button', { name: new RegExp(campaign) }).click();
-  await expect(page).toHaveURL(/\\/campaigns\\/[0-9a-f-]{36}$/);
+  await expect(page).toHaveURL(/\/campaigns\/[0-9a-f-]{36}$/);
 
   const compact = await page.evaluate((query) => window.matchMedia(query).matches, COMPACT_LAYOUT_QUERY);
   if (compact) {
