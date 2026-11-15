@@ -38,6 +38,7 @@ const TESTED: Record<string, string> = {
   'GET /api/campaigns/:campaignId/fork/scenes/active': 'routes/__tests__/forkEndpointCoverage.e2e.test.ts',
   'POST /api/campaigns/:campaignId/fork/scenes': 'routes/__tests__/forkEndpointCoverage.e2e.test.ts',
   'PATCH /api/campaigns/:campaignId/fork/scenes/:sceneId': 'routes/__tests__/forkEndpointCoverage.e2e.test.ts',
+  'PATCH /api/campaigns/:campaignId/fork/scenes/:sceneId/elements/:elementId/transform': 'routes/__tests__/forkEndpointCoverage.e2e.test.ts',
   'DELETE /api/campaigns/:campaignId/fork/scenes/:sceneId': 'routes/__tests__/forkEndpointCoverage.e2e.test.ts',
   'GET /health': 'routes/__tests__/auth.e2e.test.ts',
   'GET /api/config': 'routes/__tests__/uploadLimitsConfig.e2e.test.ts',

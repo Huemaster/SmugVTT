@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased — Stage v1 foundation (draft)
+
+SmugVTT-specific Scene + Canvas convergence work: freeform large Stage pictures,
+optional 20-unit snap, GIF art, speaker-linked visual-novel/JRPG dialogue styles,
+silent short motion/emote cues, and an explicit GM opt-in for restricted player
+drag/resize. The existing scene-board store, chat feed and layers remain in
+place; no video or second chat stream is introduced.
+
+This is a **draft PR**, not part of the v0.9.0 release. Details and remaining
+integration work: [Stage v1 development](docs/STAGE_V1.md).
+
+---
+
 ## [SmugVTT v0.9.0] — 2026-11-14
 
 **First integrated public source release.** The fork now publishes its Map, Chat, Canvas, Scene, battlefield-overlay and optional Squad Command code as a reviewed source baseline. See [full v0.9.0 release notes](docs/releases/v0.9.0.md) and the [README](README.md).

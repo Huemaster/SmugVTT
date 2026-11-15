@@ -25,6 +25,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { PointerEvent, ReactNode } from 'react';
 import { canvasArtSpeechX, measureCanvasArt, type CanvasArtMetrics } from './canvasSpeechAnchor';
+import { StagePicture, STAGE_MOTIONS, STAGE_EMOTES, stageMotion, stageEmote } from './StageEffects';
 import { api } from '@/services/api';
 import { useCampaign } from '@/contexts/CampaignContext';
 import { useToast } from '@/contexts/ToastContext';
@@ -37,6 +38,7 @@ import type {
   SceneBoardElementType,
   SceneBoardPoint,
   SceneBoardState,
+  StageCue,
 } from '@/types/sceneBoard';
 
 const BOARD_WIDTH = 1600;
@@ -73,6 +75,7 @@ function normaliseBoard(raw: unknown): SceneBoardState {
     background: typeof value.background === 'string' ? value.background : DEFAULT_BOARD.background,
     elements: Array.isArray(value.elements) ? value.elements as SceneBoardElement[] : [],
     presentation: value.presentation === true,
+    allowPlayerEditing: value.allowPlayerEditing === true,
     ...(view ? { view } : {}),
     ...(stage !== undefined ? { smugSceneStage: stage } : {}),
   } as SceneBoardState;
@@ -99,6 +102,24 @@ export default function SceneBoardPanel() {
 
   const [scene, setScene] = useState<CampaignSceneBoard | null>(null);
   const [board, setBoard] = useState<SceneBoardState>(DEFAULT_BOARD);
+  const boardRef = useRef(board);
+  boardRef.current = board;
+  const canEdit = isGm || (userRole === 'PLAYER' && scene?.revealed === true && scene.boardVisibility === 'shared' && board.allowPlayerEditing === true);
+  const [snapToGrid, setSnapToGrid] = useState(() => {
+    try { return window.localStorage.getItem('smugvtt:stage-snap') === 'true'; } catch { return false; }
+  });
+  const [dialogueStyle, setDialogueStyle] = useState<'bubbles' | 'vn' | 'jrpg'>(() => {
+    try {
+      const value = window.localStorage.getItem('smugvtt:stage-dialogue-style');
+      return value === 'vn' || value === 'jrpg' ? value : 'bubbles';
+    } catch { return 'bubbles'; }
+  });
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('smugvtt:stage-snap', String(snapToGrid));
+      window.localStorage.setItem('smugvtt:stage-dialogue-style', dialogueStyle);
+    } catch { /* client presentation preferences are optional */ }
+  }, [snapToGrid, dialogueStyle]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [tool, setTool] = useState<Tool>('select');
@@ -144,13 +165,13 @@ export default function SceneBoardPanel() {
   ], [campaign?.characters, npcSpeakerOptions]);
   const latestDialogueBySpeaker = useMemo(() => {
     const result = new Map<string, SceneUtterance>();
-    if (!canvasBubblesEnabled || !scene) return result;
+    if (!scene) return result;
     const since = Date.parse(scene.startedAt ?? scene.createdAt) || 0;
     for (const line of sceneDialogue) {
       if (Date.parse(line.createdAt) >= since) result.set(line.speakerKey, line);
     }
     return result;
-  }, [canvasBubblesEnabled, scene, sceneDialogue]);
+  }, [scene, sceneDialogue]);
 
   const [selectionOptionsOpen, setSelectionOptionsOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ elementId: string; x: number; y: number } | null>(null);
@@ -255,7 +276,7 @@ export default function SceneBoardPanel() {
   // Viewers poll lightly so a GM's scene reveal/board save appears without reload.
   useEffect(() => {
     if (isGm || !campaignId) return;
-    const timer = window.setInterval(() => void load(), 4000);
+    const timer = window.setInterval(() => { if (!dragRef.current) void load(); }, 4000);
     return () => window.clearInterval(timer);
   }, [campaignId, isGm, load]);
 
@@ -292,6 +313,18 @@ export default function SceneBoardPanel() {
     }
   };
 
+
+  const playCue = (element: SceneBoardElement) => {
+    if (!isGm || element.type !== 'image') return;
+    const cue: StageCue = {
+      id: id('stage-cue'),
+      at: Date.now(),
+      motion: stageMotion(element.stageMotion ?? 'pulse'),
+      emote: stageEmote(element.stageEmote ?? 'none'),
+    };
+    updateElement(element.id, { stageCue: cue });
+    setContextMenu(null);
+  };
 
   const rememberPresentationView = (nextZoom = zoom) => {
     const viewport = viewportRef.current;
@@ -686,7 +719,7 @@ export default function SceneBoardPanel() {
   };
 
   const onElementPointerDown = (event: PointerEvent, element: SceneBoardElement, mode: 'move' | 'resize') => {
-    if (!isGm || tool !== 'select' || element.locked) return;
+    if (!canEdit || tool !== 'select' || element.locked || element.hidden || (!isGm && element.type !== 'image')) return;
     event.stopPropagation();
 
     if (mode === 'move' && event.shiftKey) {
@@ -714,8 +747,10 @@ export default function SceneBoardPanel() {
       startY: event.clientY,
       originals,
     };
-    setHistory((current) => [...current.slice(-49), board]);
-    setFuture([]);
+    if (isGm) {
+      setHistory((current) => [...current.slice(-49), board]);
+      setFuture([]);
+    }
   };
 
   const onElementPointerMove = (event: PointerEvent) => {
@@ -724,42 +759,71 @@ export default function SceneBoardPanel() {
     const dx = (event.clientX - drag.startX) / zoom;
     const dy = (event.clientY - drag.startY) / zoom;
 
+    const current = boardRef.current;
+    const snap = (value: number) => snapToGrid ? Math.round(value / 20) * 20 : value;
     if (drag.mode === 'move') {
       const next = {
-        ...board,
-        elements: board.elements.map((element) => {
+        ...current,
+        elements: current.elements.map((element) => {
           const original = drag.originals[element.id];
           if (!original || original.locked) return element;
           if (element.type === 'stroke' && original.points) {
             return {
               ...element,
               points: original.points.map((point) => ({
-                x: Math.max(0, Math.min(BOARD_WIDTH, point.x + dx)),
-                y: Math.max(0, Math.min(BOARD_HEIGHT, point.y + dy)),
+                x: Math.max(0, Math.min(BOARD_WIDTH, snap(point.x + dx))),
+                y: Math.max(0, Math.min(BOARD_HEIGHT, snap(point.y + dy))),
               })),
             };
           }
           return {
             ...element,
-            x: Math.max(0, Math.min(BOARD_WIDTH - 20, original.x + dx)),
-            y: Math.max(0, Math.min(BOARD_HEIGHT - 20, original.y + dy)),
+            x: Math.max(0, Math.min(BOARD_WIDTH - 20, snap(original.x + dx))),
+            y: Math.max(0, Math.min(BOARD_HEIGHT - 20, snap(original.y + dy))),
           };
         }),
       };
+      boardRef.current = next;
       setBoard(next);
-      setDirty(true);
+      if (isGm) setDirty(true);
     } else {
       const original = drag.originals[drag.id];
       if (!original) return;
-      updateElement(drag.id, {
-        width: Math.max(30, original.width + dx),
-        height: Math.max(30, original.height + dy),
-      }, false);
+      const width = Math.max(30, snap(original.width + dx));
+      const height = Math.max(30, snap(original.height + dy));
+      const next = { ...current, elements: current.elements.map((element) => element.id === drag.id ? { ...element, width, height } : element) };
+      boardRef.current = next;
+      setBoard(next);
+      if (isGm) setDirty(true);
     }
   };
 
   const onElementPointerUp = () => {
+    const drag = dragRef.current;
     dragRef.current = null;
+    if (!drag || isGm || !canEdit || !scene || !campaignId) return;
+    // A player can move and resize only via the server's scoped, versioned
+    // transform endpoint, which never accepts arbitrary scene/GM metadata.
+    const changed = boardRef.current.elements.filter((element) => drag.ids.includes(element.id)
+      && (element.x !== drag.originals[element.id]?.x || element.y !== drag.originals[element.id]?.y
+        || element.width !== drag.originals[element.id]?.width || element.height !== drag.originals[element.id]?.height));
+    if (!changed.length) return;
+    void (async () => {
+      try {
+        let version = scene.boardVersion;
+        for (const element of changed) {
+          const result = await api.transformStageElement(campaignId, scene.id, element.id, {
+            boardVersion: version, x: element.x, y: element.y, width: element.width, height: element.height,
+          });
+          version = result.scene.boardVersion;
+          setScene(result.scene);
+          setBoard(normaliseBoard(result.scene.boardState));
+        }
+      } catch (error) {
+        showToast(apiErrorMessage(error) || 'Stage changed. Reloading the shared layout.', 'error');
+        void load();
+      }
+    })();
   };
 
   const onViewportPointerDown = (event: PointerEvent<HTMLDivElement>) => {
@@ -833,8 +897,8 @@ export default function SceneBoardPanel() {
         type: 'image',
         x: 180,
         y: 120,
-        width: 520,
-        height: 320,
+        width: 640,
+        height: 480,
         rotation: 0,
         z: nextZ(board.elements),
         locked: false,
@@ -851,6 +915,7 @@ export default function SceneBoardPanel() {
   const renderElement = (element: SceneBoardElement) => {
     if (element.hidden && !isGm) return null;
     const active = selectedIds.includes(element.id);
+    const editable = canEdit && (isGm || element.type === 'image') && !element.hidden;
     const common = {
       position: 'absolute' as const,
       left: element.x,
@@ -877,7 +942,15 @@ export default function SceneBoardPanel() {
         </div>
       );
     } else if (element.type === 'image') {
-      body = <img src={element.imageUrl} alt="" draggable={false} className="h-full w-full select-none object-contain" />;
+      const speaker = linkedSpeaker(element);
+      const spoken = speaker ? latestDialogueBySpeaker.get(speaker) : undefined;
+      const cueFromChat = spoken && element.stageAutoReact !== false &&
+        Date.parse(spoken.createdAt) >= (element.stageCue?.at ?? 0);
+      const cue: StageCue | undefined = cueFromChat
+        ? { id: `chat-${spoken.messageId}`, at: Date.parse(spoken.createdAt),
+            motion: stageMotion(element.stageMotion ?? 'pulse'), emote: stageEmote(element.stageEmote ?? 'none') }
+        : element.stageCue;
+      body = <StagePicture src={element.imageUrl} cue={cue} />;
     } else if (element.type === 'rect') {
       body = <div className="h-full w-full" style={{ background: element.fill, border: `${element.strokeWidth ?? 3}px solid ${element.stroke ?? '#444'}` }} />;
     } else if (element.type === 'ellipse') {
@@ -909,13 +982,13 @@ export default function SceneBoardPanel() {
       <div
         key={element.id}
         style={common}
-        className={`${active && isGm ? 'outline outline-2 outline-brand' : ''} ${speakingKey && element.type === 'image' && linkedSpeaker(element) === speakingKey ? 'ring-4 ring-info/70' : ''} ${element.locked ? 'cursor-default' : isGm ? 'cursor-move' : ''}`}
+        className={`${active && editable ? 'outline outline-2 outline-brand' : ''} ${speakingKey && element.type === 'image' && linkedSpeaker(element) === speakingKey ? 'ring-4 ring-info/70' : ''} ${element.locked ? 'cursor-default' : editable ? 'cursor-move' : ''}`}
         onPointerDown={(event) => onElementPointerDown(event, element, 'move')}
         onPointerMove={onElementPointerMove}
         onPointerUp={onElementPointerUp}
         onClick={(event) => {
           event.stopPropagation();
-          if (!isGm) return;
+          if (!editable) return;
           if (!event.shiftKey) {
             setSelectedId(element.id);
             setSelectedIds([element.id]);
@@ -935,7 +1008,7 @@ export default function SceneBoardPanel() {
         }}
       >
         {body}
-        {active && isGm && !element.locked && (
+        {active && editable && !element.locked && (
           <button
             type="button"
             aria-label="Resize selected scene element"
@@ -1022,6 +1095,15 @@ export default function SceneBoardPanel() {
             </>
           )}
 
+          <label className="flex shrink-0 items-center gap-1 text-xs">
+            Dialogue
+            <select className="input-cozy py-1 text-xs" aria-label="Stage dialogue style"
+              value={dialogueStyle} onChange={(event) => setDialogueStyle(event.target.value as 'bubbles' | 'vn' | 'jrpg')}>
+              <option value="bubbles">Speech bubbles</option>
+              <option value="vn">Visual novel</option>
+              <option value="jrpg">16/32-bit JRPG</option>
+            </select>
+          </label>
           <Button size="sm" variant="secondary" icon={MessageSquareText}
             onClick={() => setCanvasBubblesEnabled((value) => !value)}
             title="Show or hide quoted IC dialogue above linked Canvas images">
@@ -1090,6 +1172,11 @@ export default function SceneBoardPanel() {
               />
               Revealed
             </label>
+            <label className="flex items-center gap-1 text-xs text-ink-secondary" title="Players may drag and resize visible unlocked Stage objects. GM-only objects and scene settings remain protected.">
+              <input type="checkbox" checked={board.allowPlayerEditing === true}
+                onChange={(event) => commit({ ...board, allowPlayerEditing: event.target.checked })} />
+              Allow players to arrange Stage
+            </label>
 
             <select
               className="input-cozy py-1 text-xs"
@@ -1148,6 +1235,10 @@ export default function SceneBoardPanel() {
             <span className="mx-0.5 h-5 w-px shrink-0 bg-ink/10" />
             <Button size="sm" variant="secondary" icon={Undo2} disabled={history.length === 0} onClick={undo}>Undo</Button>
             <Button size="sm" variant="secondary" icon={Redo2} disabled={future.length === 0} onClick={redo}>Redo</Button>
+            <label className="flex shrink-0 items-center gap-1 text-xs text-ink-secondary">
+              <input type="checkbox" checked={snapToGrid} onChange={(event) => setSnapToGrid(event.target.checked)} />
+              Snap (20 px)
+            </label>
             <Button size="sm" variant="secondary" disabled={selectedIds.length === 0} onClick={duplicateSelected}>Duplicate</Button>
             <span className="mx-0.5 h-5 w-px shrink-0 bg-ink/10" />
             <Button size="sm" variant="secondary" onClick={() => applyZoom(zoom - 0.1)}>−</Button>
@@ -1158,11 +1249,18 @@ export default function SceneBoardPanel() {
           </div>
         )}
 
+        {!isGm && canEdit && (
+          <label className="mt-1 flex items-center gap-1.5 text-xs text-ink-secondary">
+            <input type="checkbox" checked={snapToGrid} onChange={(event) => setSnapToGrid(event.target.checked)} />
+            Snap to 20 px grid while arranging shared Stage
+          </label>
+        )}
+
         {isGm && selected && selectionOptionsOpen && (
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5 rounded bg-ink/5 p-1.5 text-xs">
             <span className="mr-1 font-medium capitalize text-ink">{selectedIds.length > 1 ? `${selectedIds.length} objects` : selected.type}</span>
             {selected.type === 'image' && selectedIds.length === 1 && <label className="flex items-center gap-1 text-xs font-semibold">
-              Speak As
+              Speaking as / Character is
               <select aria-label="Link image to Chat speaker" className="input-cozy max-w-[12rem] py-1 text-xs"
                 value={linkedSpeaker(selected)}
                 onChange={(event) => updateElement(selected.id, { smugSpeakerKey: event.target.value || undefined } as Partial<SceneBoardElement>)}>
@@ -1170,6 +1268,28 @@ export default function SceneBoardPanel() {
                 {linkedSpeakers.map((speaker) => <option key={speaker.key} value={speaker.key}>{speaker.name}</option>)}
               </select>
             </label>}
+            {selected.type === 'image' && selectedIds.length === 1 && <>
+              <label className="flex items-center gap-1">Motion
+                <select className="input-cozy py-1 text-xs" aria-label="Stage picture motion"
+                  value={stageMotion(selected.stageMotion ?? 'pulse')}
+                  onChange={(event) => updateElement(selected.id, { stageMotion: stageMotion(event.target.value) })}>
+                  {STAGE_MOTIONS.map(([value, name]) => <option key={value} value={value}>{name}</option>)}
+                </select>
+              </label>
+              <label className="flex items-center gap-1">Emote
+                <select className="input-cozy py-1 text-xs" aria-label="Stage picture emote"
+                  value={stageEmote(selected.stageEmote)}
+                  onChange={(event) => updateElement(selected.id, { stageEmote: stageEmote(event.target.value) })}>
+                  {STAGE_EMOTES.map(([value, name]) => <option key={value} value={value}>{name}</option>)}
+                </select>
+              </label>
+              <label className="flex items-center gap-1" title="Trigger this picture's selected motion/emote on linked quoted IC dialogue">
+                <input type="checkbox" checked={selected.stageAutoReact !== false}
+                  onChange={(event) => updateElement(selected.id, { stageAutoReact: event.target.checked })} />
+                React to Chat
+              </label>
+              <Button size="sm" variant="secondary" onClick={() => playCue(selected)}>Play cue</Button>
+            </>}
             <Button size="sm" variant="secondary" onClick={duplicateSelected}>Duplicate</Button>
             <Button size="sm" variant="secondary" icon={selected.locked ? Unlock : Lock} onClick={() => updateElement(selected.id, { locked: !selected.locked })}>
               {selected.locked ? 'Unlock' : 'Lock'}
@@ -1219,13 +1339,37 @@ export default function SceneBoardPanel() {
           </div>
 
           {selected.type === 'image' && <label className="block border-b border-ink/10 px-2 py-1.5 text-xs text-ink">
-            Link to Speak As character
+            Speaking as / Character is
             <select aria-label="Link Canvas image to speaker" className="input-cozy mt-1 w-full text-xs" value={linkedSpeaker(selected)}
               onChange={(event) => { updateElement(selected.id, { smugSpeakerKey: event.target.value || undefined } as Partial<SceneBoardElement>); setContextMenu(null); }}>
               <option value="">Unlinked image</option>
               {linkedSpeakers.map((speaker) => <option key={speaker.key} value={speaker.key}>{speaker.name}</option>)}
             </select>
           </label>}
+          {selected.type === 'image' && <>
+            <div className="border-b border-ink/10 px-2 py-1.5 text-xs">
+              <label className="block">Motion
+                <select className="input-cozy mt-1 w-full text-xs" aria-label="Right-click Stage motion"
+                  value={stageMotion(selected.stageMotion ?? 'pulse')}
+                  onChange={(event) => updateElement(selected.id, { stageMotion: stageMotion(event.target.value) })}>
+                  {STAGE_MOTIONS.map(([value, name]) => <option key={value} value={value}>{name}</option>)}
+                </select>
+              </label>
+              <label className="mt-1 block">Emote
+                <select className="input-cozy mt-1 w-full text-xs" aria-label="Right-click Stage emote"
+                  value={stageEmote(selected.stageEmote)}
+                  onChange={(event) => updateElement(selected.id, { stageEmote: stageEmote(event.target.value) })}>
+                  {STAGE_EMOTES.map(([value, name]) => <option key={value} value={value}>{name}</option>)}
+                </select>
+              </label>
+              <label className="mt-1 flex items-center gap-1">
+                <input type="checkbox" checked={selected.stageAutoReact !== false}
+                  onChange={(event) => updateElement(selected.id, { stageAutoReact: event.target.checked })} />
+                React to quoted IC Chat
+              </label>
+              <button className="mt-2 rounded border px-2 py-1" type="button" onClick={() => playCue(selected)}>Play silent cue</button>
+            </div>
+          </>}
           {selected.type === 'image' && (
             <button
               type="button"
@@ -1337,7 +1481,7 @@ export default function SceneBoardPanel() {
 
           {/* A single non-interactive dialogue layer, above all visual objects.
               Bubbles never intercept Canvas pointer/drag controls. */}
-          {canvasBubblesEnabled && <div className="pointer-events-none absolute inset-0 z-[1000]">
+          {canvasBubblesEnabled && dialogueStyle === 'bubbles' && <div className="pointer-events-none absolute inset-0 z-[1000]">
             {board.elements.filter((element) => element.type === 'image' && !element.hidden && latestDialogueBySpeaker.has(linkedSpeaker(element))).map((element) => {
               const spoken = latestDialogueBySpeaker.get(linkedSpeaker(element))!;
               const showBelow = element.y < 175;
@@ -1353,6 +1497,20 @@ export default function SceneBoardPanel() {
               </div>;
             })}
           </div>}
+
+          {canvasBubblesEnabled && dialogueStyle !== 'bubbles' && sceneDialogue.length > 0 && (() => {
+            const since = Date.parse(scene.startedAt ?? scene.createdAt) || 0;
+            const entry = [...sceneDialogue].reverse().find((line) => Date.parse(line.createdAt) >= since);
+            if (!entry) return null;
+            return <div key={entry.messageId} role="status"
+              aria-label={`${entry.speakerName} says: ${entry.quotes.join(' ')}`}
+              className={`pointer-events-none absolute bottom-5 left-8 right-8 z-[1000] px-6 py-4 text-white shadow-2xl ${dialogueStyle === 'jrpg'
+                ? 'border-[5px] border-white bg-[#14203b] font-mono text-[23px] leading-relaxed outline outline-[5px] outline-black'
+                : 'rounded-xl border-2 border-white/70 bg-ink/90 text-[22px] leading-snug backdrop-blur-md'}`}>
+              <div className={`mb-1 font-bold ${dialogueStyle === 'jrpg' ? 'text-[#f7d98b]' : 'text-warning-ink'}`}>{entry.speakerName}</div>
+              <div className="break-words">“{canvasDialogueLabel(entry)}”</div>
+            </div>;
+          })()}
 
           <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox={`0 0 ${BOARD_WIDTH} ${BOARD_HEIGHT}`}>
             {board.elements.filter((element) => element.type === 'stroke' && (!element.hidden || isGm)).map((element) => (
