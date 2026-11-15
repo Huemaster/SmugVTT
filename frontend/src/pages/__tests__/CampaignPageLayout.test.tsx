@@ -243,12 +243,15 @@ describe('the unified Stage interaction', () => {
     expect(within(nav).queryByRole('button', { name: 'Scene' })).toBeNull();
     expect(within(nav).queryByRole('button', { name: 'Canvas' })).toBeNull();
 
+    expect(document.body.dataset.smugWorkspace).toBe('scene');
     fireEvent.click(within(nav).getByRole('button', { name: 'Chat' }));
+    expect(document.body.dataset.smugWorkspace).toBe('chat');
     expect(screen.getByRole('button', { name: 'Open Stage' })).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Scene Stage' })).toBeNull();
     expect(within(nav).getByRole('button', { name: 'Chat' })).toHaveAttribute('aria-pressed', 'true');
 
     fireEvent.click(screen.getByRole('button', { name: 'Open Stage' }));
+    expect(document.body.dataset.smugWorkspace).toBe('scene');
     expect(within(nav).getByRole('button', { name: 'Stage' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.queryByRole('button', { name: 'Open Stage' })).toBeNull();
   });
