@@ -17,7 +17,7 @@ const state = vi.hoisted(() => {
     ] },
   };
   const api = {
-    getActiveSceneBoard: vi.fn(async () => ({ scene })),
+    getActiveSceneBoard: vi.fn(async () => ({ scene: JSON.parse(JSON.stringify(scene)) as CampaignSceneBoard })),
     listSceneBoards: vi.fn(async () => ({ scenes: [scene] })),
     listCampaignNpcs: vi.fn(async () => ({ npcs: [] })),
     getAssetUrl: vi.fn((id: string) => '/assets/' + id),
