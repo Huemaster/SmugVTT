@@ -166,6 +166,17 @@ function CampaignPageContent() {
   };
   const compact = useCompactLayout();
   const visibleWorkspace = compact && mainWorkspace === 'chat' ? 'scene' : mainWorkspace;
+  // Speaker-presence cards belong to Map/Chat, where they do not conflict with
+  // a tactical token or a full-screen Stage image. Stage already renders the
+  // canonical active speaker on the artwork itself.
+  useEffect(() => {
+    const old = document.body.dataset.smugWorkspace;
+    document.body.dataset.smugWorkspace = visibleWorkspace;
+    return () => {
+      if (old === undefined) delete document.body.dataset.smugWorkspace;
+      else document.body.dataset.smugWorkspace = old;
+    };
+  }, [visibleWorkspace]);
   // Journal/Media tabs use existing modal/library surfaces until native
   // document and asset grids can be audited; no feature is deleted.
   useEffect(() => {
