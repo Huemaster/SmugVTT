@@ -719,7 +719,7 @@ export default function SceneBoardPanel() {
   };
 
   const onElementPointerDown = (event: PointerEvent, element: SceneBoardElement, mode: 'move' | 'resize') => {
-    if (!canEdit || tool !== 'select' || element.locked || element.hidden) return;
+    if (!canEdit || tool !== 'select' || element.locked || element.hidden || (!isGm && element.type !== 'image')) return;
     event.stopPropagation();
 
     if (mode === 'move' && event.shiftKey) {
@@ -915,6 +915,7 @@ export default function SceneBoardPanel() {
   const renderElement = (element: SceneBoardElement) => {
     if (element.hidden && !isGm) return null;
     const active = selectedIds.includes(element.id);
+    const editable = canEdit && (isGm || element.type === 'image') && !element.hidden;
     const common = {
       position: 'absolute' as const,
       left: element.x,
@@ -981,13 +982,13 @@ export default function SceneBoardPanel() {
       <div
         key={element.id}
         style={common}
-        className={`${active && canEdit ? 'outline outline-2 outline-brand' : ''} ${speakingKey && element.type === 'image' && linkedSpeaker(element) === speakingKey ? 'ring-4 ring-info/70' : ''} ${element.locked ? 'cursor-default' : canEdit ? 'cursor-move' : ''}`}
+        className={`${active && editable ? 'outline outline-2 outline-brand' : ''} ${speakingKey && element.type === 'image' && linkedSpeaker(element) === speakingKey ? 'ring-4 ring-info/70' : ''} ${element.locked ? 'cursor-default' : editable ? 'cursor-move' : ''}`}
         onPointerDown={(event) => onElementPointerDown(event, element, 'move')}
         onPointerMove={onElementPointerMove}
         onPointerUp={onElementPointerUp}
         onClick={(event) => {
           event.stopPropagation();
-          if (!canEdit) return;
+          if (!editable) return;
           if (!event.shiftKey) {
             setSelectedId(element.id);
             setSelectedIds([element.id]);
@@ -1007,7 +1008,7 @@ export default function SceneBoardPanel() {
         }}
       >
         {body}
-        {active && canEdit && !element.locked && !element.hidden && (
+        {active && editable && !element.locked && (
           <button
             type="button"
             aria-label="Resize selected scene element"
