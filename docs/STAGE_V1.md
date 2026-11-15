@@ -45,6 +45,15 @@ This first slice extends existing scene-board JSON without a database migration.
 The existing record continues to hold both Canvas elements and any legacy
 `smugSceneStage` field; neither is deleted by this implementation.
 
+**Unified navigation (follow-up stacked PR):** The desktop workspaces use
+**Map / Chat / Stage** without a separate fourth Scene button. The full-size
+Stage is still the existing Canvas scene-board renderer. The legacy small
+Scene cast is retained as a read-only-ish Chat-side *Scene preview* so no
+stored cast is discarded. GMs may explicitly choose **Import existing Scene
+cast** in Stage Options: it copies linked images into large freeform picture
+elements without rewriting or removing the older `smugSceneStage` record.
+GMs should review positions and save the composition before presenting.
+
 **Known limitations:** Saved Stage edits are propagated using the existing
 scene polling, not a new real-time room-wide collaboration socket.
 Concurrent writes can require a reload after HTTP 409. Multi-object player
@@ -56,8 +65,9 @@ the browser's GIF support and the hosting server's image upload limits.
 
 ## Next slices, in order
 
-1. Consolidate the Canvas/Scene navigation into one **Stage** workspace;
-   migrate/offer import for existing staged cast art and preserve old scene records.
+1. Complete Stage usability testing on both desktop and compact layouts,
+   including legacy cast import with different compositions and independent
+   GM/player accounts; preserve the old stored data until migration is verified.
 2. Replace polling with reliable, permission-aware live board updates and
    conflict-safe object edits; test GM + player + spectator simultaneously.
 3. Add expression-set/pose swapping, controllable camera focus, timed
