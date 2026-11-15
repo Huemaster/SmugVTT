@@ -556,3 +556,9 @@
     background-color: color-mix(in srgb, var(--color-accent) 22%, transparent);
   }
 }
+
+/* Stage shows active speakers on the staged art. Chat presence chips would
+ * otherwise sit over large pictures, intercepting taps and context menus. */
+body[data-smug-workspace='scene'] [data-smug-speaker-presence] {
+  display: none;
+}
