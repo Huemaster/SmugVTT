@@ -110,10 +110,14 @@ export function StagePicture({ src, cue, motionEnabled = true, repeat = false, r
   const emote = stageEmote(cue?.emote);
   const Icon = emote === 'none' ? null : EMOTE_ICONS[emote];
   const frameRef = useRef<HTMLDivElement>(null);
+  // Depend on the cue identity, not the freshly constructed cue object:
+  // unrelated Stage rerenders must not restart a finite animation.
+  const cueId = cue?.id;
+  const hasCue = cue !== undefined;
 
   useEffect(() => {
     const element = frameRef.current;
-    if (!element || (!cue && !repeat) || !motionEnabled || motion === 'none') return;
+    if (!element || (!hasCue && !repeat) || !motionEnabled || motion === 'none') return;
     // Firefox and Chromium support this API. Do not fall back to a CSS
     // animation that may be silently overridden by prefers-reduced-motion.
     if (typeof element.animate !== 'function') return;
@@ -123,10 +127,10 @@ export function StagePicture({ src, cue, motionEnabled = true, repeat = false, r
       iterations: repeat ? Infinity : 3,
     });
     return () => animation.cancel();
-  }, [cue?.id, motion, motionEnabled, repeat]);
+  }, [cueId, hasCue, motion, motionEnabled, repeat]);
 
   return (
-    <div className="relative isolate h-full w-full" data-stage-cue={cue?.id ?? 'none'} data-stage-picture>
+    <div className="relative isolate h-full w-full" data-stage-cue={cueId ?? 'none'} data-stage-picture>
       <div ref={frameRef} data-stage-motion={(cue || repeat) && motionEnabled ? motion : 'none'} className="h-full w-full">
         {src ? <img src={src} alt="" draggable={false} className="h-full w-full select-none object-contain" /> : null}
       </div>
