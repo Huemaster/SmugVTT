@@ -42,7 +42,11 @@ test('Stage UX: three pillars, large GIF art, presentation modes and GM opt-in',
   await expect(page.getByText('No active Stage yet.')).toBeVisible();
   await page.getByPlaceholder('Scene title').fill('Stage Test Composition');
   await page.getByRole('button', { name: 'Create', exact: true }).click();
-  await expect(page.getByRole('combobox', { name: 'Active scene' })).toBeVisible();
+  // Creating a Stage prepares a private draft; selecting it never publishes it.
+  const stageSelector = page.getByRole('combobox', { name: 'Stage to edit (switching here does not go live)' });
+  await expect(stageSelector).toBeVisible();
+  await expect(stageSelector.locator('option:checked')).toHaveText('Stage Test Composition (Draft)');
+  await expect(page.getByRole('button', { name: 'Go Live' })).toBeVisible();
 
   const dialogue = page.getByRole('combobox', { name: 'Stage dialogue style' });
   await dialogue.selectOption('vn');
@@ -53,6 +57,12 @@ test('Stage UX: three pillars, large GIF art, presentation modes and GM opt-in',
   await toggle.click();
   await expect(page.getByRole('button', { name: 'Dialogue Off' })).toBeVisible();
   await page.getByRole('button', { name: 'Dialogue Off' }).click();
+
+  // Newly placed art defaults to GM-hidden. Unhide this fixture to exercise
+  // regular visible-image selection, sizing and speaker controls.
+  const placeHidden = page.getByRole('checkbox', { name: 'Place hidden' });
+  await expect(placeHidden).toBeChecked();
+  await placeHidden.uncheck();
 
   const upload = page.locator('input[type="file"][accept*="image/gif"]').first();
   // Construct the fixture as an actual browser File: no Node Buffer typings
