@@ -587,7 +587,7 @@ body[data-smug-workspace='scene'] [data-smug-speaker-presence] {
  * The speaker dock must sit ABOVE its 56px bar, not cover the Chat button.
  * Compact landscape uses header controls, so it keeps the normal dock. */
 /* Tailwind's max-lg variant owns the shared breakpoint, rather than
- * duplicating 64rem here and letting responsive layouts drift apart. */
+ * writing another fixed compact breakpoint in app CSS. */
 @media (min-height: 500px) {
   @variant max-lg {
     body[data-smug-workspace='scene'] [data-smug-speaker-presence] {
