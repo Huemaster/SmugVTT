@@ -102,7 +102,11 @@ test('Stage UX: three pillars, large GIF art, presentation modes and GM opt-in',
   await page.getByRole('button', { name: 'Stage Options' }).click();
   const permission = page.getByRole('checkbox', { name: 'Allow players to arrange pictures' });
   await expect(permission).not.toBeChecked();
-  await permission.check();
+  // Exercise the visible touch target (the containing label) on iPad/WebKit.
+  // Still assert that the actual controlled checkbox changed; no forced click
+  // or DOM-state injection is used.
+  await permission.locator('xpath=..').click({ position: { x: 48, y: 10 } });
+  await expect(permission).toBeChecked();
   await expect(page.getByText('Reveal this scene and set visibility to Shared before player arranging becomes available.')).toBeVisible();
 
   if (compact) {
