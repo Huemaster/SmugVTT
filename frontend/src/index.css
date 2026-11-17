@@ -586,10 +586,14 @@ body[data-smug-workspace='scene'] [data-smug-speaker-presence] {
 /* On compact portrait layouts the bottom navigation is a real tap target.
  * The speaker dock must sit ABOVE its 56px bar, not cover the Chat button.
  * Compact landscape uses header controls, so it keeps the normal dock. */
-@media (width < 64rem) and (min-height: 500px) {
-  body[data-smug-workspace='scene'] [data-smug-speaker-presence] {
-    bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
-    max-height: min(14rem, calc(100dvh - 8rem));
+/* Tailwind's max-lg variant owns the shared breakpoint, rather than
+ * duplicating 64rem here and letting responsive layouts drift apart. */
+@media (min-height: 500px) {
+  @variant max-lg {
+    body[data-smug-workspace='scene'] [data-smug-speaker-presence] {
+      bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+      max-height: min(14rem, calc(100dvh - 8rem));
+    }
   }
 }
 
