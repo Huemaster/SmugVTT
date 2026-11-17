@@ -46,7 +46,7 @@ describe('Stage visual novel / JRPG picture cues', () => {
       unmount();
     } finally {
       if (oldDescriptor) Object.defineProperty(HTMLElement.prototype, 'animate', oldDescriptor);
-      else delete (HTMLElement.prototype as HTMLElement & { animate?: unknown }).animate;
+      else Reflect.deleteProperty(HTMLElement.prototype, 'animate');
     }
   });
 
