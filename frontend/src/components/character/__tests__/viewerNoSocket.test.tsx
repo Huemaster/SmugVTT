@@ -8,6 +8,10 @@ import { render, screen } from '@testing-library/react';
 import type { Character } from '@/types';
 import CharacterSheetViewerModal from '../CharacterSheetViewerModal';
 
+// Viewer tests isolate the independently tested picture upload control.
+// CharacterPictureControl.test.tsx exercises upload, versioning and errors.
+vi.mock('../CharacterPictureControl', () => ({ default: () => null }));
+
 vi.mock('@/contexts/ToastContext', () => ({ useToast: () => ({ showToast: () => undefined }) }));
 vi.mock('@/contexts/AuthContext', () => ({
   useAuth: () => ({ user: { id: 'owner', platformRole: 'USER' } }),
