@@ -1,15 +1,23 @@
-/* Sprite-safe, silent visual cues. Each lasts about three seconds, then stops.
- * Unlike emoji, emote glyphs are consistent SVG strokes styled by the VTT.
- * Player reduced-motion settings disable movement without hiding the art. */
-.smug-stage-motion { animation-duration: .95s; animation-iteration-count: 3; animation-timing-function: ease-in-out; transform-origin: center bottom; }
-.smug-stage-motion-float { animation-name: smug-stage-float; }
+/* Personal Canvas motion visibility and repaint-safety pass.
+ * Cue animations play only three times; GIF source playback remains independent.
+ * Each picture uses an isolated paint/compositing layer so Firefox does not
+ * leave moving-frame artifacts over adjacent picture elements. */
+.smug-stage-motion {
+  animation-duration: 1.05s;
+  animation-iteration-count: 3;
+  animation-timing-function: ease-in-out;
+  transform-origin: center bottom;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+}
+.smug-stage-motion-float { animation-name: smug-stage-float; animation-duration: 1.2s; }
 .smug-stage-motion-bob { animation-name: smug-stage-bob; }
-.smug-stage-motion-shake { animation-name: smug-stage-shake; animation-duration: .55s; }
+.smug-stage-motion-shake { animation-name: smug-stage-shake; animation-duration: .65s; }
 .smug-stage-motion-hop { animation-name: smug-stage-hop; }
 .smug-stage-motion-pulse { animation-name: smug-stage-pulse; }
 .smug-stage-motion-fade { animation-name: smug-stage-fade; }
 .smug-stage-motion-slide { animation-name: smug-stage-slide; }
-.smug-stage-motion-jolt { animation-name: smug-stage-jolt; animation-duration: .55s; }
+.smug-stage-motion-jolt { animation-name: smug-stage-jolt; animation-duration: .65s; }
 .smug-stage-emote { position: absolute; right: 1%; top: -8%; z-index: 4; display: flex; align-items: center; justify-content: center; width: 64px; height: 64px; border: 3px solid currentColor; border-radius: 16px; background: #fff9edec; color: #334050; box-shadow: 3px 4px 0 #11182766; animation: smug-stage-emote-in 1.1s ease-in-out 3 forwards; pointer-events: none; }
 .smug-stage-emote-anger, .smug-stage-emote-exclamation { color: #b63634; }
 .smug-stage-emote-stress, .smug-stage-emote-alert { color: #b87b1c; }
@@ -17,15 +25,15 @@
 .smug-stage-emote-gloom { color: #526076; }
 .smug-stage-emote-sparkle { color: #bb8a20; }
 .smug-stage-emote-heart { color: #b74b7d; }
-@keyframes smug-stage-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
-@keyframes smug-stage-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
-@keyframes smug-stage-shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-8px); } 40% { transform: translateX(8px); } 60% { transform: translateX(-6px); } 80% { transform: translateX(6px); } }
-@keyframes smug-stage-hop { 0%,100% { transform: translateY(0); } 40% { transform: translateY(-24px); } 65% { transform: translateY(2px); } }
-@keyframes smug-stage-pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+@keyframes smug-stage-float { 0%,100% { transform: translate3d(0,0,0); } 50% { transform: translate3d(0,-22px,0); } }
+@keyframes smug-stage-bob { 0%,100% { transform: translate3d(0,0,0); } 50% { transform: translate3d(0,-13px,0); } }
+@keyframes smug-stage-shake { 0%,100% { transform: translate3d(0,0,0); } 20% { transform: translate3d(-17px,0,0); } 40% { transform: translate3d(17px,0,0); } 60% { transform: translate3d(-12px,0,0); } 80% { transform: translate3d(12px,0,0); } }
+@keyframes smug-stage-hop { 0%,100% { transform: translate3d(0,0,0); } 40% { transform: translate3d(0,-55px,0); } 65% { transform: translate3d(0,6px,0); } }
+@keyframes smug-stage-pulse { 0%,100% { transform: scale3d(1,1,1); } 50% { transform: scale3d(1.12,1.12,1); } }
 @keyframes smug-stage-fade { 0% { opacity: .18; } 100% { opacity: 1; } }
-@keyframes smug-stage-slide { 0% { transform: translateX(-30px); opacity: .4; } 100% { transform: translateX(0); opacity: 1; } }
-@keyframes smug-stage-jolt { 0%,100% { transform: rotate(0); } 24% { transform: rotate(-3deg); } 48% { transform: rotate(3deg); } 74% { transform: rotate(-1deg); } }
+@keyframes smug-stage-slide { 0% { transform: translate3d(-70px,0,0); opacity: .4; } 100% { transform: translate3d(0,0,0); opacity: 1; } }
+@keyframes smug-stage-jolt { 0%,100% { transform: rotate(0); } 24% { transform: rotate(-5deg); } 48% { transform: rotate(5deg); } 74% { transform: rotate(-2deg); } }
 @keyframes smug-stage-emote-in { 0% { transform: translateY(4px) scale(.8); opacity: 0; } 18%,76% { opacity: 1; } 45% { transform: translateY(-7px) scale(1.1); } 100% { transform: translateY(0) scale(1); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
- .smug-stage-motion, .smug-stage-emote { animation: none !important; }
+ .smug-stage-motion, .smug-stage-emote { animation: none !important; will-change: auto; }
 }

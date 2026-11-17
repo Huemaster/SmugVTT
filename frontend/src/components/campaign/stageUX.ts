@@ -19,7 +19,7 @@ export function mayDragStageElement(
   element: Pick<SceneBoardElement, 'type' | 'locked' | 'hidden'>,
 ): boolean {
   return mouseButton === 0 && canEdit && tool === 'select'
-    && !element.locked && !element.hidden && (isGm || element.type === 'image');
+    && !element.locked && (!element.hidden || isGm) && (isGm || element.type === 'image');
 }
 
 /** A large picture begins near the center, not hidden under a docked sidebar. */

@@ -27,16 +27,16 @@ test('Stage UX: three pillars, large GIF art, presentation modes and GM opt-in',
 
   const compact = await page.evaluate((query) => window.matchMedia(query).matches, COMPACT_LAYOUT_QUERY);
   if (compact) {
-    await page.getByRole('button', { name: 'Stage', exact: true }).click();
+    await page.getByRole('button', { name: 'Canvas', exact: true }).click();
   } else {
     const nav = page.getByRole('navigation', { name: 'SmugVTT workspaces' });
     await expect(nav.getByRole('button')).toHaveCount(3);
-    await expect(nav.getByRole('button', { name: 'Canvas' })).toHaveCount(0);
+    await expect(nav.getByRole('button', { name: 'Canvas' })).toHaveCount(1);
     await expect(nav.getByRole('button', { name: 'Scene' })).toHaveCount(0);
     await nav.getByRole('button', { name: 'Chat' }).click();
-    await expect(page.getByRole('button', { name: 'Open Stage' })).toBeVisible();
-    await page.getByRole('button', { name: 'Open Stage' }).click();
-    await expect(nav.getByRole('button', { name: 'Stage' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByRole('button', { name: 'Open Canvas' })).toBeVisible();
+    await page.getByRole('button', { name: 'Open Canvas' }).click();
+    await expect(nav.getByRole('button', { name: 'Canvas' })).toHaveAttribute('aria-pressed', 'true');
   }
 
   await expect(page.getByText('No active Stage yet.')).toBeVisible();

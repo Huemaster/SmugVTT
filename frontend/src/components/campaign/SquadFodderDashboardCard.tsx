@@ -258,7 +258,7 @@ export default function SquadFodderDashboardCard() {
         </div>
       ) : (
         <div className="grid gap-4 xl:grid-cols-2">
-          {filtered.map((template) => {
+          {[...filtered].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })).map((template) => {
             const data = twData(template);
             const stats = data.stats;
             const fodder = data.fodder;

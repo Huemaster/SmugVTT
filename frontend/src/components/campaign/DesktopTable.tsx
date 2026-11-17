@@ -299,16 +299,16 @@ export default function DesktopTable({
   const pillars = [
     { key: 'map', name: 'Map' },
     { key: 'chat', name: 'Chat' },
-    { key: 'scene', name: 'Stage' },
+    { key: 'scene', name: 'Canvas' },
   ] as const;
   const partyPane = <aside ref={partySlot.ref} className="h-full min-w-0 overflow-y-auto p-3" />;
   // The old small-portrait Scene editor is NOT another table surface. Leave its
   // archived data in place for Stage's explicit import, but offer just one
   // active visual workspace to users.
-  const stageShortcut = <aside aria-label="Stage shortcut" className="flex h-full flex-col gap-3 overflow-y-auto p-4">
-    <h2 className="text-base font-semibold text-ink">Stage</h2>
+  const stageShortcut = <aside aria-label="Canvas shortcut" className="flex h-full flex-col gap-3 overflow-y-auto p-4">
+    <h2 className="text-base font-semibold text-ink">Canvas</h2>
     <p className="text-sm text-ink-secondary">Arrange large images, portraits and GIFs, then present quoted Chat dialogue as speech bubbles or VN/JRPG text boxes.</p>
-    <Button variant="primary" onClick={() => onWorkspaceChange('scene')}>Open Stage</Button>
+    <Button variant="primary" onClick={() => onWorkspaceChange('scene')}>Open Canvas</Button>
     <p className="text-xs text-ink-muted">For an older Scene, use Stage Options → Import existing Scene cast. The original is preserved.</p>
   </aside>;
   const partyVisible = workspace === 'chat' ? !rightCollapsed : !leftCollapsed;

@@ -9,6 +9,9 @@ export interface CanvasArtMetrics {
   /** Horizontal visible-ink bounds, as fractions of the intrinsic image width. */
   visibleLeft: number;
   visibleRight: number;
+  /** Normalized visible-ink Y bounds for transparent PNG hitboxes. */
+  visibleTop?: number;
+  visibleBottom?: number;
 }
 
 export function canvasArtSpeechX(
@@ -42,7 +45,7 @@ export async function measureCanvasArt(url: string): Promise<CanvasArtMetrics | 
       const naturalWidth = img.naturalWidth;
       const naturalHeight = img.naturalHeight;
       if (!naturalWidth || !naturalHeight) { resolve(null); return; }
-      const fallback: CanvasArtMetrics = { naturalWidth, naturalHeight, visibleLeft: 0, visibleRight: 1 };
+      const fallback: CanvasArtMetrics = { naturalWidth, naturalHeight, visibleLeft: 0, visibleRight: 1, visibleTop: 0, visibleBottom: 1 };
       try {
         const ratio = Math.min(1, 384 / Math.max(naturalWidth, naturalHeight));
         const sampleWidth = Math.max(1, Math.round(naturalWidth * ratio));
@@ -56,15 +59,19 @@ export async function measureCanvasArt(url: string): Promise<CanvasArtMetrics | 
         const rgba = ctx.getImageData(0, 0, sampleWidth, sampleHeight).data;
         let minX = sampleWidth;
         let maxX = -1;
+        let minY = sampleHeight;
+        let maxY = -1;
         for (let py = 0; py < sampleHeight; py++) {
           for (let px = 0; px < sampleWidth; px++) {
             if (rgba[(py * sampleWidth + px) * 4 + 3] <= 28) continue;
             minX = Math.min(minX, px);
             maxX = Math.max(maxX, px);
+            minY = Math.min(minY, py);
+            maxY = Math.max(maxY, py);
           }
         }
         if (maxX < minX) { resolve(fallback); return; }
-        resolve({ naturalWidth, naturalHeight, visibleLeft: minX / sampleWidth, visibleRight: (maxX + 1) / sampleWidth });
+        resolve({ naturalWidth, naturalHeight, visibleLeft: minX / sampleWidth, visibleRight: (maxX + 1) / sampleWidth, visibleTop: minY / sampleHeight, visibleBottom: (maxY + 1) / sampleHeight });
       } catch { resolve(fallback); }
     };
     img.onerror = () => resolve(null);

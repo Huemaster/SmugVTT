@@ -557,8 +557,39 @@
   }
 }
 
-/* Stage shows active speakers on the staged art. Chat presence chips would
- * otherwise sit over large pictures, intercepting taps and context menus. */
+/* SmugVTT private Stage presence dock v3: bottom-left, horizontal portrait row */
+/* Reuse Chat Speak As portrait cards: viewport-fixed and clear of Stage top tools.
+ * More players scroll horizontally; a collapsed card reduces the dock height.
+ * SceneBoardPanel observes this element to clear dialogue by the real height. */
 body[data-smug-workspace='scene'] [data-smug-speaker-presence] {
-  display: none;
+  display: flex;
+  position: fixed;
+  top: auto;
+  bottom: 0.75rem;
+  left: 0.75rem;
+  right: auto;
+  transform: none;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  width: max-content;
+  max-width: min(70vw, 56rem);
+  max-height: min(14rem, calc(100dvh - 4rem));
+  overflow-x: auto;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  pointer-events: auto;
+}
+
+/* Private Canvas: a one-shot, silent reveal with a reduced-motion fallback. */
+@keyframes smugvtt-canvas-reveal {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  @keyframes smugvtt-canvas-reveal {
+    from, to { opacity: 0; }
+  }
 }

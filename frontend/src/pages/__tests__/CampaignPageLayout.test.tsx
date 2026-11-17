@@ -236,24 +236,24 @@ afterEach(async () => {
 });
 
 describe('the unified Stage interaction', () => {
-  it('presents exactly Map, Chat and Stage and switches from Chat into the one Stage workspace', async () => {
+  it('presents exactly Map, Chat and Canvas and switches from Chat into the one Canvas workspace', async () => {
     await openPage();
     const nav = screen.getByRole('navigation', { name: 'SmugVTT workspaces' });
-    expect(within(nav).getAllByRole('button').map((button) => button.textContent)).toEqual(['Map', 'Chat', 'Stage']);
+    expect(within(nav).getAllByRole('button').map((button) => button.textContent)).toEqual(['Map', 'Chat', 'Canvas']);
     expect(within(nav).queryByRole('button', { name: 'Scene' })).toBeNull();
-    expect(within(nav).queryByRole('button', { name: 'Canvas' })).toBeNull();
+    expect(within(nav).queryByRole('button', { name: 'Stage' })).toBeNull();
 
     expect(document.body.dataset.smugWorkspace).toBe('scene');
     fireEvent.click(within(nav).getByRole('button', { name: 'Chat' }));
     expect(document.body.dataset.smugWorkspace).toBe('chat');
-    expect(screen.getByRole('button', { name: 'Open Stage' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open Canvas' })).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Scene Stage' })).toBeNull();
     expect(within(nav).getByRole('button', { name: 'Chat' })).toHaveAttribute('aria-pressed', 'true');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open Stage' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open Canvas' }));
     expect(document.body.dataset.smugWorkspace).toBe('scene');
-    expect(within(nav).getByRole('button', { name: 'Stage' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.queryByRole('button', { name: 'Open Stage' })).toBeNull();
+    expect(within(nav).getByRole('button', { name: 'Canvas' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByRole('button', { name: 'Open Canvas' })).toBeNull();
   });
 });
 

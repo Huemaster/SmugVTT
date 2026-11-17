@@ -557,7 +557,7 @@ export default function SquadFodderSpawnOverlay() {
             )}
 
             <div className="grid gap-1">
-              {filtered.map((template) => {
+              {[...filtered].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })).map((template) => {
                 const data = twData(template);
                 const stats = data.stats;
                 const active = placement?.template.id === template.id;

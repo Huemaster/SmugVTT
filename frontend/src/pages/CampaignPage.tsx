@@ -313,7 +313,7 @@ function CampaignPageContent() {
                 : 'text-ink-secondary hover:bg-ink/5 hover:text-ink'
             }`}
           >
-            Stage
+            Canvas
           </button>
           <button
             type="button"

@@ -21,16 +21,22 @@ import {
   Type,
   Undo2,
   Unlock,
+  UsersRound,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { PointerEvent, ReactNode } from 'react';
 import { canvasArtSpeechX, measureCanvasArt, type CanvasArtMetrics } from './canvasSpeechAnchor';
+import { canvasImageVisualRect, resizeCanvasImage } from './canvasImageGeometry';
 import { importLegacyStageCast } from './stageLegacyCast';
 import { defaultStageImagePosition, mayDragStageElement, stageContentChanged } from './stageUX';
 import { StagePicture, STAGE_MOTIONS, STAGE_EMOTES, stageMotion, stageEmote } from './StageEffects';
+import JrpgPortrait from './JrpgPortrait';
 import { api } from '@/services/api';
+import { listEveryAsset } from '@/services/assetPages';
+import { AssetScope, type Asset } from '@/types';
 import { useCampaign } from '@/contexts/CampaignContext';
 import { useToast } from '@/contexts/ToastContext';
+import { useOnlineUserIds } from '@/stores/gameStore';
 import Button from '@/components/ui/Button';
 import { apiErrorMessage } from '@/utils/errors';
 import { getSceneHistory, subscribeSceneHistory, subscribeLiveSceneDialogue, type SceneUtterance } from './sceneDialogue';
@@ -78,6 +84,7 @@ function normaliseBoard(raw: unknown): SceneBoardState {
     elements: Array.isArray(value.elements) ? value.elements as SceneBoardElement[] : [],
     presentation: value.presentation === true,
     allowPlayerEditing: value.allowPlayerEditing === true,
+    revealTransition: value.revealTransition === 'fade' ? 'fade' : 'cut',
     ...(view ? { view } : {}),
     ...(stage !== undefined ? { smugSceneStage: stage } : {}),
   } as SceneBoardState;
@@ -99,6 +106,8 @@ function pointsToPath(points: SceneBoardPoint[]): string {
 export default function SceneBoardPanel() {
   const { campaign, userRole } = useCampaign();
   const { showToast } = useToast();
+  const onlineCanvasIds = useOnlineUserIds();
+  const connectedCanvasCount = (campaign?.memberships ?? []).filter((member) => onlineCanvasIds.has(member.userId)).length;
   const campaignId = campaign?.id ?? '';
   const isGm = userRole === 'DM';
 
@@ -126,6 +135,20 @@ export default function SceneBoardPanel() {
   }, [snapToGrid, dialogueStyle]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  // Spotlight is a per-viewer presentation preference, never a board edit.
+  const [spotlightEnabled, setSpotlightEnabled] = useState(() => {
+    try { return window.localStorage.getItem('smugvtt:canvas-spotlight') === 'true'; } catch { return false; }
+  });
+  useEffect(() => {
+    try { window.localStorage.setItem('smugvtt:canvas-spotlight', String(spotlightEnabled)); } catch { /* optional */ }
+  }, [spotlightEnabled]);
+  const [revealSequence, setRevealSequence] = useState(0);
+  const [showRevealFade, setShowRevealFade] = useState(false);
+  useEffect(() => {
+    if (!showRevealFade) return;
+    const timer = window.setTimeout(() => setShowRevealFade(false), 760);
+    return () => window.clearTimeout(timer);
+  }, [revealSequence, showRevealFade]);
   const [tool, setTool] = useState<Tool>('select');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -135,12 +158,35 @@ export default function SceneBoardPanel() {
   const [future, setFuture] = useState<SceneBoardState[]>([]);
   const [dirty, setDirty] = useState(false);
   const [drawing, setDrawing] = useState<SceneBoardPoint[] | null>(null);
+  const [marquee, setMarquee] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  const marqueeRef = useRef<{ pointerId: number; start: SceneBoardPoint; end: SceneBoardPoint; moved: boolean } | null>(null);
+  const suppressCanvasClickRef = useRef(false);
   const [newSceneName, setNewSceneName] = useState('');
   const [creatingScene, setCreatingScene] = useState(false);
   const [sceneOptionsOpen, setSceneOptionsOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [libraryBusy, setLibraryBusy] = useState(false);
+  const [existingImagePickerOpen, setExistingImagePickerOpen] = useState(false);
+  const [existingImageSearch, setExistingImageSearch] = useState('');
+  const [existingImageAssets, setExistingImageAssets] = useState<Asset[]>([]);
+  const [existingImagesLoading, setExistingImagesLoading] = useState(false);
+  const [existingImagesError, setExistingImagesError] = useState('');
+  const [placeNewImagesHidden, setPlaceNewImagesHidden] = useState(true);
   const [npcSpeakerOptions, setNpcSpeakerOptions] = useState<Array<{ key: string; name: string }>>([]);
+  useEffect(() => {
+    if (!existingImagePickerOpen || !isGm || !campaignId) return;
+    let active = true;
+    setExistingImagesLoading(true);
+    setExistingImagesError('');
+    void listEveryAsset({ type: 'MAP' }).then((assets) => {
+      if (!active) return;
+      // Never offer another campaign's files or a user's private-only art.
+      setExistingImageAssets(assets.filter((asset) => asset.scope === AssetScope.GLOBAL ||
+        (asset.scope === AssetScope.CAMPAIGN && asset.campaignId === campaignId)));
+    }).catch(() => { if (active) setExistingImagesError('Could not load previously uploaded campaign pictures.'); })
+      .finally(() => { if (active) setExistingImagesLoading(false); });
+    return () => { active = false; };
+  }, [existingImagePickerOpen, isGm, campaignId]);
   // The Canvas hit rectangle is not the visible painted portrait. Cache each
   // image's actual horizontal ink span so bubbles follow asymmetric artwork.
   const [canvasArtMetrics, setCanvasArtMetrics] = useState<Record<string, CanvasArtMetrics>>({});
@@ -159,6 +205,20 @@ export default function SceneBoardPanel() {
   const [canvasBubblesEnabled, setCanvasBubblesEnabled] = useState(() => {
     try { return window.localStorage.getItem('smugvtt:canvas-bubbles') !== 'false'; } catch { return true; }
   });
+  // Viewer preference: honour OS reduced-motion unless explicitly overridden.
+  // This is local to the browser, never saved to a campaign or sent to players.
+  const [pictureMotionEnabled, setPictureMotionEnabled] = useState(() => {
+    try {
+      const stored = window.localStorage.getItem('smugvtt:canvas-picture-motion');
+      if (stored === 'true') return true;
+      if (stored === 'false') return false;
+      return !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    } catch { return true; }
+  });
+  useEffect(() => {
+    try { window.localStorage.setItem('smugvtt:canvas-picture-motion', String(pictureMotionEnabled)); }
+    catch { /* browser privacy settings can prevent local storage */ }
+  }, [pictureMotionEnabled]);
   const [speakingKey, setSpeakingKey] = useState('');
   const subscribeToDialogue = useCallback((notify: () => void) => subscribeSceneHistory(campaignId, notify), [campaignId]);
   const dialogueSnapshot = useCallback(() => getSceneHistory(campaignId), [campaignId]);
@@ -182,6 +242,46 @@ export default function SceneBoardPanel() {
   const [sceneList, setSceneList] = useState<CampaignSceneBoard[]>([]);
   const viewportRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
+  // SmugVTT private Stage speaker-dock-aware JRPG dialogue v3
+  // Existing Chat presence portraits are portaled into document.body. Only their
+  // actual on-screen height is used; no duplicate cards or presence subscriptions.
+  const [speakerDockHeightPx, setSpeakerDockHeightPx] = useState(0);
+  useEffect(() => {
+    let dock: HTMLElement | null = null;
+    const measure = () => {
+      const next = dock && window.getComputedStyle(dock).display !== 'none'
+        ? Math.ceil(dock.getBoundingClientRect().height)
+        : 0;
+      setSpeakerDockHeightPx((previous) => previous === next ? previous : next);
+    };
+    const resizeObserver = new ResizeObserver(measure);
+    const attach = () => {
+      const found = document.querySelector<HTMLElement>('[data-smug-speaker-presence]');
+      if (found !== dock) {
+        resizeObserver.disconnect();
+        dock = found;
+        if (dock) resizeObserver.observe(dock);
+      }
+      measure();
+    };
+    // Chat's portal may mount after Canvas. Observe additions only until found.
+    const mountObserver = new MutationObserver(() => {
+      if (!dock || !document.body.contains(dock)) attach();
+    });
+    mountObserver.observe(document.body, { childList: true, subtree: true });
+    window.addEventListener('resize', attach);
+    attach();
+    return () => {
+      mountObserver.disconnect();
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', attach);
+    };
+  }, []);
+  // The Canvas itself is scaled: convert viewport pixels to Canvas coordinates.
+  // Expanding/collapsing any player's portrait automatically adjusts the offset.
+  const jrpgDockClearance = speakerDockHeightPx > 0
+    ? Math.ceil((speakerDockHeightPx + 16) / Math.max(0.25, zoom))
+    : 0;
   const imageInputRef = useRef<HTMLInputElement>(null);
   const replaceImageInputRef = useRef<HTMLInputElement>(null);
   const dragRef = useRef<{
@@ -215,7 +315,9 @@ export default function SceneBoardPanel() {
     const timer = window.setTimeout(() => setSpeakingKey(''), 4500);
     return () => window.clearTimeout(timer);
   }, [speakingKey]);
-
+  const spotlightActive = spotlightEnabled && Boolean(speakingKey) && board.elements.some(
+    (element) => element.type === 'image' && !element.hidden && linkedSpeaker(element) === speakingKey,
+  );
 
   const selected = useMemo(
     () => board.elements.find((element) => element.id === selectedId) ?? null,
@@ -258,15 +360,17 @@ export default function SceneBoardPanel() {
         api.getActiveSceneBoard(campaignId),
         isGm ? api.listSceneBoards(campaignId) : Promise.resolve({ scenes: [] as CampaignSceneBoard[] }),
       ]);
-      setScene(active.scene);
-      setBoard(active.scene ? normaliseBoard(active.scene.boardState) : { ...DEFAULT_BOARD, elements: [] });
+      // The GM may open an inactive private draft without publishing it.
+      const selectedScene = active.scene ?? (isGm ? list.scenes[0] ?? null : null);
+      setScene(selectedScene);
+      setBoard(selectedScene ? normaliseBoard(selectedScene.boardState) : { ...DEFAULT_BOARD, elements: [] });
       if (isGm) setSceneList(list.scenes);
       setDirty(false);
       setHistory([]);
       setFuture([]);
       setSelectedId(null);
       setSelectedIds([]);
-      const loadedBoard = active.scene ? normaliseBoard(active.scene.boardState) : null;
+      const loadedBoard = selectedScene ? normaliseBoard(selectedScene.boardState) : null;
       if (loadedBoard?.view?.zoom) setZoom(Math.max(0.25, Math.min(2, loadedBoard.view.zoom)));
     } catch (error) {
       showToast(apiErrorMessage(error) || 'Could not load Scene Board', 'error');
@@ -296,6 +400,12 @@ export default function SceneBoardPanel() {
       const next = incoming ? normaliseBoard(incoming.boardState) : { ...DEFAULT_BOARD, elements: [] };
       boardRef.current = next;
       setBoard(next);
+      // The viewer fades in a newly published scene; Cut is immediate.
+      if (incoming && previous?.id !== incoming.id && next.revealTransition === 'fade' &&
+          !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        setRevealSequence((value) => value + 1);
+        setShowRevealFade(true);
+      }
       if (previous?.id !== incoming?.id) {
         setSelectedId(null);
         setSelectedIds([]);
@@ -458,10 +568,15 @@ export default function SceneBoardPanel() {
       // Do not write a stale Stage snapshot back over changes made from Chat/Map.
       // The update is still not atomic: the server should eventually support
       // field-level optimistic transactions for concurrent Canvas/Stage edits.
-      const fresh = await api.getActiveSceneBoard(campaignId);
-      if (!fresh.scene || fresh.scene.id !== scene.id) throw new Error('Active scene changed.');
-      const latest = fresh.scene.boardState && typeof fresh.scene.boardState === 'object' && !Array.isArray(fresh.scene.boardState)
-        ? fresh.scene.boardState as unknown as Record<string, unknown> : {};
+      const freshScene = scene.active
+        ? (await api.getActiveSceneBoard(campaignId)).scene
+        : (await api.listSceneBoards(campaignId)).scenes.find((entry) => entry.id === scene.id);
+      if (!freshScene || freshScene.id !== scene.id) throw new Error('Scene changed or draft was removed.');
+      if (freshScene.boardVersion !== scene.boardVersion) {
+        throw new Error('Canvas was modified elsewhere. Reload the draft before saving to avoid overwriting it.');
+      }
+      const latest = freshScene.boardState && typeof freshScene.boardState === 'object' && !Array.isArray(freshScene.boardState)
+        ? freshScene.boardState as unknown as Record<string, unknown> : {};
       const nextBoard = {
         ...board,
         ...(latest.smugSceneStage !== undefined ? { smugSceneStage: latest.smugSceneStage } : {}),
@@ -479,6 +594,7 @@ export default function SceneBoardPanel() {
       }
       setScene(result.scene);
       setBoard(normaliseBoard(result.scene.boardState));
+      setSceneList((current) => current.map((item) => item.id === result.scene.id ? result.scene : item));
       setDirty(false);
       if (showNotice) showToast('Scene board saved', 'success');
       return true;
@@ -502,15 +618,16 @@ export default function SceneBoardPanel() {
     if (!title || !campaignId) return;
     setCreatingScene(true);
     try {
+      // Private by default. Creating a draft never interrupts the players' active scene.
       const result = await api.createSceneBoard(campaignId, {
         title,
-        active: true,
+        active: false,
         revealed: false,
         boardVisibility: 'gm',
       });
       setScene(result.scene);
       setBoard(normaliseBoard(result.scene.boardState));
-      setSceneList((current) => [result.scene, ...current.map((row) => ({ ...row, active: false }))]);
+      setSceneList((current) => [result.scene, ...current]);
       setNewSceneName('');
       setHistory([]);
       setFuture([]);
@@ -533,20 +650,52 @@ export default function SceneBoardPanel() {
       if (!didSave) { showToast('Save failed. Stage switch cancelled.', 'error'); return; }
     }
     try {
-      const result = await api.updateSceneBoard(campaignId, sceneId, { active: true });
-      setScene(result.scene);
-      setBoard(normaliseBoard(result.scene.boardState));
-      setSceneList((current) => current.map((row) => ({ ...row, active: row.id === result.scene.id })));
+      // Opening a scene in Canvas is a local GM preview, not a broadcast.
+      const listing = await api.listSceneBoards(campaignId);
+      const selectedScene = listing.scenes.find((entry) => entry.id === sceneId);
+      if (!selectedScene) throw new Error('Draft not found.');
+      setScene(selectedScene);
+      setBoard(normaliseBoard(selectedScene.boardState));
+      setSceneList(listing.scenes);
       setHistory([]);
       setFuture([]);
       setDirty(false);
       setSelectedId(null);
       setSelectedIds([]);
-      const nextBoard = normaliseBoard(result.scene.boardState);
+      const nextBoard = normaliseBoard(selectedScene.boardState);
       if (nextBoard.view?.zoom) setZoom(Math.max(0.25, Math.min(2, nextBoard.view.zoom)));
     } catch (error) {
-      showToast(apiErrorMessage(error) || 'Could not switch scene', 'error');
+      showToast(apiErrorMessage(error) || 'Could not open Canvas draft', 'error');
     }
+  };
+
+  const goLive = async () => {
+    if (!isGm || !scene || libraryBusy) return;
+    if (!window.confirm(`Present "${scene.title}" to players now? This replaces the current live Canvas.`)) return;
+    setLibraryBusy(true);
+    try {
+      // Save the draft before publishing; failed saves must never go live.
+      if (dirty && !(await save(false))) return;
+      const result = await api.updateSceneBoard(campaignId, scene.id, {
+        active: true, revealed: true, boardVisibility: 'shared',
+      });
+      setScene(result.scene);
+      setSceneList((current) => current.map((item) => item.id === result.scene.id
+        ? result.scene : { ...item, active: false }));
+      if (normaliseBoard(result.scene.boardState).revealTransition === 'fade' &&
+          !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        setRevealSequence((value) => value + 1);
+        setShowRevealFade(true);
+      }
+      showToast(`Canvas now live: ${result.scene.title}`, 'success');
+    } catch (error) {
+      showToast(apiErrorMessage(error) || 'Could not publish Canvas', 'error');
+    } finally { setLibraryBusy(false); }
+  };
+
+  const returnToLive = async () => {
+    if (dirty && !(await save(false))) return;
+    await load();
   };
 
   /** Explicit, additive import: earlier small portraits are never discarded. */
@@ -728,6 +877,15 @@ export default function SceneBoardPanel() {
   };
 
   const onCanvasPointerDown = (event: PointerEvent) => {
+    // A drag on empty Canvas in Select mode is a selection box, not a pan.
+    // This remains separate from middle-button panning and pen drawing.
+    if (canEdit && tool === 'select' && event.button === 0 && event.target === event.currentTarget) {
+      const start = pointInBoard(event);
+      marqueeRef.current = { pointerId: event.pointerId, start, end: start, moved: false };
+      setMarquee({ x: start.x, y: start.y, width: 0, height: 0 });
+      event.currentTarget.setPointerCapture(event.pointerId);
+      return;
+    }
     if (!isGm || tool !== 'pen') return;
     event.currentTarget.setPointerCapture(event.pointerId);
     setDrawing([pointInBoard(event)]);
@@ -736,12 +894,47 @@ export default function SceneBoardPanel() {
   };
 
   const onCanvasPointerMove = (event: PointerEvent) => {
+    const activeMarquee = marqueeRef.current;
+    if (activeMarquee && activeMarquee.pointerId === event.pointerId) {
+      const end = pointInBoard(event);
+      activeMarquee.end = end;
+      activeMarquee.moved ||= Math.hypot(end.x - activeMarquee.start.x, end.y - activeMarquee.start.y) >= 4;
+      setMarquee({
+        x: Math.min(activeMarquee.start.x, end.x), y: Math.min(activeMarquee.start.y, end.y),
+        width: Math.abs(end.x - activeMarquee.start.x), height: Math.abs(end.y - activeMarquee.start.y),
+      });
+      return;
+    }
     if (!drawing || tool !== 'pen') return;
     const point = pointInBoard(event);
     setDrawing((current) => current ? [...current, point] : current);
   };
 
   const onCanvasPointerUp = () => {
+    const completed = marqueeRef.current;
+    if (completed) {
+      marqueeRef.current = null;
+      setMarquee(null);
+      if (completed.moved) {
+        const x1 = Math.min(completed.start.x, completed.end.x);
+        const x2 = Math.max(completed.start.x, completed.end.x);
+        const y1 = Math.min(completed.start.y, completed.end.y);
+        const y2 = Math.max(completed.start.y, completed.end.y);
+        const hits = boardRef.current.elements.filter((element) => {
+          if (element.type === 'stroke' || element.locked || (!isGm && (element.hidden || element.type !== 'image'))) return false;
+          const visual = element.type === 'image'
+            ? canvasImageVisualRect(element, canvasArtMetrics[element.imageUrl ?? ''])
+            : { left: 0, top: 0, width: element.width, height: element.height };
+          const left = element.x + visual.left;
+          const top = element.y + visual.top;
+          return left < x2 && left + visual.width > x1 && top < y2 && top + visual.height > y1;
+        }).map((element) => element.id);
+        setSelectedIds(hits);
+        setSelectedId((hits.length ? hits[hits.length - 1] : null));
+        suppressCanvasClickRef.current = true;
+      }
+      return;
+    }
     if (!drawing || drawing.length < 2) {
       setDrawing(null);
       return;
@@ -835,9 +1028,10 @@ export default function SceneBoardPanel() {
     } else {
       const original = drag.originals[drag.id];
       if (!original) return;
-      const width = Math.max(30, snap(original.width + dx));
-      const height = Math.max(30, snap(original.height + dy));
-      const next = { ...current, elements: current.elements.map((element) => element.id === drag.id ? { ...element, width, height } : element) };
+      const resized = original.type === 'image'
+        ? resizeCanvasImage(original, canvasArtMetrics[original.imageUrl ?? ''], dx, dy, false)
+        : { width: Math.max(30, snap(original.width + dx)), height: Math.max(30, snap(original.height + dy)) };
+      const next = { ...current, elements: current.elements.map((element) => element.id === drag.id ? { ...element, ...resized } : element) };
       boardRef.current = next;
       setBoard(next);
       if (isGm) setDirty(true);
@@ -929,6 +1123,21 @@ export default function SceneBoardPanel() {
     }
   };
 
+  const placeExistingImage = (asset: Asset) => {
+    if (!isGm || !campaignId) return;
+    const position = defaultStageImagePosition(board.elements.filter((item) => item.type === 'image').length);
+    const element: SceneBoardElement = {
+      id: id('image'), type: 'image', x: position.x, y: position.y,
+      width: 640, height: 480, rotation: 0, z: nextZ(board.elements), locked: false,
+      hidden: placeNewImagesHidden,
+      imageAssetId: asset.id, imageUrl: assetUrl(asset.id),
+    };
+    commit({ ...board, elements: [...board.elements, element] });
+    setSelectedId(element.id);
+    setSelectedIds([element.id]);
+    setExistingImagePickerOpen(false);
+  };
+
   const uploadImage = async (file: File) => {
     if (!campaignId || !isGm) return;
     const form = new FormData();
@@ -952,6 +1161,7 @@ export default function SceneBoardPanel() {
         rotation: 0,
         z: nextZ(board.elements),
         locked: false,
+        hidden: placeNewImagesHidden,
         imageAssetId: result.asset.id,
         imageUrl: assetUrl(result.asset.id),
       };
@@ -965,7 +1175,9 @@ export default function SceneBoardPanel() {
   const renderElement = (element: SceneBoardElement) => {
     if (element.hidden && !isGm) return null;
     const active = selectedIds.includes(element.id);
-    const editable = canEdit && (isGm || element.type === 'image') && !element.hidden;
+    const editable = canEdit && (isGm || element.type === 'image') && (!element.hidden || isGm);
+    const visualImage = element.type === 'image'
+      ? canvasImageVisualRect(element, canvasArtMetrics[element.imageUrl ?? '']) : null;
     const common = {
       position: 'absolute' as const,
       left: element.x,
@@ -974,6 +1186,14 @@ export default function SceneBoardPanel() {
       height: element.height,
       transform: `rotate(${element.rotation}deg)`,
       zIndex: element.z,
+      ...(spotlightActive && element.type === 'image' && linkedSpeaker(element) ? {
+        opacity: linkedSpeaker(element) === speakingKey ? 1 : 0.76,
+        filter: linkedSpeaker(element) === speakingKey
+          ? 'brightness(1.06) drop-shadow(0 0 16px rgba(255,220,150,.48))'
+          : 'brightness(.88) saturate(.90)',
+        transition: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+          ? 'none' : 'opacity 250ms ease, filter 250ms ease',
+      } : {}),
     };
 
     let body: ReactNode;
@@ -1000,7 +1220,7 @@ export default function SceneBoardPanel() {
         ? { id: `chat-${spoken.messageId}`, at: Date.parse(spoken.createdAt),
             motion: stageMotion(element.stageMotion ?? 'pulse'), emote: stageEmote(element.stageEmote ?? 'none') }
         : element.stageCue;
-      body = <StagePicture src={element.imageUrl} cue={cue} />;
+      body = <StagePicture src={element.imageUrl} cue={cue} motionEnabled={pictureMotionEnabled} repeat={element.stageRepeat === true} repeatMotion={stageMotion(element.stageMotion ?? 'none')} />;
     } else if (element.type === 'rect') {
       body = <div className="h-full w-full" style={{ background: element.fill, border: `${element.strokeWidth ?? 3}px solid ${element.stroke ?? '#444'}` }} />;
     } else if (element.type === 'ellipse') {
@@ -1031,15 +1251,16 @@ export default function SceneBoardPanel() {
     return (
       <div
         key={element.id}
-        style={common}
-        className={`${active && editable ? 'outline outline-2 outline-brand' : ''} ${speakingKey && element.type === 'image' && linkedSpeaker(element) === speakingKey ? 'ring-4 ring-info/70' : ''} ${element.locked ? 'cursor-default' : editable ? 'cursor-move' : ''}`}
-        onPointerDown={(event) => onElementPointerDown(event, element, 'move')}
+        style={{ ...common, ...(visualImage ? { pointerEvents: 'none' as const, ...(element.hidden ? { opacity: 0.55 } : {}) } : {}) }}
+        className={`${active && editable && !visualImage ? 'outline outline-2 outline-brand' : ''} ${speakingKey && element.type === 'image' && linkedSpeaker(element) === speakingKey ? 'ring-4 ring-info/70' : ''} ${element.locked ? 'cursor-default' : editable ? 'cursor-move' : ''}`}
+        onPointerDown={(event) => { if (!visualImage) onElementPointerDown(event, element, 'move'); }}
         onPointerMove={onElementPointerMove}
         onPointerUp={onElementPointerUp}
         onClick={(event) => {
           event.stopPropagation();
           if (!editable) return;
-          if (!event.shiftKey) {
+          // A click at the end of a group drag must not discard the group.
+          if (!event.shiftKey && !(selectedIds.includes(element.id) && selectedIds.length > 1)) {
             setSelectedId(element.id);
             setSelectedIds([element.id]);
           }
@@ -1058,7 +1279,27 @@ export default function SceneBoardPanel() {
         }}
       >
         {body}
-        {active && editable && !element.locked && (
+        {visualImage && (
+          <div
+            data-smug-image-hitbox={element.id}
+            aria-label={element.hidden ? 'GM-hidden Canvas image' : 'Canvas image'}
+            title={element.hidden ? 'Hidden from players — GM can arrange and reveal' : undefined}
+            className={`${active && editable ? 'outline outline-2 outline-brand' : ''} absolute`}
+            style={{ left: visualImage.left, top: visualImage.top, width: visualImage.width,
+              height: visualImage.height, pointerEvents: 'auto' }}
+            onPointerDown={(event) => onElementPointerDown(event, element, 'move')}
+            onPointerMove={onElementPointerMove}
+            onPointerUp={onElementPointerUp}
+          >
+            {active && editable && !element.locked && (
+              <button type="button" aria-label="Resize selected scene element"
+                className="absolute -bottom-2 -right-2 h-5 w-5 rounded-sm border border-brand bg-paper shadow"
+                onPointerDown={(event) => onElementPointerDown(event, element, 'resize')}
+                onPointerMove={onElementPointerMove} onPointerUp={onElementPointerUp} />
+            )}
+          </div>
+        )}
+        {active && editable && !element.locked && !visualImage && (
           <button
             type="button"
             aria-label="Resize selected scene element"
@@ -1102,9 +1343,10 @@ export default function SceneBoardPanel() {
               style={{ width: 260 }}
               value={scene.id}
               onChange={(event) => void switchScene(event.target.value)}
-              aria-label="Active scene"
+              aria-label="Stage to edit (switching here does not go live)"
+              title="Open a Canvas privately; use Go Live to present it to players"
             >
-              {sceneList.map((row) => <option key={row.id} value={row.id}>{row.title}</option>)}
+              {sceneList.map((row) => <option key={row.id} value={row.id}>{row.title}{row.active ? ' (Live)' : ' (Draft)'}</option>)}
             </select>
           ) : (
             <strong className="min-w-0 flex-1 truncate px-2 text-ink">{scene.title}</strong>
@@ -1112,6 +1354,7 @@ export default function SceneBoardPanel() {
 
           {isGm && (
             <>
+
               <Button size="sm" variant={libraryOpen ? 'primary' : 'secondary'} icon={Library}
                 onClick={() => setLibraryOpen((value) => !value)}>Stage Library</Button>
               <Button
@@ -1120,6 +1363,14 @@ export default function SceneBoardPanel() {
                 onClick={() => setSceneOptionsOpen((open) => !open)}
               >
                 Stage Options
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={togglePresentation}
+                title="Enter Canvas Presentation Mode. Press Escape to exit."
+              >
+                Present
               </Button>
 
               {selected && (
@@ -1142,6 +1393,17 @@ export default function SceneBoardPanel() {
               >
                 {dirty ? 'Save' : 'Saved'}
               </Button>
+              {(!scene.active || !scene.revealed || scene.boardVisibility !== 'shared') && (
+                <Button size="sm" variant="primary" disabled={saving || libraryBusy} onClick={() => void goLive()}>
+                  Go Live
+                </Button>
+              )}
+              {!scene.active && sceneList.some((item) => item.active) && (
+                <Button size="sm" variant="secondary" onClick={() => void returnToLive()}>
+                  Return to Live
+                </Button>
+              )}
+              {!scene.active && <span className="text-xs font-semibold text-warning-ink">{scene.revealed && scene.boardVisibility === 'shared' ? 'Inactive (previously shared)' : 'GM-only draft'}</span>}
             </>
           )}
 
@@ -1154,12 +1416,21 @@ export default function SceneBoardPanel() {
               <option value="jrpg">16/32-bit JRPG</option>
             </select>
           </label>
+          <label className="flex shrink-0 items-center gap-1 text-xs" title="Briefly emphasize the current linked IC speaker; other character pictures dim only in your browser">
+            <input type="checkbox" checked={spotlightEnabled} onChange={(event) => setSpotlightEnabled(event.target.checked)} />
+            Speaker spotlight
+          </label>
           <Button size="sm" variant="secondary" icon={MessageSquareText}
             onClick={() => setCanvasBubblesEnabled((value) => !value)}
             aria-pressed={canvasBubblesEnabled}
             title="Show or hide quoted IC dialogue in the selected Stage style">
             {canvasBubblesEnabled ? 'Dialogue On' : 'Dialogue Off'}
           </Button>
+          <label className="flex shrink-0 items-center gap-1 text-xs" title="Per-browser Canvas motion preference. Turn on to play motion cues even if your OS uses Reduce Motion.">
+            <input type="checkbox" aria-label="Enable Canvas picture motion" checked={pictureMotionEnabled}
+              onChange={(event) => setPictureMotionEnabled(event.target.checked)} />
+            Picture Motion {pictureMotionEnabled ? 'On' : 'Off'}
+          </label>
           {scene.location && <span className="shrink-0 text-xs text-ink-muted">{scene.location}</span>}
           {scene.timeLabel && <span className="shrink-0 text-xs text-ink-muted">{scene.timeLabel}</span>}
         </div>
@@ -1169,13 +1440,13 @@ export default function SceneBoardPanel() {
             <strong className="text-sm">Stage Library</strong>
             <Button size="sm" variant="secondary" icon={Copy} disabled={libraryBusy} onClick={() => void saveCanvasCopy()}>Save As New Stage</Button>
           </div>
-          <p className="mb-2 text-xs text-ink-muted">Saved Stage compositions. Loading another Stage changes the shared active scene. IC Chat messages are never duplicated.</p>
+          <p className="mb-2 text-xs text-ink-muted">GM preview is private; opening or editing a draft will not change what players see. Use Go Live to publish. IC Chat is never duplicated.</p>
           <div className="grid max-h-52 grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3">
             {sceneList.map((entry) => {
               const preview = normaliseBoard(entry.boardState);
               return <div key={entry.id} className="min-w-0 rounded border border-ink/15 p-1.5">
                 <button type="button" disabled={libraryBusy || entry.id === scene.id}
-                  onClick={() => void switchScene(entry.id)} title={`Load ${entry.title}`}
+                  onClick={() => void switchScene(entry.id)} title={`Privately preview ${entry.title}`}
                   className="w-full overflow-hidden rounded border border-ink/10 text-left">
                   <div className="relative h-14" style={{ background: preview.background }}>
                     <div className="absolute bottom-1 right-1 rounded bg-black/60 px-1 text-[10px] text-white">{preview.elements.length} items</div>
@@ -1190,6 +1461,32 @@ export default function SceneBoardPanel() {
             })}
           </div>
         </section>}
+
+        {isGm && existingImagePickerOpen && (
+          <section className="mt-1.5 rounded-cozy border border-ink/15 bg-paper p-2" aria-label="Previously uploaded Canvas images">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <strong className="text-sm">Previously Used Images</strong>
+              <input className="input-cozy w-52 py-1 text-xs" aria-label="Search previously uploaded pictures"
+                placeholder="Search pictures…" value={existingImageSearch}
+                onChange={(event) => setExistingImageSearch(event.target.value)} />
+            </div>
+            {existingImagesLoading && <p className="text-xs text-ink-muted">Loading pictures…</p>}
+            {existingImagesError && <p className="text-xs text-danger-ink" role="alert">{existingImagesError}</p>}
+            {!existingImagesLoading && !existingImagesError && existingImageAssets.length === 0 &&
+              <p className="text-xs text-ink-muted">No reusable campaign pictures yet.</p>}
+            <div className="grid max-h-52 grid-cols-3 gap-2 overflow-y-auto md:grid-cols-6">
+              {existingImageAssets.filter((asset) => asset.name.toLocaleLowerCase().includes(existingImageSearch.toLocaleLowerCase()))
+                .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }))
+                .slice(0, 120).map((asset) => (
+                  <button key={asset.id} type="button" title={`Place ${asset.name}`} onClick={() => placeExistingImage(asset)}
+                    className="min-w-0 overflow-hidden rounded border border-ink/15 bg-ink/5 p-1 text-left hover:border-brand">
+                    <img src={assetUrl(asset.id)} alt="" loading="lazy" className="h-16 w-full object-contain" />
+                    <span className="block truncate text-[10px] font-medium text-ink">{asset.name}</span>
+                  </button>
+              ))}
+            </div>
+          </section>
+        )}
 
         {isGm && sceneOptionsOpen && (
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5 rounded bg-ink/5 p-1.5">
@@ -1215,13 +1512,23 @@ export default function SceneBoardPanel() {
               New
             </Button>
 
-            <label className="ml-1 flex items-center gap-1 text-xs text-ink-secondary">
+            <label className="ml-1 flex items-center gap-1 text-xs text-ink-secondary" title="Drafts remain private until Go Live">
               <input
                 type="checkbox"
                 checked={scene.revealed}
+                disabled={!scene.active}
                 onChange={(event) => void patchSceneMeta({ revealed: event.target.checked })}
               />
               Revealed
+            </label>
+            <label className="flex items-center gap-1 text-xs text-ink-secondary">
+              Reveal effect
+              <select className="input-cozy py-1 text-xs" aria-label="Canvas reveal effect"
+                value={board.revealTransition ?? 'cut'}
+                onChange={(event) => commit({ ...board, revealTransition: event.target.value as 'cut' | 'fade' })}>
+                <option value="cut">Cut</option>
+                <option value="fade">Fade (silent)</option>
+              </select>
             </label>
             <label className="flex items-center gap-1 text-xs text-ink-secondary" title="When this scene is revealed and shared, players can drag and resize visible, unlocked pictures. GM notes, drawings and scene settings remain protected.">
               <input type="checkbox" checked={board.allowPlayerEditing === true}
@@ -1236,6 +1543,7 @@ export default function SceneBoardPanel() {
               className="input-cozy py-1 text-xs"
               style={{ width: 120 }}
               value={scene.boardVisibility}
+              disabled={!scene.active}
               onChange={(event) => void patchSceneMeta({ boardVisibility: event.target.value as 'gm' | 'shared' })}
             >
               <option value="gm">GM only</option>
@@ -1268,6 +1576,12 @@ export default function SceneBoardPanel() {
             <Button size="sm" variant="secondary" icon={Minus} onClick={() => addElement('line')}>Line</Button>
             <Button size="sm" variant="secondary" icon={ArrowUp} onClick={() => addElement('arrow')}>Arrow</Button>
             <Button size="sm" variant="secondary" icon={ImagePlus} onClick={() => imageInputRef.current?.click()} title="Add a 640×480 Stage picture; supports PNG, JPEG, WebP and GIF. Drag to resize after placing.">Image</Button>
+            <Button size="sm" variant={existingImagePickerOpen ? 'primary' : 'secondary'}
+              onClick={() => setExistingImagePickerOpen((open) => !open)}>Previously Used</Button>
+            <label className="flex shrink-0 items-center gap-1 text-xs" title="Place newly uploaded or reused pictures hidden from players">
+              <input type="checkbox" checked={placeNewImagesHidden} onChange={(event) => setPlaceNewImagesHidden(event.target.checked)} />
+              Place hidden
+            </label>
             <input
               ref={imageInputRef}
               hidden
@@ -1295,7 +1609,7 @@ export default function SceneBoardPanel() {
             <Button size="sm" variant="secondary" icon={Redo2} disabled={future.length === 0} onClick={redo}>Redo</Button>
             <label className="flex shrink-0 items-center gap-1 text-xs text-ink-secondary">
               <input type="checkbox" checked={snapToGrid} onChange={(event) => setSnapToGrid(event.target.checked)} />
-              Snap (20 px)
+              Snap movement (20 px)
             </label>
             <Button size="sm" variant="secondary" disabled={selectedIds.length === 0} onClick={duplicateSelected}>Duplicate</Button>
             <span className="mx-0.5 h-5 w-px shrink-0 bg-ink/10" />
@@ -1330,7 +1644,12 @@ export default function SceneBoardPanel() {
               <label className="flex items-center gap-1">Motion
                 <select className="input-cozy py-1 text-xs" aria-label="Stage picture motion"
                   value={stageMotion(selected.stageMotion ?? 'pulse')}
-                  onChange={(event) => updateElement(selected.id, { stageMotion: stageMotion(event.target.value) })}>
+                  onChange={(event) => {
+                    const motion = stageMotion(event.target.value);
+                    updateElement(selected.id, { stageMotion: motion, stageCue: {
+                      id: id('motion-preview'), at: Date.now(), motion, emote: 'none',
+                    } });
+                  }}>
                   {STAGE_MOTIONS.map(([value, name]) => <option key={value} value={value}>{name}</option>)}
                 </select>
               </label>
@@ -1346,8 +1665,20 @@ export default function SceneBoardPanel() {
                   onChange={(event) => updateElement(selected.id, { stageAutoReact: event.target.checked })} />
                 React to Chat
               </label>
+              <label className="flex items-center gap-1" title="Loop this picture's selected motion until Repeat is turned off">
+                <input type="checkbox" aria-label="Repeat picture motion"
+                  checked={selected.stageRepeat === true}
+                  onChange={(event) => updateElement(selected.id, { stageRepeat: event.target.checked })} />
+                Repeat Motion
+              </label>
               <Button size="sm" variant="secondary" onClick={() => playCue(selected)}>Play cue</Button>
             </>}
+            {selected.type === 'image' && selectedIds.length === 1 && (
+              <Button size="sm" variant="secondary"
+                onClick={() => updateElement(selected.id, { hidden: !selected.hidden })}>
+                {selected.hidden ? 'Reveal to Players' : 'Hide from Players'}
+              </Button>
+            )}
             <Button size="sm" variant="secondary" onClick={duplicateSelected}>Duplicate</Button>
             <Button size="sm" variant="secondary" icon={selected.locked ? Unlock : Lock} onClick={() => updateElement(selected.id, { locked: !selected.locked })}>
               {selected.locked ? 'Unlock' : 'Lock'}
@@ -1362,7 +1693,7 @@ export default function SceneBoardPanel() {
       </div>
 
       {board.presentation && isGm && (
-        <div className="absolute top-3 z-[910] flex items-center gap-2 rounded-cozy border border-ink/20 bg-paper/95 p-2 shadow-lg"
+        <div className="absolute top-3 z-[910] flex items-center gap-2 rounded-cozy border border-ink/20 bg-paper/95 p-2 shadow-lg opacity-[0.13] transition-opacity duration-300 hover:opacity-100 focus-within:opacity-100 motion-reduce:transition-none [@media(hover:none)]:opacity-100"
           style={{ right: 'var(--smug-map-right-inset, 12px)' }} role="toolbar" aria-label="Stage presentation controls">
           <span className="px-1 text-xs font-semibold text-ink-secondary">Presentation Mode</span>
           <Button size="sm" variant="secondary" icon={Library} onClick={() => { setLibraryOpen(true); togglePresentation(); }}>
@@ -1417,7 +1748,12 @@ export default function SceneBoardPanel() {
               <label className="block">Motion
                 <select className="input-cozy mt-1 w-full text-xs" aria-label="Right-click Stage motion"
                   value={stageMotion(selected.stageMotion ?? 'pulse')}
-                  onChange={(event) => updateElement(selected.id, { stageMotion: stageMotion(event.target.value) })}>
+                  onChange={(event) => {
+                    const motion = stageMotion(event.target.value);
+                    updateElement(selected.id, { stageMotion: motion, stageCue: {
+                      id: id('motion-preview'), at: Date.now(), motion, emote: 'none',
+                    } });
+                  }}>
                   {STAGE_MOTIONS.map(([value, name]) => <option key={value} value={value}>{name}</option>)}
                 </select>
               </label>
@@ -1433,9 +1769,22 @@ export default function SceneBoardPanel() {
                   onChange={(event) => updateElement(selected.id, { stageAutoReact: event.target.checked })} />
                 React to quoted IC Chat
               </label>
-              <button className="mt-2 rounded border px-2 py-1" type="button" onClick={() => playCue(selected)}>Play silent cue</button>
+              <label className="mt-1 flex items-center gap-1">
+                  <input type="checkbox" aria-label="Repeat picture motion in menu"
+                    checked={selected.stageRepeat === true}
+                    onChange={(event) => updateElement(selected.id, { stageRepeat: event.target.checked })} />
+                  Repeat Motion
+                </label>
+                <button className="mt-2 rounded border px-2 py-1" type="button" onClick={() => playCue(selected)}>Play silent cue</button>
             </div>
           </>}
+          {selected.type === 'image' && (
+            <button type="button"
+              className="flex w-full items-center rounded px-3 py-2 text-left text-sm text-ink hover:bg-ink/5"
+              onClick={() => { updateElement(selected.id, { hidden: !selected.hidden }); setContextMenu(null); }}>
+              {selected.hidden ? 'Reveal to Players' : 'Hide from Players'}
+            </button>
+          )}
           {selected.type === 'image' && (
             <button
               type="button"
@@ -1522,6 +1871,14 @@ export default function SceneBoardPanel() {
           applyZoom(zoom + (event.deltaY < 0 ? 0.1 : -0.1));
         }}
       >
+        {/* Visible on Canvas just as connection status is visible elsewhere. */}
+        <div className="pointer-events-none sticky left-2 top-2 z-[850] h-0 w-max">
+          <div className="inline-flex items-center gap-1.5 rounded bg-paper/90 px-2 py-1 text-xs font-medium text-ink shadow ring-1 ring-ink/10" role="status"
+            aria-label={`${connectedCanvasCount} campaign participants connected`}>
+            <UsersRound className="h-3.5 w-3.5" aria-hidden="true" />
+            <span>{connectedCanvasCount} connected</span>
+          </div>
+        </div>
         <div className="relative mx-auto" style={{ width: BOARD_WIDTH * zoom, height: BOARD_HEIGHT * zoom }}>
         <div
           ref={canvasRef}
@@ -1537,6 +1894,7 @@ export default function SceneBoardPanel() {
           onPointerMove={onCanvasPointerMove}
           onPointerUp={onCanvasPointerUp}
           onClick={() => {
+            if (suppressCanvasClickRef.current) { suppressCanvasClickRef.current = false; return; }
             if (tool === 'select') {
               setSelectedId(null);
               setSelectedIds([]);
@@ -1544,6 +1902,13 @@ export default function SceneBoardPanel() {
           }}
         >
           {[...board.elements].sort((a, b) => a.z - b.z).map(renderElement)}
+          {marquee && (
+            <div aria-hidden="true" className="pointer-events-none absolute z-[850] border border-dashed border-brand bg-brand/10"
+              style={{ left: marquee.x, top: marquee.y, width: marquee.width, height: marquee.height }} />
+          )}
+          {showRevealFade && <div key={revealSequence} aria-hidden="true"
+            className="pointer-events-none absolute inset-0 z-[1200] bg-[#080e20]"
+            style={{ animation: 'smugvtt-canvas-reveal 720ms ease-out forwards' }} />}
 
           {/* A single non-interactive dialogue layer, above all visual objects.
               Bubbles never intercept Canvas pointer/drag controls. */}
@@ -1568,13 +1933,32 @@ export default function SceneBoardPanel() {
             const since = Date.parse(scene.startedAt ?? scene.createdAt) || 0;
             const entry = [...sceneDialogue].reverse().find((line) => Date.parse(line.createdAt) >= since);
             if (!entry) return null;
+            // Speak As portrait first; a visible Stage picture linked to the same
+            // identity is only a fallback when the Chat identity has no picture.
+            const portraitUrl = entry.imageUrl || board.elements.find((element) =>
+              element.type === 'image' && !element.hidden && linkedSpeaker(element) === entry.speakerKey
+            )?.imageUrl || null;
             return <div key={entry.messageId} role="status"
+               data-smug-stage-dialogue={dialogueStyle}
+               style={dialogueStyle === 'jrpg' ? { bottom: `calc(1.25rem + ${jrpgDockClearance}px)` } : undefined}
               aria-label={`${entry.speakerName} says: ${entry.quotes.join(' ')}`}
               className={`pointer-events-none absolute bottom-5 left-8 right-8 z-[1000] px-6 py-4 text-white shadow-2xl ${dialogueStyle === 'jrpg'
                 ? 'border-[5px] border-white bg-[#14203b] font-mono text-[23px] leading-relaxed outline outline-[5px] outline-black'
                 : 'rounded-xl border-2 border-white/70 bg-ink/90 text-[22px] leading-snug backdrop-blur-md'}`}>
-              <div className={`mb-1 font-bold ${dialogueStyle === 'jrpg' ? 'text-[#f7d98b]' : 'text-warning-ink'}`}>{entry.speakerName}</div>
-              <div className="break-words">“{canvasDialogueLabel(entry)}”</div>
+              {dialogueStyle === 'jrpg' ? (
+                <div className="flex items-start gap-5">
+                  <JrpgPortrait src={portraitUrl} name={entry.speakerName} />
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 font-bold text-[#f7d98b]">{entry.speakerName}</div>
+                    <div className="break-words">“{canvasDialogueLabel(entry)}”</div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="mb-1 font-bold text-warning-ink">{entry.speakerName}</div>
+                  <div className="break-words">“{canvasDialogueLabel(entry)}”</div>
+                </>
+              )}
             </div>;
           })()}
 
