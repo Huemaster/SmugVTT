@@ -557,8 +557,53 @@
   }
 }
 
-/* Stage shows active speakers on the staged art. Chat presence chips would
- * otherwise sit over large pictures, intercepting taps and context menus. */
+/* SmugVTT private Stage presence dock v3: bottom-left, horizontal portrait row */
+/* Reuse Chat Speak As portrait cards: viewport-fixed and clear of Stage top tools.
+ * More players scroll horizontally; a collapsed card reduces the dock height.
+ * SceneBoardPanel observes this element to clear dialogue by the real height. */
 body[data-smug-workspace='scene'] [data-smug-speaker-presence] {
-  display: none;
+  display: flex;
+  position: fixed;
+  top: auto;
+  bottom: 0.75rem;
+  left: 0.75rem;
+  right: auto;
+  transform: none;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  width: max-content;
+  max-width: min(70vw, 56rem);
+  max-height: min(14rem, calc(100dvh - 4rem));
+  overflow-x: auto;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  pointer-events: auto;
+}
+
+/* On compact portrait layouts the bottom navigation is a real tap target.
+ * The speaker dock must sit ABOVE its 56px bar, not cover the Chat button.
+ * Compact landscape uses header controls, so it keeps the normal dock. */
+/* Tailwind's max-lg variant owns the shared breakpoint, rather than
+ * writing another fixed compact breakpoint in app CSS. */
+@media (min-height: 500px) {
+  @variant max-lg {
+    body[data-smug-workspace='scene'] [data-smug-speaker-presence] {
+      bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+      max-height: min(14rem, calc(100dvh - 8rem));
+    }
+  }
+}
+
+/* Private Canvas: a one-shot, silent reveal with a reduced-motion fallback. */
+@keyframes smugvtt-canvas-reveal {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  @keyframes smugvtt-canvas-reveal {
+    from, to { opacity: 0; }
+  }
 }

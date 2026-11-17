@@ -63,6 +63,8 @@ describe('shared Stage UX', () => {
 
   afterEach(() => {
     cleanup();
+    state.speakerHistory.length = 0;
+    window.localStorage.removeItem('smugvtt:stage-dialogue-style');
     vi.restoreAllMocks();
   });
 
@@ -90,5 +92,26 @@ describe('shared Stage UX', () => {
     await screen.findByText('Shared Stage');
     fireEvent.click(container.querySelector('img[src="/portrait.gif"]')!);
     expect(screen.queryByRole('button', { name: 'Resize selected scene element' })).toBeNull();
+  });
+
+  it('uses the Speak As picture in JRPG mode but leaves visual-novel mode unchanged', async () => {
+    state.speakerHistory.push({
+      messageId: 'message-1', speakerKey: 'character:hero', speakerType: 'character',
+      speakerId: 'hero', speakerName: 'Hero', imageUrl: '/speak-as-hero.png',
+      quotes: ['We should move.'], createdAt: '2026-11-15T10:01:00.000Z',
+    });
+    window.localStorage.setItem('smugvtt:stage-dialogue-style', 'jrpg');
+    const jrpg = render(<SceneBoardPanel />);
+    await screen.findByText('Shared Stage');
+    expect(screen.getByRole('img', { name: 'Hero portrait' })).toBeInTheDocument();
+    expect(jrpg.container.querySelector('img[src="/speak-as-hero.png"]')).not.toBeNull();
+    expect(screen.getByRole('status', { name: 'Hero says: We should move.' })).toBeInTheDocument();
+    jrpg.unmount();
+
+    window.localStorage.setItem('smugvtt:stage-dialogue-style', 'vn');
+    render(<SceneBoardPanel />);
+    await screen.findByText('Shared Stage');
+    expect(screen.queryByRole('img', { name: 'Hero portrait' })).toBeNull();
+    expect(screen.getByRole('status', { name: 'Hero says: We should move.' })).toBeInTheDocument();
   });
 });

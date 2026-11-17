@@ -315,7 +315,7 @@ export default function CharactersPage() {
             {/* Character Grid */}
             {!loading && characters.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {characters.map((character) => (
+                {[...characters].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })).map((character) => (
                   <CharacterCard
                     key={character.id}
                     character={character}

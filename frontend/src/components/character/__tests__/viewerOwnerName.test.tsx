@@ -9,6 +9,10 @@ import { render, screen, act } from '@testing-library/react';
 import type { Character, CampaignMembership } from '@/types';
 import CharacterSheetViewerModal from '../CharacterSheetViewerModal';
 
+// Viewer tests isolate the independently tested picture upload control.
+// CharacterPictureControl.test.tsx exercises upload, versioning and errors.
+vi.mock('../CharacterPictureControl', () => ({ default: () => null }));
+
 type Handler = (payload: unknown) => void;
 const handlers = new Map<string, Handler>();
 const getUser = vi.fn().mockRejectedValue(new Error('Forbidden'));

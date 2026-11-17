@@ -40,6 +40,8 @@ export interface SceneBoardElement {
   smugSpeakerKey?: string;
   /** Optional silent effects; no sound and no infinite animation. */
   stageMotion?: StageMotion;
+  /** Only an explicit GM toggle allows continuous picture motion. */
+  stageRepeat?: boolean;
   stageEmote?: StageEmote;
   stageAutoReact?: boolean;
   stageCue?: StageCue;
@@ -59,6 +61,8 @@ export interface SceneBoardState {
   presentation?: boolean;
   /** GM-only toggle. Player movement is validated by a scoped server route. */
   allowPlayerEditing?: boolean;
+  /** GM-chosen transition for newly revealed/shared scenes; no sound. */
+  revealTransition?: 'cut' | 'fade';
   view?: SceneBoardView;
 }
 

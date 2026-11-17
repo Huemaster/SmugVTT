@@ -77,7 +77,7 @@ export default function GmNpcPanel() {
           npc.tags.some((tag) => tag.toLowerCase().includes(needle))
         )
       : npcs;
-    return [...rows].sort((a, b) => Number(b.favorite) - Number(a.favorite) || a.name.localeCompare(b.name));
+    return [...rows].sort((a, b) => Number(b.favorite) - Number(a.favorite) || a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
   }, [npcs, search]);
 
   if (userRole !== 'DM') return null;

@@ -235,7 +235,7 @@ export default function CharacterTemplatesPage() {
           />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {templates.map((template) => (
+            {[...templates].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })).map((template) => (
               <article
                 key={template.id}
                 className="bg-parchment/50 border border-moss-green/20 rounded-xl p-4 shadow-md hover:shadow-xl transition-shadow flex flex-col"

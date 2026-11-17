@@ -582,7 +582,7 @@ function MemberCard({ member, getRoleIcon, onCharacterClick, onCharacterMenu, co
           pixels each and need the room. */}
       {member.characters.length > 0 && (
         <div className="ml-9 pointer-coarse:ml-0 space-y-1">
-          {member.characters.map((character) => {
+          {[...member.characters].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })).map((character) => {
             // The DM may place any character. This used to also require a token
             // picture, which meant the handle only existed on characters that
             // had one — and the handle was the picture, so a character without

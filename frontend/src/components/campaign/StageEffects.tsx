@@ -1,4 +1,5 @@
 import { AlertTriangle, Cloud, Droplet, Heart, HelpCircle, MessageCircleMore, Sparkles, Zap, CircleAlert, Wind } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import type { ComponentType } from 'react';
 import type { StageMotion, StageEmote, StageCue } from '@/types/sceneBoard';
 import './stageEffects.css';
@@ -53,14 +54,84 @@ const EMOTE_ICONS: Record<Exclude<StageEmote, 'none'>, ComponentType<{ size?: nu
   thought: MessageCircleMore,
 };
 
-/** Still GIFs retain their native animation. Stage motion is an optional CSS overlay. */
-export function StagePicture({ src, cue }: { src?: string; cue?: StageCue }) {
-  const motion = stageMotion(cue?.motion);
+/**
+ * Browsers can disable CSS animation completely when the OS requests reduced
+ * motion. An explicitly enabled Canvas cue instead uses Web Animations, which
+ * animates the *one image wrapper* without depending on CSS animation rules.
+ * It never duplicates the IMG element or alters the saved picture position.
+ */
+const MOTION_FRAMES: Record<Exclude<StageMotion, 'none'>, Keyframe[]> = {
+  float: [
+    { transform: 'translateY(0)' },
+    { transform: 'translateY(-24px)' },
+    { transform: 'translateY(0)' },
+  ],
+  bob: [
+    { transform: 'translateY(0)' },
+    { transform: 'translateY(-13px)' },
+    { transform: 'translateY(0)' },
+  ],
+  shake: [
+    { transform: 'translateX(0)' },
+    { transform: 'translateX(-18px)' },
+    { transform: 'translateX(18px)' },
+    { transform: 'translateX(-12px)' },
+    { transform: 'translateX(12px)' },
+    { transform: 'translateX(0)' },
+  ],
+  hop: [
+    { transform: 'translateY(0)' },
+    { transform: 'translateY(-55px)' },
+    { transform: 'translateY(5px)' },
+    { transform: 'translateY(0)' },
+  ],
+  pulse: [
+    { transform: 'scale(1)' },
+    { transform: 'scale(1.13)' },
+    { transform: 'scale(1)' },
+  ],
+  fade: [{ opacity: 0.2 }, { opacity: 1 }],
+  slide: [
+    { transform: 'translateX(-70px)', opacity: 0.4 },
+    { transform: 'translateX(0)', opacity: 1 },
+  ],
+  jolt: [
+    { transform: 'rotate(0deg)' },
+    { transform: 'rotate(-5deg)' },
+    { transform: 'rotate(5deg)' },
+    { transform: 'rotate(-2deg)' },
+    { transform: 'rotate(0deg)' },
+  ],
+};
+
+/** Each cue is a finite three-cycle animation, with no audio. */
+export function StagePicture({ src, cue, motionEnabled = true, repeat = false, repeatMotion = 'none' }: { src?: string; cue?: StageCue; motionEnabled?: boolean; repeat?: boolean; repeatMotion?: StageMotion }) {
+  const motion = stageMotion(repeat ? repeatMotion : cue?.motion);
   const emote = stageEmote(cue?.emote);
   const Icon = emote === 'none' ? null : EMOTE_ICONS[emote];
+  const frameRef = useRef<HTMLDivElement>(null);
+  // Depend on the cue identity, not the freshly constructed cue object:
+  // unrelated Stage rerenders must not restart a finite animation.
+  const cueId = cue?.id;
+  const hasCue = cue !== undefined;
+
+  useEffect(() => {
+    const element = frameRef.current;
+    if (!element || (!hasCue && !repeat) || !motionEnabled || motion === 'none') return;
+    // Firefox and Chromium support this API. Do not fall back to a CSS
+    // animation that may be silently overridden by prefers-reduced-motion.
+    if (typeof element.animate !== 'function') return;
+    const animation = element.animate(MOTION_FRAMES[motion], {
+      duration: motion === 'shake' || motion === 'jolt' ? 650 : 1050,
+      easing: 'ease-in-out',
+      iterations: repeat ? Infinity : 3,
+    });
+    return () => animation.cancel();
+  }, [cueId, hasCue, motion, motionEnabled, repeat]);
+
   return (
-    <div className="relative h-full w-full" data-stage-cue={cue?.id ?? 'none'}>
-      <div key={cue?.id ?? 'still'} className={cue && motion !== 'none' ? `smug-stage-motion smug-stage-motion-${motion} h-full w-full` : 'h-full w-full'}>
+    <div className="relative isolate h-full w-full" data-stage-cue={cueId ?? 'none'} data-stage-picture>
+      <div ref={frameRef} data-stage-motion={(cue || repeat) && motionEnabled ? motion : 'none'} className="h-full w-full">
         {src ? <img src={src} alt="" draggable={false} className="h-full w-full select-none object-contain" /> : null}
       </div>
       {cue && Icon && <span key={cue.id} aria-hidden="true" className={`smug-stage-emote smug-stage-emote-${emote}`}>

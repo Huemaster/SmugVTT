@@ -27,22 +27,26 @@ test('Stage UX: three pillars, large GIF art, presentation modes and GM opt-in',
 
   const compact = await page.evaluate((query) => window.matchMedia(query).matches, COMPACT_LAYOUT_QUERY);
   if (compact) {
-    await page.getByRole('button', { name: 'Stage', exact: true }).click();
+    await page.getByRole('button', { name: 'Canvas', exact: true }).click();
   } else {
     const nav = page.getByRole('navigation', { name: 'SmugVTT workspaces' });
     await expect(nav.getByRole('button')).toHaveCount(3);
-    await expect(nav.getByRole('button', { name: 'Canvas' })).toHaveCount(0);
+    await expect(nav.getByRole('button', { name: 'Canvas' })).toHaveCount(1);
     await expect(nav.getByRole('button', { name: 'Scene' })).toHaveCount(0);
     await nav.getByRole('button', { name: 'Chat' }).click();
-    await expect(page.getByRole('button', { name: 'Open Stage' })).toBeVisible();
-    await page.getByRole('button', { name: 'Open Stage' }).click();
-    await expect(nav.getByRole('button', { name: 'Stage' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByRole('button', { name: 'Open Canvas' })).toBeVisible();
+    await page.getByRole('button', { name: 'Open Canvas' }).click();
+    await expect(nav.getByRole('button', { name: 'Canvas' })).toHaveAttribute('aria-pressed', 'true');
   }
 
   await expect(page.getByText('No active Stage yet.')).toBeVisible();
   await page.getByPlaceholder('Scene title').fill('Stage Test Composition');
   await page.getByRole('button', { name: 'Create', exact: true }).click();
-  await expect(page.getByRole('combobox', { name: 'Active scene' })).toBeVisible();
+  // Creating a Stage prepares a private draft; selecting it never publishes it.
+  const stageSelector = page.getByRole('combobox', { name: 'Stage to edit (switching here does not go live)' });
+  await expect(stageSelector).toBeVisible();
+  await expect(stageSelector.locator('option:checked')).toHaveText('Stage Test Composition (Draft)');
+  await expect(page.getByRole('button', { name: 'Go Live' })).toBeVisible();
 
   const dialogue = page.getByRole('combobox', { name: 'Stage dialogue style' });
   await dialogue.selectOption('vn');
@@ -53,6 +57,12 @@ test('Stage UX: three pillars, large GIF art, presentation modes and GM opt-in',
   await toggle.click();
   await expect(page.getByRole('button', { name: 'Dialogue Off' })).toBeVisible();
   await page.getByRole('button', { name: 'Dialogue Off' }).click();
+
+  // Newly placed art defaults to GM-hidden. Unhide this fixture to exercise
+  // regular visible-image selection, sizing and speaker controls.
+  const placeHidden = page.getByRole('checkbox', { name: 'Place hidden' });
+  await expect(placeHidden).toBeChecked();
+  await placeHidden.uncheck();
 
   const upload = page.locator('input[type="file"][accept*="image/gif"]').first();
   // Construct the fixture as an actual browser File: no Node Buffer typings
@@ -72,13 +82,17 @@ test('Stage UX: three pillars, large GIF art, presentation modes and GM opt-in',
   await expect(frame).toHaveAttribute('style', /height: 480px/);
   await expect(frame).toHaveAttribute('style', /left: 480px/);
 
-  // Players discover picture selection and sizing by simply clicking the art.
-  await art.click();
+  // Transparent-art selection uses a visible-ink hitbox layered above the
+  // IMG. Click the actual interactive surface, not the IMG it intentionally
+  // intercepts. The upper-left point avoids the bottom-left speaker dock.
+  const imageHitbox = page.locator('[data-smug-image-hitbox]').first();
+  await expect(imageHitbox).toBeVisible();
+  await imageHitbox.click({ position: { x: 12, y: 12 } });
   await expect(page.getByRole('button', { name: 'Resize selected scene element' })).toBeVisible();
 
   // A pointer context menu must not accidentally begin a move operation.
   if (!compact) {
-    await art.click({ button: 'right' });
+    await imageHitbox.click({ button: 'right', position: { x: 12, y: 12 } });
     await expect(page.getByRole('combobox', { name: 'Speaking as / Character is' })).toBeVisible();
     await page.getByRole('combobox', { name: 'Right-click Stage emote' }).selectOption('alert');
     await page.getByRole('button', { name: 'Play silent cue' }).click();
@@ -88,7 +102,11 @@ test('Stage UX: three pillars, large GIF art, presentation modes and GM opt-in',
   await page.getByRole('button', { name: 'Stage Options' }).click();
   const permission = page.getByRole('checkbox', { name: 'Allow players to arrange pictures' });
   await expect(permission).not.toBeChecked();
-  await permission.check();
+  // Exercise the visible touch target (the containing label) on iPad/WebKit.
+  // Still assert that the actual controlled checkbox changed; no forced click
+  // or DOM-state injection is used.
+  await permission.locator('xpath=..').click({ position: { x: 48, y: 10 } });
+  await expect(permission).toBeChecked();
   await expect(page.getByText('Reveal this scene and set visibility to Shared before player arranging becomes available.')).toBeVisible();
 
   if (compact) {

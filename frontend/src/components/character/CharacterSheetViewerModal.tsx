@@ -14,6 +14,7 @@ import { canEditCharacter, canEditCharacterIn, canRollAsCharacter } from '@/serv
 import { api } from '@/services/api';
 import type { Campaign, Character, CampaignMembership } from '@/types';
 import { gameSystemName } from '@/constants/game-systems';
+import CharacterPictureControl from './CharacterPictureControl';
 
 // Import view components
 import { DnD5eCharacterView } from '../character-sheets/dnd5e/DnD5eCharacterView';
@@ -271,10 +272,16 @@ export default function CharacterSheetViewerModal({
             )}
           </div>
 
-          {/* Actions — close only. Edit lives on the sheet itself, which
-              receives handleEdit as onEdit below; rendering it here as well
-              produced two working Edit buttons on every character. */}
+          {/* Picture editing lives here as well as in supported sheet editors,
+              so custom/game-specific journals can always update their portrait.
+              The same canEdit permission guards this control. */}
           <div className="flex items-center gap-2 justify-self-end">
+            {canEdit && (
+              <CharacterPictureControl character={character} onSaved={(saved) => {
+                setCharacter(saved);
+                onCharacterChanged?.(saved);
+              }} />
+            )}
             <button
               onClick={onClose}
               aria-label="Close dialog"
