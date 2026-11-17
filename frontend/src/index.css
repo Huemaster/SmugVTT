@@ -583,6 +583,16 @@ body[data-smug-workspace='scene'] [data-smug-speaker-presence] {
   pointer-events: auto;
 }
 
+/* On compact portrait layouts the bottom navigation is a real tap target.
+ * The speaker dock must sit ABOVE its 56px bar, not cover the Chat button.
+ * Compact landscape uses header controls, so it keeps the normal dock. */
+@media (width < 64rem) and (min-height: 500px) {
+  body[data-smug-workspace='scene'] [data-smug-speaker-presence] {
+    bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+    max-height: min(14rem, calc(100dvh - 8rem));
+  }
+}
+
 /* Private Canvas: a one-shot, silent reveal with a reduced-motion fallback. */
 @keyframes smugvtt-canvas-reveal {
   from { opacity: 1; }
