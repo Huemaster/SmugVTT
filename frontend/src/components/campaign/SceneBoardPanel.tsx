@@ -561,8 +561,13 @@ export default function SceneBoardPanel() {
     setDirty(true);
   };
 
+  const saveInFlightRef = useRef(false);
   const save = useCallback(async (showNotice = false) => {
     if (!isGm || !scene || !dirty) return !dirty;
+    // Serialize writes: a second autosave must not race the first against
+    // the same boardVersion and then replace newer edits with stale data.
+    if (saveInFlightRef.current) return false;
+    saveInFlightRef.current = true;
     setSaving(true);
     try {
       // Do not write a stale Stage snapshot back over changes made from Chat/Map.
@@ -593,25 +598,32 @@ export default function SceneBoardPanel() {
         }
       }
       setScene(result.scene);
-      setBoard(normaliseBoard(result.scene.boardState));
       setSceneList((current) => current.map((item) => item.id === result.scene.id ? result.scene : item));
-      setDirty(false);
+      // The user may have edited again while the request was in flight.
+      // Accept the server's new version but do not clobber the newer local
+      // board. Keep it dirty so the next serialized autosave persists it.
+      if (boardRef.current === board) {
+        setBoard(returned);
+        setDirty(false);
+      }
       if (showNotice) showToast('Scene board saved', 'success');
       return true;
     } catch (error) {
       showToast(apiErrorMessage(error) || 'Could not save Scene Board', 'error');
       return false;
     } finally {
+      saveInFlightRef.current = false;
       setSaving(false);
     }
   }, [board, campaignId, dirty, isGm, scene, showToast]);
 
   // Autosave shortly after each edit; the button remains for explicit reassurance.
+  // Retrying after an in-flight save finishes handles edits made mid-request.
   useEffect(() => {
-    if (!dirty || !isGm || !scene) return;
+    if (!dirty || !isGm || !scene || saving) return;
     const timer = window.setTimeout(() => void save(false), 900);
     return () => window.clearTimeout(timer);
-  }, [dirty, isGm, save, scene]);
+  }, [dirty, isGm, save, scene, saving]);
 
   const createScene = async () => {
     const title = newSceneName.trim();
