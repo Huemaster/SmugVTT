@@ -8,6 +8,10 @@ import userEvent from '@testing-library/user-event';
 import type { Character, CampaignMembership } from '@/types';
 import CharacterSheetViewerModal from '../CharacterSheetViewerModal';
 
+// Viewer tests isolate the independently tested picture upload control.
+// CharacterPictureControl.test.tsx exercises upload, versioning and errors.
+vi.mock('../CharacterPictureControl', () => ({ default: () => null }));
+
 const character = {
   id: 'char-1', userId: 'owner', name: 'Sheet A', gameSystem: 'DND_5E', data: { background: 'Sage' }, campaignId: null,
   updatedAt: '2026-01-01T00:00:00.000Z',
