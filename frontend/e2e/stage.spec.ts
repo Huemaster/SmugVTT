@@ -82,13 +82,17 @@ test('Stage UX: three pillars, large GIF art, presentation modes and GM opt-in',
   await expect(frame).toHaveAttribute('style', /height: 480px/);
   await expect(frame).toHaveAttribute('style', /left: 480px/);
 
-  // Players discover picture selection and sizing by simply clicking the art.
-  await art.click();
+  // Transparent-art selection uses a visible-ink hitbox layered above the
+  // IMG. Click the actual interactive surface, not the IMG it intentionally
+  // intercepts. The upper-left point avoids the bottom-left speaker dock.
+  const imageHitbox = page.locator('[data-smug-image-hitbox]').first();
+  await expect(imageHitbox).toBeVisible();
+  await imageHitbox.click({ position: { x: 12, y: 12 } });
   await expect(page.getByRole('button', { name: 'Resize selected scene element' })).toBeVisible();
 
   // A pointer context menu must not accidentally begin a move operation.
   if (!compact) {
-    await art.click({ button: 'right' });
+    await imageHitbox.click({ button: 'right', position: { x: 12, y: 12 } });
     await expect(page.getByRole('combobox', { name: 'Speaking as / Character is' })).toBeVisible();
     await page.getByRole('combobox', { name: 'Right-click Stage emote' }).selectOption('alert');
     await page.getByRole('button', { name: 'Play silent cue' }).click();
