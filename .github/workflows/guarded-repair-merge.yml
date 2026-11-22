@@ -1,0 +1,96 @@
+name: Guarded repair merge
+
+# Never run code from repair branches in this privileged workflow.
+# Only trusted, explicitly reviewed and CI-passing repair PRs can merge.
+on:
+  schedule:
+    - cron: '41 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+
+concurrency:
+  group: guarded-repair-merge
+  cancel-in-progress: false
+
+jobs:
+  merge:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Evaluate reviewed repair PRs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Required CI jobs. Never alter this list to bypass a red check.
+          required=( "Frontend" "Backend" "Docs" "Dependency advisories" "Production images, nginx and smoke tests" )
+          gh pr list -R "$GH_REPO" --state open --limit 100 --json number,labels \
+            --jq '.[] | select(any(.labels[]?; .name == "safe-to-automerge")) | .number' |
+          while read -r number; do
+            [[ -n "$number" ]] || continue
+            echo "Reviewing PR #$number"
+            pr="$(gh api "repos/$GH_REPO/pulls/$number")"
+            # Only non-draft, same-repository, maintainer-authored, repair-prefix PRs.
+            if ! jq -e --arg repo "$GH_REPO" '
+              .state == "open" and .draft == false and
+              .base.ref == "main" and
+              .head.repo.full_name == $repo and
+              (.head.ref | startswith("automation/repair-")) and
+              (.user.login == "Huemaster" or .user.login == "github-actions[bot]") and
+              .changed_files <= 6 and .additions <= 250 and .deletions <= 250
+            ' <<<"$pr" >/dev/null; then
+              echo "Not eligible: PR metadata"; continue
+            fi
+            # Two independently applied maintainer approval labels. The workflow
+            # never creates either label. Labels are review attestations, not tests.
+            labels="$(gh api "repos/$GH_REPO/issues/$number/labels" --jq '.[].name')"
+            grep -Fxq 'safe-to-automerge' <<<"$labels" || continue
+            grep -Fxq 'privacy-reviewed' <<<"$labels" || { echo "Privacy review missing"; continue; }
+
+            # Narrow path allowlist. Reject sensitive source paths even when under src.
+            files="$(gh api --paginate "repos/$GH_REPO/pulls/$number/files?per_page=100" --jq '.[].filename')"
+            [[ -n "$files" ]] || continue
+            valid=true
+            while IFS= read -r path; do
+              case "$path" in
+                frontend/src/*|frontend/tests/*|frontend/e2e/*|backend/src/*|backend/tests/*|docs/*) ;;
+                *) valid=false ;;
+              esac
+              if grep -Eiq '(^|/|[-_.])(auth|security|permission|secret|token|session|credential|license|policy|migration|prisma|payment|billing|docker|deploy)(/|[-_.]|$)' <<<"$path"; then
+                valid=false
+              fi
+            done <<<"$files"
+            [[ "$valid" == true ]] || { echo "Sensitive/non-allowlisted path"; continue; }
+
+            # gh pr checks is scoped to this PR's current head, not a stale run.
+            # All five named checks must pass; *any* other failing/pending
+            # check also blocks the merge. Missing required names fail closed.
+            checks="$(gh pr checks "$number" -R "$GH_REPO" --json name,bucket 2>/dev/null || true)"
+            [[ -n "$checks" ]] || continue
+            if ! jq -e 'length > 0 and all(.[]; .bucket == "pass")' <<<"$checks" >/dev/null; then
+              echo "Checks not all passing"; continue
+            fi
+            all_required=true
+            for name in "${required[@]}"; do
+              if ! jq -e --arg n "$name" 'any(.[]; .name == $n and .bucket == "pass")' <<<"$checks" >/dev/null; then
+                all_required=false
+              fi
+            done
+            [[ "$all_required" == true ]] || { echo "Required CI missing"; continue; }
+
+            # Re-fetch immediately before merge. A changed head SHA is rejected
+            # by GitHub's --match-head-commit server-side lease.
+            sha="$(jq -r '.head.sha' <<<"$pr")"
+            current_sha="$(gh api "repos/$GH_REPO/pulls/$number" --jq '.head.sha')"
+            [[ "$sha" == "$current_sha" ]] || { echo "Head SHA changed"; continue; }
+
+            # No --admin, no branch protection bypass, no forced merge.
+            gh pr merge "$number" -R "$GH_REPO" --squash --match-head-commit "$sha" --delete-branch ||
+              echo "Merge refused by GitHub protections or current PR state"
+          done
