@@ -28,7 +28,7 @@ import campaignService from '@/services/campaign.service';
 import InvitePlayerModal from './InvitePlayerModal';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import { CampaignRole } from '@/types';
-import type { AccessRevoked, CampaignMembership, CampaignInvitationSummary } from '@/types';
+import type { AccessRevoked, AssignableCampaignRole, CampaignMembership, CampaignInvitationSummary } from '@/types';
 import Button from '@/components/ui/Button';
 import SlideOver, { SlideOverClose, SlideOverTitle } from '@/components/ui/SlideOver';
 import { apiErrorMessage } from '@/utils/errors';
@@ -51,6 +51,10 @@ interface CampaignSettingsModalProps {
 // ============================================
 
 type SettingsTab = 'general' | 'chat' | 'members' | 'danger';
+
+/** Roles a GM may assign without transferring the GM seat. */
+const ROLE_CHOICES = [CampaignRole.PLAYER, CampaignRole.SPECTATOR] as const satisfies readonly AssignableCampaignRole[];
+const roleChoice = (value: string): AssignableCampaignRole | undefined => ROLE_CHOICES.find((role) => role === value);
 
 /** A switch's press, a finger's height around its 24 px pill on a touch screen. */
 const SWITCH_PRESS = "pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-2.5 pointer-coarse:after:content-['']";
@@ -108,6 +112,8 @@ export default function CampaignSettingsModal({
   const removingRole = memberToRemove ? CAMPAIGN_ROLE_LABEL[memberToRemove.role] : CAMPAIGN_ROLE_LABEL[CampaignRole.PLAYER];
   const [memberToPromote, setMemberToPromote] = useState<CampaignMembership | null>(null);
   const [promotingMemberId, setPromotingMemberId] = useState<string | null>(null);
+  // Pending values remain visible while a role change is being saved.
+  const [pendingRoles, setPendingRoles] = useState<Record<string, AssignableCampaignRole>>({});
   const [gmAccessSavingId, setGmAccessSavingId] = useState<string | null>(null);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteKey, setInviteKey] = useState(0);
@@ -224,6 +230,29 @@ export default function CampaignSettingsModal({
     }
   };
 
+
+  /**
+   * Switch a campaign member between Player and Spectator using the existing
+   * GM-only route. Their open table updates through campaign.role.changed.
+   */
+  const handleChangeRole = async (membership: CampaignMembership, role: AssignableCampaignRole) => {
+    if (role === membership.role) return;
+    const { userId } = membership;
+    setPendingRoles((prev) => ({ ...prev, [userId]: role }));
+    try {
+      await api.changeCampaignMemberRole(campaign.id, userId, role);
+      await refreshCampaign();
+      showToast(`${membership.user?.displayName ?? 'The member'} is now a ${CAMPAIGN_ROLE_LABEL[role].toLowerCase()}`, 'success');
+    } catch (err) {
+      showToast(apiErrorMessage(err) ?? 'Failed to change the role', 'error');
+    } finally {
+      setPendingRoles((prev) => {
+        const next = { ...prev };
+        delete next[userId];
+        return next;
+      });
+    }
+  };
 
   const handleGmAccessToggle = async (membership: CampaignMembership) => {
     const next = !membership.gmAccess;
@@ -653,14 +682,16 @@ export default function CampaignSettingsModal({
                   const isSelf = membership.userId === user?.id;
                   const isDm = membership.role === 'DM';
                   const isRemoving = removingMemberId === membership.userId;
+                  const pendingRole = pendingRoles[membership.userId];
+                  const memberName = membership.user?.displayName ?? 'this member';
                   const isGmAccessSaving = gmAccessSavingId === membership.userId;
 
                   return (
                     <div
                       key={membership.userId}
-                      className="flex items-center justify-between p-3 rounded-lg bg-parchment/50 border border-moss-green/10"
+                      className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 p-3 rounded-lg bg-parchment/50 border border-moss-green/10"
                     >
-                      <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex items-center gap-3 min-w-0 flex-1 basis-40">
                         <div className="w-8 h-8 rounded-full bg-moss-green/15 flex items-center justify-center shrink-0">
                           <span className="text-sm font-bold text-brand-ink uppercase">
                             {(membership.user?.displayName ?? '?')[0]}
@@ -676,27 +707,46 @@ export default function CampaignSettingsModal({
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
-                        {/* Role badge */}
-                        <span
-                          className={`text-xs font-medium px-2 py-0.5 rounded-full border ${
-                            isDm
-                              ? 'bg-spirit-purple/10 text-spirit-ink border-spirit-purple/20'
-                              : membership.role === 'SPECTATOR'
-                              ? 'bg-stone-gray/10 text-stone-gray border-stone-gray/20'
-                              : 'bg-moss-green/10 text-brand-ink border-moss-green/20'
-                          }`}
-                        >
-                          {isDm ? (
-                            <span className="flex items-center gap-1">
-                              <ShieldCheck className="w-3 h-3" />
-                              {CAMPAIGN_ROLE_LABEL[membership.role]}
-                            </span>
-                          ) : (
-                            CAMPAIGN_ROLE_LABEL[membership.role]
-                          )}
-                        </span>
-
+                      <div className="flex items-center gap-2 shrink-0 ml-auto">
+                        {/* Only the sitting GM can change members to Player/Spectator.
+                            The GM seat itself is transferred separately. */}
+                        {isDmViewer && !isDm ? (
+                          <select
+                            aria-label={`Role of ${memberName}`}
+                            value={pendingRole ?? membership.role}
+                            aria-busy={pendingRole !== undefined || undefined}
+                            aria-disabled={pendingRole !== undefined || isRemoving || undefined}
+                            onChange={(event) => {
+                              if (pendingRole !== undefined || isRemoving) return;
+                              const role = roleChoice(event.target.value);
+                              if (role) void handleChangeRole(membership, role);
+                            }}
+                            className="touch-target rounded-cozy border border-ink-muted/30 bg-paper/80 px-2 py-1 text-xs font-medium text-ink focus:outline-hidden focus:ring-2 focus:ring-brand aria-disabled:opacity-60"
+                          >
+                            {ROLE_CHOICES.map((role) => (
+                              <option key={role} value={role}>{CAMPAIGN_ROLE_LABEL[role]}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span
+                            className={`text-xs font-medium px-2 py-0.5 rounded-full border ${
+                              isDm
+                                ? 'bg-spirit-purple/10 text-spirit-ink border-spirit-purple/20'
+                                : membership.role === 'SPECTATOR'
+                                ? 'bg-stone-gray/10 text-stone-gray border-stone-gray/20'
+                                : 'bg-moss-green/10 text-brand-ink border-moss-green/20'
+                            }`}
+                          >
+                            {isDm ? (
+                              <span className="flex items-center gap-1">
+                                <ShieldCheck className="w-3 h-3" />
+                                {CAMPAIGN_ROLE_LABEL[membership.role]}
+                              </span>
+                            ) : (
+                              CAMPAIGN_ROLE_LABEL[membership.role]
+                            )}
+                          </span>
+                        )}
 
                         {membership.gmAccess && !isDm && (
                           <span className="text-xs font-medium px-2 py-0.5 rounded-full border bg-spirit-purple/10 text-spirit-ink border-spirit-purple/20">
