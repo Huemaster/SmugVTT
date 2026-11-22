@@ -25,6 +25,11 @@ on:
     branches: [dev, main]
   pull_request:
     branches: [dev, main]
+  # Run the full suite daily even when nobody has pushed.
+  schedule:
+    - cron: '17 10 * * *' # 07:17 America/Sao_Paulo (UTC-3)
+  # Allow a maintainer to recheck an unchanged main commit on demand.
+  workflow_dispatch:
 
 # Read the code, nothing more: no job here writes to the repository.
 permissions:
