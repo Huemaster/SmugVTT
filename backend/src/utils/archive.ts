@@ -20,12 +20,19 @@ import { pipeline } from 'stream/promises';
 import unzipper from 'unzipper';
 import type { CentralDirectory, File as ArchiveEntry } from 'unzipper';
 
+/** Maximum length of a ZIP entry path, in UTF-8 bytes (CozyVTT 1.7 limit). */
+export const MAX_ARCHIVE_NAME_BYTES = 1024;
+
 /**
  * Reject archive entry paths that attempt traversal or absolute escape.
  * Accepts only simple relative paths that stay beneath the extraction root.
  */
 export function isSafeArchivePath(name: string): boolean {
   if (!name) return false;
+  // ZIP permits a 65,535-byte name, far larger than any file we legitimately
+  // export. Reject oversized and NUL-bearing names before writing to disk.
+  if (Buffer.byteLength(name, 'utf8') > MAX_ARCHIVE_NAME_BYTES) return false;
+  if (name.includes('\0')) return false;
   if (name.includes('..')) return false;
   if (name.includes('\\')) return false;
   // Must be a simple relative path under the expected directory.
@@ -213,8 +220,20 @@ export async function openArchiveFile(filePath: string, maxEntries: number): Pro
     );
   }
   try {
-    return await unzipper.Open.file(filePath);
-  } catch {
+    const directory = await unzipper.Open.file(filePath);
+    for (const entry of directory.files) {
+      if (Buffer.byteLength(entry.path, 'utf8') > MAX_ARCHIVE_NAME_BYTES) {
+        throw new ArchiveRefusedError(
+          `The archive has a file name longer than ${MAX_ARCHIVE_NAME_BYTES.toLocaleString('en-US')} bytes, which an archive from this server never has.`
+        );
+      }
+      if (entry.path.includes('\0')) {
+        throw new ArchiveRefusedError('The archive has a file name containing a NUL character, which a backup never has.');
+      }
+    }
+    return directory;
+  } catch (error) {
+    if (error instanceof ArchiveRefusedError) throw error;
     // The end of the archive was found but its directory cannot be read.
     throw new ArchiveRefusedError(NOT_A_ZIP);
   }
