@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — ZIP archive input hardening (review pending)
+
+Selective CozyVTT 1.7 input validation: refuse ZIP entries whose names exceed **1,024 UTF-8 bytes** or contain a NUL character before import/restore proceeds. The same checks also apply before any extracted path is written. Includes regression tests for overly long and multibyte names.
+
+This is an intentionally small improvement to the existing `unzipper` reader. It **does not** replace CozyVTT's newer `yauzl`-based bounded archive implementation or assert equivalent safety for malformed directory records. A later independent compatibility/security review must evaluate the reader replacement, its dependencies and all import/restore cases. No database migration, user data rewrite, or public release is included.
+
+---
+
 ## Unreleased — Stage integration UX pass (draft PR #17)
 
 - Unify Canvas and Scene navigation under a single **Stage** pillar and replace
