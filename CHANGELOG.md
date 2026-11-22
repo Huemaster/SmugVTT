@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — Browser WebSocket status diagnostic (review pending)
+
+Selective CozyVTT v1.7.0 backport from the earlier SmugVTT [PR #14](https://github.com/Huemaster/SmugVTT/pull/14). The Admin Status card now probes the administrator browser's real Socket.IO connection, distinguishes **Working**, **Polling only** and **Down**, and does not assume the backend's own health signal proves WebSocket proxy transport works. The temporary probe shares the campaign socket target/configuration, but does not join a campaign. Includes frontend tests and deployment guidance.
+
+This change is a proposed backport only; no network listener, database schema, permissions or user campaign records change. Verify the diagnostics through Docker and Cloudflare Tunnel before release.
+
+---
+
 ## Unreleased — Stage integration UX pass (draft PR #17)
 
 - Unify Canvas and Scene navigation under a single **Stage** pillar and replace

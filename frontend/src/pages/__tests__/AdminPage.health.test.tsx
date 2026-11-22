@@ -27,6 +27,9 @@ const adminService = vi.hoisted(() => ({
 }));
 vi.mock('@/services/admin.service', () => ({ adminService }));
 vi.mock('@/services/api', () => ({ api: {}, default: {} }));
+// The health-card's server status tests are independent of the separate
+// browser probe, exercised with a fake transport in AdminPage.liveConnection.
+vi.mock('@/hooks/useLiveConnectionCheck', () => ({ useLiveConnectionCheck: () => 'working' }));
 
 /** An axios-shaped failure: with a status when the server answered, without one when it did not. */
 const failure = (status?: number) =>
@@ -51,8 +54,8 @@ describe('the status card', () => {
     renderPage();
 
     expect(await screen.findByText('Healthy')).toBeInTheDocument();
-    expect(screen.getByLabelText('DB: working')).toBeInTheDocument();
-    expect(screen.getByLabelText('WS: working')).toBeInTheDocument();
+    expect(screen.getByText('DB').nextElementSibling).toHaveTextContent('Working');
+    expect(screen.getByText('WS').nextElementSibling).toHaveTextContent('Working');
   });
 
   it('shows the database as down when the server says so', async () => {
@@ -62,7 +65,7 @@ describe('the status card', () => {
     renderPage();
 
     expect(await screen.findByText('Degraded')).toBeInTheDocument();
-    expect(screen.getByLabelText('DB: down')).toBeInTheDocument();
+    expect(screen.getByText('DB').nextElementSibling).toHaveTextContent('Down');
     expect(screen.queryByText('Healthy')).toBeNull();
   });
 
@@ -73,8 +76,8 @@ describe('the status card', () => {
     renderPage();
 
     expect(await screen.findByText('Unknown')).toBeInTheDocument();
-    expect(screen.getByLabelText('API: down')).toBeInTheDocument();
-    expect(screen.getByLabelText('DB: not known')).toBeInTheDocument();
+    expect(screen.getByText('API').nextElementSibling).toHaveTextContent('Down');
+    expect(screen.getByText('DB').nextElementSibling).toHaveTextContent('Not known');
     expect(screen.queryByText('Healthy')).toBeNull();
   });
 });
