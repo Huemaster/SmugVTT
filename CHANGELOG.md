@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased — CozyVTT 1.7 selective compatibility fixes (review pending)
+
+Adapted the isolated changes from SmugVTT PRs [#13](https://github.com/Huemaster/SmugVTT/pull/13) and [#15](https://github.com/Huemaster/SmugVTT/pull/15) onto the merged Stage/Canvas main branch:
+
+- Refuse malformed non-string map and token IDs on WebSocket drag start, movement frames, and drop, with database-backed regression coverage.
+- Display subtraction, multiplication, and division modifiers correctly in expanded dice results.
+- Preserve explicit zero values and clear-and-retype behavior in NPC and Creature score fields; fit multi-digit values within narrow editors.
+- Refresh Mapmaker wall polygon and wall-color overlays immediately after touch or color changes, with interaction tests.
+
+No database migrations, token schema changes, Stage/Canvas store changes, role/game-system renames, or Squad Command mechanics are imported. These changes remain a **proposed backport**, not part of a published release, until CI and manual regressions pass.
+
+---
+
 ## Unreleased — Stage integration UX pass (draft PR #17)
 
 - Unify Canvas and Scene navigation under a single **Stage** pillar and replace

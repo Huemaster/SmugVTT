@@ -50,6 +50,19 @@ beforeEach(() => {
 });
 
 describe('the token editor\'s stat block', () => {
+  it('accepts zero and allows clearing and retyping an NPC characteristic', () => {
+    const onChange = vi.fn();
+    render(<StatBlockEditor statBlock={cultist} onChange={onChange} gameSystem="CALL_OF_CTHULHU_7E" />);
+    const str = screen.getByRole('spinbutton', { name: 'STR' }) as HTMLInputElement;
+    fireEvent.change(str, { target: { value: '' } });
+    expect(str.value).toBe('');
+    fireEvent.change(str, { target: { value: '0' } });
+    expect(onChange).toHaveBeenLastCalledWith({ ...cultist, abilities: { ...cultist.abilities, str: 0 } });
+    expect(str.className).toContain('px-1');
+    expect(str.className).toContain('tabular-nums');
+  });
+
+
   it('offers D&D 5e its Challenge Rating', () => {
     render(<StatBlockEditor statBlock={cultist} onChange={vi.fn()} gameSystem="DND_5E" />);
     expect(screen.getByLabelText('CR')).toBeTruthy();
@@ -78,6 +91,18 @@ describe('the token editor\'s stat block', () => {
 });
 
 describe('the Creature Library\'s form', () => {
+  it('accepts zero in the creature editor without replacing it with ten', async () => {
+    campaign.gameSystem = 'CALL_OF_CTHULHU_7E';
+    render(<CreatureLibrary isOpen onClose={() => {}} />);
+    await userEvent.click(await screen.findByRole('button', { name: /Create Custom/ }));
+    const str = screen.getByRole('spinbutton', { name: 'STR' }) as HTMLInputElement;
+    fireEvent.change(str, { target: { value: '' } });
+    fireEvent.change(str, { target: { value: '0' } });
+    expect(str.value).toBe('0');
+    expect(str.className).toContain('tabular-nums');
+  });
+
+
   it('offers a Call of Cthulhu creature its characteristics and typed skills, and no rating', async () => {
     campaign.gameSystem = 'CALL_OF_CTHULHU_7E';
     render(<CreatureLibrary isOpen onClose={() => {}} />);
