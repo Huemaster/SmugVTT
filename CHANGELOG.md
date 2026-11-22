@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — Player/Spectator member picker (review pending)
+
+Selective CozyVTT 1.7 backport: the sitting GM can switch a campaign member between **Player** and **Spectator** directly in Campaign Settings, including the original owner after a GM handoff. A role change uses the existing server permission checks and live `campaign.role.changed` broadcast; the selector shows pending state and reports server refusals. Co-GM controls are preserved, and transferring the sitting GM remains a separate operation.
+
+Includes role-picker interaction tests, live role-context tests, and the owner/spectator permission regression. No database migration, role enum rename, Stage rewrites or user data changes. This is **not released** until the authorization and multiplayer QA passes.
+
+---
+
 ## Unreleased — Stage integration UX pass (draft PR #17)
 
 - Unify Canvas and Scene navigation under a single **Stage** pillar and replace
