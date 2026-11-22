@@ -61,6 +61,7 @@ export default function DiceResult({ roll, isCurrentUser, rollerIsDM, dense = fa
    * which is the part anyone actually reads.
    */
   const detail = Array.isArray(breakdown?.rolls) ? breakdown.rolls : [];
+  const operators = operatorsOf(breakdown?.formula, detail);
 
   // A critical is a single d20 kept, however it was written: `1d20`, `d20`,
   // advantage (`2d20kh1`) or disadvantage (`2d20kl1`). Looking only for a
@@ -297,9 +298,9 @@ export default function DiceResult({ roll, isCurrentUser, rollerIsDM, dense = fa
                 )}
 
                 {roll.type === 'modifier' && roll.value !== undefined && (
-                  <div className="inline-flex items-center gap-1 bg-warm-amber/10 px-2 py-1 rounded-sm">
+                  <div data-modifier className="inline-flex items-center gap-1 bg-warm-amber/10 px-2 py-1 rounded-sm">
                     <span className="font-mono text-xs opacity-80">
-                      {roll.value >= 0 ? '+' : ''}{roll.value}
+                      {modifierText(roll.value, operators[idx])}
                     </span>
                   </div>
                 )}
@@ -351,6 +352,26 @@ function workingOf(formula: string | undefined, detail: DiceRollDetail[]): React
       {part}
     </Fragment>
   ));
+}
+
+/**
+ * Match the operator preceding each stored dice group in the formula.
+ * The server stores a subtracted modifier's positive magnitude, so the
+ * chip must read the operator rather than showing every positive value as +.
+ */
+function operatorsOf(formula: string | undefined, detail: DiceRollDetail[]): string[] {
+  const tokens = typeof formula === 'string' ? formula.split(' ').filter(Boolean) : [];
+  const numbers = tokens.flatMap((token, at) => (FORMULA_NUMBER.test(token) ? [at] : []));
+  if (numbers.length !== detail.length) return [];
+  return numbers.map((at) => (at > 0 && /^[-+*/]$/.test(tokens[at - 1]) ? tokens[at - 1] : ''));
+}
+
+/** Format an arithmetic modifier as written by the dice engine. */
+function modifierText(value: number, operator: string | undefined): string {
+  if (operator === '-') return `-${value}`;
+  if (operator === '*') return `×${value}`;
+  if (operator === '/') return `÷${value}`;
+  return `${value >= 0 ? '+' : ''}${value}`;
 }
 
 /** A group of a roll as text: its dice's faces, or a modifier, signed where no formula gives the sign. */
