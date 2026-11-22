@@ -6,6 +6,7 @@ import unzipper from 'unzipper';
 import {
   extractArchiveSafely,
   isSafeArchivePath,
+  MAX_ARCHIVE_NAME_BYTES,
   countListedEntries,
   openArchiveFile,
   readArchiveEntry,
@@ -97,6 +98,9 @@ describe('isSafeArchivePath', () => {
     ['a backslash', 'maps\\evil.txt'],
     ['a backslash parent folder', '..\\evil.txt'],
     ['an absolute path', '/etc/passwd'],
+    ['a NUL character', 'uploads/picture\0.png'],
+    ['a file name over 1024 UTF-8 bytes', 'uploads/' + 'a'.repeat(MAX_ARCHIVE_NAME_BYTES)],
+    ['a multi-byte name over the byte limit', 'uploads/' + 'é'.repeat(512)],
   ])('refuses %s', (_label, name) => {
     expect(isSafeArchivePath(name)).toBe(false);
   });
@@ -249,6 +253,13 @@ describe('countListedEntries', () => {
 
 describe('openArchiveFile', () => {
   afterEach(() => jest.restoreAllMocks());
+
+  it('refuses an entry name past the archive byte ceiling before returning the directory', async () => {
+    const file = path.join(root, 'oversized-name.zip');
+    const name = 'assets/' + 'a'.repeat(MAX_ARCHIVE_NAME_BYTES);
+    await writeZip(file, [{ name, data: 'x' }]);
+    await expect(openArchiveFile(file, LIMITS.maxFiles)).rejects.toThrow(/file name longer than 1,024 bytes/);
+  });
 
   it('refuses an archive listing more entries than allowed before reading its directory', async () => {
     const file = path.join(root, 'many.zip');
